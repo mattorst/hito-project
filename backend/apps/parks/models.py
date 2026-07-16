@@ -61,3 +61,96 @@ class Park(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+class TrailDifficulty(models.TextChoices):
+    EASY = "EASY", "Fácil"
+    MODERATE = "MODERATE", "Moderado"
+    HARD = "HARD", "Difícil"
+    EXPERT = "EXPERT", "Experto"
+
+
+class TrailStatus(models.TextChoices):
+    OPEN = "OPEN", "Abierto"
+    CLOSED = "CLOSED", "Cerrado"
+    MAINTENANCE = "MAINTENANCE", "Mantenimiento"
+
+
+class Trail(models.Model):
+    """
+    Representa un sendero perteneciente a un parque.
+    """
+
+    park = models.ForeignKey(
+        Park,
+        on_delete=models.CASCADE,
+        related_name="trails",
+        verbose_name="Parque",
+    )
+
+    name = models.CharField(
+        max_length=150,
+        verbose_name="Nombre",
+    )
+
+    description = models.TextField(
+        blank=True,
+        verbose_name="Descripción",
+    )
+
+    difficulty = models.CharField(
+        max_length=20,
+        choices=TrailDifficulty.choices,
+        default=TrailDifficulty.MODERATE,
+        verbose_name="Dificultad",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=TrailStatus.choices,
+        default=TrailStatus.OPEN,
+        verbose_name="Estado",
+    )
+
+    estimated_duration = models.DurationField(
+        verbose_name="Duración estimada",
+    )
+
+    distance_km = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Distancia (km)",
+    )
+
+    max_altitude = models.PositiveIntegerField(
+        verbose_name="Altitud máxima (msnm)",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Activo",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización",
+    )
+
+    class Meta:
+        verbose_name = "Sendero"
+        verbose_name_plural = "Senderos"
+        ordering = ["park", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["park", "name"],
+                name="unique_trail_name_per_park",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.park.name} - {self.name}"
