@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Park, Trail
+from .models import Park, Trail, Checkpoint
 
 
 @admin.register(Park)
@@ -58,4 +58,37 @@ class TrailAdmin(admin.ModelAdmin):
     ordering = (
         "park",
         "name",
+    )
+
+@admin.register(Checkpoint)
+class CheckpointAdmin(admin.ModelAdmin):
+    list_display = (
+        "sequence",
+        "name",
+        "trail",
+        "checkpoint_type",
+        "is_active",
+    )
+
+    list_filter = (
+        "checkpoint_type",
+        "is_active",
+        "trail__park",
+        "trail",
+    )
+
+    search_fields = (
+        "name",
+        "qr_identifier",
+        "trail__name",
+        "trail__park__name",
+    )
+
+    autocomplete_fields = (
+        "trail",
+    )
+
+    ordering = (
+        "trail",
+        "sequence",
     )
