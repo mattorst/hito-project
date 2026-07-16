@@ -48,8 +48,8 @@ INSTALLED_APPS = [
 
     "rest_framework",
 
-    "accounts",
-    "parks",
+    "apps.accounts",
+    "apps.parks",
 
 ]
 
