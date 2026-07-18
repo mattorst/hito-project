@@ -1,3 +1,37 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Trekking
+
+
+@admin.register(Trekking)
+class TrekkingAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "trail",
+        "status",
+        "tracking_enabled",
+        "started_at",
+        "finished_at",
+    )
+
+    list_filter = (
+        "status",
+        "tracking_enabled",
+        "trail__park",
+        "trail",
+    )
+
+    search_fields = (
+        "user__username",
+        "trail__name",
+        "trail__park__name",
+    )
+
+    autocomplete_fields = (
+        "user",
+        "trail",
+    )
+
+    ordering = (
+        "-started_at",
+    )
