@@ -1,7 +1,8 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
-from apps.parks.models import Trail, Checkpoint
+from apps.parks.models import Checkpoint, Trail
 
 
 class TrekkingStatus(models.TextChoices):
@@ -79,7 +80,54 @@ class Trekking(models.Model):
             f"{self.trail.name} - "
             f"{self.get_status_display()}"
         )
-    
+
+    # ¡MÉTODOS MOVIDOS AQUÍ DENTRO DE TREKKING!
+    def clean(self):
+        errors = {}
+
+        if (
+            self.started_at
+            and self.estimated_return_time
+            and self.estimated_return_time < self.started_at
+        ):
+            errors["estimated_return_time"] = (
+                "La hora estimada de regreso no puede ser anterior al inicio del trekking."
+            )
+
+        if (
+            self.finished_at
+            and self.started_at
+            and self.finished_at < self.started_at
+        ):
+            errors["finished_at"] = (
+                "La hora de finalización no puede ser anterior al inicio del trekking."
+            )
+
+        if (
+            self.status == TrekkingStatus.COMPLETED
+            and self.finished_at is None
+        ):
+            errors["finished_at"] = (
+                "Un trekking completado debe tener una fecha y hora de finalización."
+            )
+
+        if (
+            self.finished_at is not None
+            and self.status == TrekkingStatus.IN_PROGRESS
+        ):
+            errors["status"] = (
+                "Un trekking con fecha de finalización no puede permanecer 'En progreso'."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class CheckpointRecord(models.Model):
     """
