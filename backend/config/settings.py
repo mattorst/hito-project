@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.parks",
     "apps.trekkings",
     "apps.incidents",
+    "apps.rescues",
 
 ]
 
