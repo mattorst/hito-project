@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.trekkings.models import Trekking
@@ -75,3 +76,30 @@ class Incident(models.Model):
             f"{self.trekking.user.username} | "
             f"{self.registered_at:%d/%m/%Y %H:%M}"
         )
+
+    def clean(self):
+        errors = {}
+
+        if self.latitude < -90 or self.latitude > 90:
+            errors["latitude"] = (
+                "La latitud debe estar entre -90 y 90 grados."
+            )
+
+        if self.longitude < -180 or self.longitude > 180:
+            errors["longitude"] = (
+                "La longitud debe estar entre -180 y 180 grados."
+            )
+
+        if not (self.description or "").strip():
+            errors["description"] = (
+                "La descripción del incidente no puede estar vacía."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
