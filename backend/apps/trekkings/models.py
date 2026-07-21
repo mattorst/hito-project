@@ -81,7 +81,6 @@ class Trekking(models.Model):
             f"{self.get_status_display()}"
         )
 
-    # ¡MÉTODOS MOVIDOS AQUÍ DENTRO DE TREKKING!
     def clean(self):
         errors = {}
 
@@ -181,3 +180,36 @@ class CheckpointRecord(models.Model):
             f"{self.checkpoint.name} | "
             f"{self.registered_at:%d/%m/%Y %H:%M}"
         )
+
+    def clean(self):
+        errors = {}
+
+        # 1. Validar que la fecha/hora del registro no sea previa al inicio del trekking
+        if (
+            self.registered_at
+            and self.trekking
+            and self.trekking.started_at
+            and self.registered_at < self.trekking.started_at
+        ):
+            errors["registered_at"] = (
+                "La fecha y hora del registro no puede ser anterior al inicio del trekking."
+            )
+
+        # 2. Validar que el checkpoint corresponda al sendero del trekking
+        if (
+            self.trekking
+            and self.checkpoint
+            and self.checkpoint.trail_id != self.trekking.trail_id
+        ):
+            errors["checkpoint"] = (
+                "El checkpoint debe pertenecer al mismo sendero del trekking."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
