@@ -1,4 +1,7 @@
+from django.core.exceptions import ValidationError
+
 from django.db import models
+
 
 
 class Park(models.Model):
@@ -164,7 +167,6 @@ class CheckpointType(models.TextChoices):
     REST = "REST", "Descanso"
     EXIT = "EXIT", "Salida"
 
-
 class Checkpoint(models.Model):
     """
     Representa un punto de control perteneciente a un sendero.
@@ -250,3 +252,32 @@ class Checkpoint(models.Model):
 
     def __str__(self):
         return f"{self.trail.name} - CP {self.sequence}: {self.name}"
+
+    def clean(self):
+        errors = {}
+
+        if self.radius_meters is not None and self.radius_meters <= 0:
+            errors["radius_meters"] = (
+                "El radio de validación debe ser mayor que cero."
+            )
+
+        if self.latitude < -90 or self.latitude > 90:
+            errors["latitude"] = (
+                "La latitud debe estar entre -90 y 90 grados."
+            )
+
+        if self.longitude < -180 or self.longitude > 180:
+            errors["longitude"] = (
+                "La longitud debe estar entre -180 y 180 grados."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    
