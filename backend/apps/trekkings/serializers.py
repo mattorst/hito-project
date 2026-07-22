@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from apps.trekkings.models import Trekking
 from apps.parks.models import Trail
 
@@ -18,7 +17,7 @@ class TrekkingSerializer(serializers.ModelSerializer):
             "started_at",
             "estimated_return_time",
             "finished_at",
-            "started_via_qr",
+            "tracking_enabled",
             "created_at",
         )
 
@@ -26,9 +25,6 @@ class TrekkingSerializer(serializers.ModelSerializer):
 class StartTrekkingSerializer(serializers.Serializer):
     """
     Serializer utilizado para iniciar un nuevo trekking.
-
-    En el MVP recibe únicamente el sendero seleccionado.
-    La creación real del trekking será controlada por el backend.
     """
 
     trail = serializers.PrimaryKeyRelatedField(
