@@ -42,3 +42,18 @@ class StartTrekkingAPIView(generics.CreateAPIView):
             response_serializer.data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class TrekkingListAPIView(generics.ListAPIView):
+    """
+    Lista los trekkings registrados.
+    """
+
+    serializer_class = TrekkingSerializer
+
+    def get_queryset(self):
+        return (
+            Trekking.objects
+            .select_related("trail")
+            .order_by("-started_at")
+        )
