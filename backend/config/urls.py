@@ -39,6 +39,11 @@ urlpatterns = [
         include("apps.incidents.urls"),
     ),
 
+    path(
+        "api/",
+        include("apps.rescues.urls"),
+    ),
+
 ]
 
 if settings.DEBUG:
