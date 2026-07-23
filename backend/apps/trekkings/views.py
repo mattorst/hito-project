@@ -1,6 +1,7 @@
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework import generics
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from apps.trekkings.models import Trekking, TrekkingStatus
@@ -56,4 +57,43 @@ class TrekkingListAPIView(generics.ListAPIView):
             Trekking.objects
             .select_related("trail")
             .order_by("-started_at")
+        )
+
+
+class FinishTrekkingAPIView(APIView):
+    """
+    Finaliza un trekking activo.
+    """
+
+    def post(self, request, pk):
+
+        try:
+            trekking = Trekking.objects.get(pk=pk)
+
+        except Trekking.DoesNotExist:
+            return Response(
+                {
+                    "detail": "Trekking no encontrado."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if trekking.status == TrekkingStatus.COMPLETED:
+            return Response(
+                {
+                    "detail": "El trekking ya está finalizado."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        trekking.status = TrekkingStatus.COMPLETED
+        trekking.finished_at = timezone.now()
+
+        trekking.save()
+
+        serializer = TrekkingSerializer(trekking)
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
         )
