@@ -13,6 +13,12 @@ def create_checkpoint_record(data):
     )
 
 
+def create_incident(data):
+    return Incident.objects.create(
+        **data
+    )
+
+
 class SyncAPIView(APIView):
 
     def post(self, request):
@@ -47,9 +53,7 @@ class SyncAPIView(APIView):
                 created_checkpoint_records += 1
 
             for incident_data in incidents_data:
-                Incident.objects.create(
-                    **incident_data
-                )
+                create_incident(incident_data)
                 created_incidents += 1
 
         return Response(
