@@ -1,9 +1,10 @@
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from apps.trekkings.models import CheckpointRecord
 from apps.incidents.models import Incident
 from apps.sync.serializers import SyncSerializer
+from apps.shared.responses import success_response, error_response
 
 
 def create_checkpoint_record(data):
@@ -21,14 +22,16 @@ def create_incident(data):
 class SyncAPIView(APIView):
 
     def post(self, request):
-
         serializer = SyncSerializer(
             data=request.data
         )
 
-        serializer.is_valid(
-            raise_exception=True
-        )
+        if not serializer.is_valid():
+            return error_response(
+                errors=serializer.errors,
+                message="Error al procesar la sincronización",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         data = serializer.validated_data
 
@@ -74,10 +77,11 @@ class SyncAPIView(APIView):
                     }
                 )
 
-        return Response(
-            {
+        return success_response(
+            data={
                 "synchronized": created,
                 "failed": failed,
             },
-            status=status.HTTP_200_OK,
+            message="Sincronización procesada correctamente",
+            status_code=status.HTTP_200_OK,
         )
