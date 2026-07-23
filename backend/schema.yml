@@ -1,0 +1,675 @@
+openapi: 3.0.3
+info:
+  title: Hito API
+  version: 1.0.0
+  description: API REST para gestión y monitoreo de excursionistas en parques y reservas
+    naturales.
+paths:
+  /api/checkpoint-records/:
+    post:
+      operationId: checkpoint_records_create
+      description: Registra un checkpoint alcanzado durante un trekking.
+      tags:
+      - checkpoint-records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckpointRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CheckpointRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CheckpointRecord'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointRecord'
+          description: ''
+  /api/checkpoints/:
+    get:
+      operationId: checkpoints_list
+      tags:
+      - checkpoints
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Checkpoint'
+          description: ''
+  /api/checkpoints/{id}/:
+    get:
+      operationId: checkpoints_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - checkpoints
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checkpoint'
+          description: ''
+  /api/incidents/:
+    post:
+      operationId: incidents_create
+      description: Crea reportes de incidentes enviados desde terreno.
+      tags:
+      - incidents
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Incident'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Incident'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Incident'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+          description: ''
+  /api/parks/:
+    get:
+      operationId: parks_list
+      tags:
+      - parks
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Park'
+          description: ''
+  /api/parks/{id}/:
+    get:
+      operationId: parks_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - parks
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Park'
+          description: ''
+  /api/rescues/:
+    post:
+      operationId: rescues_create
+      description: Crea una operación de rescate.
+      tags:
+      - rescues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rescue'
+          description: ''
+  /api/sync/:
+    post:
+      operationId: sync_create
+      tags:
+      - sync
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/trails/:
+    get:
+      operationId: trails_list
+      tags:
+      - trails
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trail'
+          description: ''
+  /api/trails/{id}/:
+    get:
+      operationId: trails_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - trails
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trail'
+          description: ''
+  /api/trekkings/:
+    get:
+      operationId: trekkings_list
+      description: Lista los trekkings registrados.
+      tags:
+      - trekkings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trekking'
+          description: ''
+  /api/trekkings/{id}/finish/:
+    post:
+      operationId: trekkings_finish_create
+      description: Finaliza un trekking activo.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - trekkings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/trekkings/start/:
+    post:
+      operationId: trekkings_start_create
+      tags:
+      - trekkings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartTrekking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StartTrekking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StartTrekking'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartTrekking'
+          description: ''
+components:
+  schemas:
+    Checkpoint:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        trail:
+          type: integer
+          title: Sendero
+        name:
+          type: string
+          title: Nombre
+          maxLength: 150
+        sequence:
+          type: integer
+          maximum: 65535
+          minimum: 0
+          title: Secuencia
+        checkpoint_type:
+          allOf:
+          - $ref: '#/components/schemas/CheckpointTypeEnum'
+          title: Tipo
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Latitud
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Longitud
+        radius_meters:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          title: Radio (metros)
+        qr_identifier:
+          type: string
+          title: Identificador QR
+          maxLength: 100
+      required:
+      - id
+      - latitude
+      - longitude
+      - name
+      - qr_identifier
+      - sequence
+      - trail
+    CheckpointRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        trekking:
+          type: integer
+        checkpoint:
+          type: integer
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Latitud registrada
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Longitud registrada
+        registered_at:
+          type: string
+          format: date-time
+          title: Fecha y hora del registro
+      required:
+      - checkpoint
+      - id
+      - latitude
+      - longitude
+      - registered_at
+      - trekking
+    CheckpointTypeEnum:
+      enum:
+      - ENTRY
+      - NORMAL
+      - VIEWPOINT
+      - REST
+      - EXIT
+      type: string
+      description: |-
+        * `ENTRY` - Entrada
+        * `NORMAL` - Normal
+        * `VIEWPOINT` - Mirador
+        * `REST` - Descanso
+        * `EXIT` - Salida
+    DifficultyEnum:
+      enum:
+      - EASY
+      - MODERATE
+      - HARD
+      - EXPERT
+      type: string
+      description: |-
+        * `EASY` - Fácil
+        * `MODERATE` - Moderado
+        * `HARD` - Difícil
+        * `EXPERT` - Experto
+    Incident:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        trekking:
+          type: integer
+        incident_type:
+          allOf:
+          - $ref: '#/components/schemas/IncidentTypeEnum'
+          title: Tipo de incidente
+        description:
+          type: string
+          title: Descripción
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Latitud
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Longitud
+        registered_at:
+          type: string
+          format: date-time
+          title: Fecha y hora del registro
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          title: Fotografía
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Fecha de creación
+      required:
+      - created_at
+      - description
+      - id
+      - incident_type
+      - latitude
+      - longitude
+      - registered_at
+      - trekking
+    IncidentTypeEnum:
+      enum:
+      - PERSON_INJURED
+      - DANGEROUS_ANIMAL
+      - LANDSLIDE
+      - FALLEN_TREE
+      - BLOCKED_TRAIL
+      - LOST_PERSON
+      - WEATHER
+      - OTHER
+      type: string
+      description: |-
+        * `PERSON_INJURED` - Persona lesionada
+        * `DANGEROUS_ANIMAL` - Animal peligroso
+        * `LANDSLIDE` - Derrumbe
+        * `FALLEN_TREE` - Árbol caído
+        * `BLOCKED_TRAIL` - Sendero bloqueado
+        * `LOST_PERSON` - Persona extraviada
+        * `WEATHER` - Condiciones climáticas
+        * `OTHER` - Otro
+    Park:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Nombre
+          maxLength: 150
+        description:
+          type: string
+          title: Descripción
+        region:
+          type: string
+          title: Región
+          maxLength: 100
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Latitud
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Longitud
+        default_return_time:
+          type: string
+          format: time
+          title: Hora límite de regreso
+        is_active:
+          type: boolean
+          title: Activo
+      required:
+      - default_return_time
+      - id
+      - latitude
+      - longitude
+      - name
+      - region
+    Rescue:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        trekking:
+          type: integer
+        status:
+          allOf:
+          - $ref: '#/components/schemas/RescueStatusEnum'
+          title: Estado
+        started_at:
+          type: string
+          format: date-time
+          title: Fecha y hora de inicio
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Fecha y hora de finalización
+        closed_reason:
+          type: string
+          title: Motivo de cierre
+        notes:
+          type: string
+          title: Observaciones
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Fecha de creación
+      required:
+      - created_at
+      - id
+      - started_at
+      - trekking
+    RescueStatusEnum:
+      enum:
+      - ACTIVE
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `ACTIVE` - Activo
+        * `COMPLETED` - Completado
+        * `CANCELLED` - Cancelado
+    StartTrekking:
+      type: object
+      description: Serializer utilizado para iniciar un nuevo trekking.
+      properties:
+        trail:
+          type: integer
+      required:
+      - trail
+    Trail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        park:
+          type: integer
+          title: Parque
+        name:
+          type: string
+          title: Nombre
+          maxLength: 150
+        description:
+          type: string
+          title: Descripción
+        difficulty:
+          allOf:
+          - $ref: '#/components/schemas/DifficultyEnum'
+          title: Dificultad
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TrailStatusEnum'
+          title: Estado
+        estimated_duration:
+          type: string
+          title: Duración estimada
+        distance_km:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          title: Distancia (km)
+      required:
+      - distance_km
+      - estimated_duration
+      - id
+      - name
+      - park
+    TrailStatusEnum:
+      enum:
+      - OPEN
+      - CLOSED
+      - MAINTENANCE
+      type: string
+      description: |-
+        * `OPEN` - Abierto
+        * `CLOSED` - Cerrado
+        * `MAINTENANCE` - Mantenimiento
+    Trekking:
+      type: object
+      description: Serializer de lectura para representar un trekking existente.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        trail:
+          type: integer
+          title: Sendero
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TrekkingStatusEnum'
+          title: Estado
+        started_at:
+          type: string
+          format: date-time
+          title: Fecha y hora de inicio
+        estimated_return_time:
+          type: string
+          format: date-time
+          title: Hora estimada de regreso
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Fecha y hora de término
+        tracking_enabled:
+          type: boolean
+          title: Seguimiento de seguridad activado
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Fecha de creación
+      required:
+      - created_at
+      - estimated_return_time
+      - id
+      - started_at
+      - trail
+    TrekkingStatusEnum:
+      enum:
+      - PLANNED
+      - IN_PROGRESS
+      - COMPLETED
+      - RESCUE
+      - CANCELLED
+      type: string
+      description: |-
+        * `PLANNED` - Planificado
+        * `IN_PROGRESS` - En progreso
+        * `COMPLETED` - Completado
+        * `RESCUE` - Rescate
+        * `CANCELLED` - Cancelado
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     "rest_framework",
+    "drf_spectacular",
 
     "apps.accounts",
     "apps.parks",
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
     "apps.incidents",
     "apps.rescues",
     "apps.sync",
+    
 
 ]
 
@@ -157,4 +159,16 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Hito API",
+    "DESCRIPTION": (
+        "API REST para gestión y monitoreo "
+        "de excursionistas en parques y "
+        "reservas naturales."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
