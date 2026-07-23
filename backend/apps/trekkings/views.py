@@ -8,6 +8,7 @@ from apps.trekkings.models import Trekking, TrekkingStatus
 from apps.trekkings.serializers import (
     TrekkingSerializer,
     StartTrekkingSerializer,
+    CheckpointRecordSerializer,
 )
 
 
@@ -97,3 +98,11 @@ class FinishTrekkingAPIView(APIView):
             serializer.data,
             status=status.HTTP_200_OK,
         )
+
+
+class CheckpointRecordCreateAPIView(generics.CreateAPIView):
+    """
+    Registra un checkpoint alcanzado durante un trekking.
+    """
+
+    serializer_class = CheckpointRecordSerializer

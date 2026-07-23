@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from apps.trekkings.models import Trekking
 from apps.parks.models import Trail
+from apps.parks.models import Checkpoint
+from apps.trekkings.models import CheckpointRecord
+
 
 
 class TrekkingSerializer(serializers.ModelSerializer):
@@ -30,3 +33,18 @@ class StartTrekkingSerializer(serializers.Serializer):
     trail = serializers.PrimaryKeyRelatedField(
         queryset=Trail.objects.all()
     )
+
+
+class CheckpointRecordSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CheckpointRecord
+
+        fields = (
+            "id",
+            "trekking",
+            "checkpoint",
+            "latitude",
+            "longitude",
+            "registered_at",
+        )

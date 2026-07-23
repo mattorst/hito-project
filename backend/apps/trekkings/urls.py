@@ -4,6 +4,7 @@ from apps.trekkings.views import (
     StartTrekkingAPIView,
     TrekkingListAPIView,
     FinishTrekkingAPIView,
+    CheckpointRecordCreateAPIView,
 )
 
 urlpatterns = [
@@ -25,4 +26,11 @@ urlpatterns = [
         FinishTrekkingAPIView.as_view(),
         name="finish-trekking",
     ),
+
+    path(
+        "checkpoint-records/",
+        CheckpointRecordCreateAPIView.as_view(),
+        name="checkpoint-record-create",
+    ),
+
 ]
