@@ -1,4 +1,3 @@
-from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -43,25 +42,42 @@ class SyncAPIView(APIView):
             []
         )
 
-        created_checkpoint_records = 0
-        created_incidents = 0
+        created = {
+            "checkpoint_records": 0,
+            "incidents": 0,
+        }
+        failed = []
 
-        with transaction.atomic():
-
-            for checkpoint_data in checkpoint_records_data:
+        for index, checkpoint_data in enumerate(checkpoint_records_data):
+            try:
                 create_checkpoint_record(checkpoint_data)
-                created_checkpoint_records += 1
+                created["checkpoint_records"] += 1
+            except Exception as error:
+                failed.append(
+                    {
+                        "type": "checkpoint_record",
+                        "index": index,
+                        "error": str(error),
+                    }
+                )
 
-            for incident_data in incidents_data:
+        for index, incident_data in enumerate(incidents_data):
+            try:
                 create_incident(incident_data)
-                created_incidents += 1
+                created["incidents"] += 1
+            except Exception as error:
+                failed.append(
+                    {
+                        "type": "incident",
+                        "index": index,
+                        "error": str(error),
+                    }
+                )
 
         return Response(
             {
-                "created": {
-                    "checkpoint_records": created_checkpoint_records,
-                    "incidents": created_incidents,
-                }
+                "synchronized": created,
+                "failed": failed,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_200_OK,
         )
