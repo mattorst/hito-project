@@ -1,15 +1,17 @@
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import generics
+from django.contrib.auth import get_user_model
+
+from rest_framework import generics, status
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+
 from apps.trekkings.models import Trekking, TrekkingStatus
 from apps.trekkings.serializers import (
     TrekkingSerializer,
     StartTrekkingSerializer,
     CheckpointRecordSerializer,
 )
+from apps.shared.responses import success_response, error_response
 
 
 class StartTrekkingAPIView(generics.CreateAPIView):
@@ -17,17 +19,19 @@ class StartTrekkingAPIView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return error_response(
+                errors=serializer.errors,
+                message="Error al iniciar trekking",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
         trail = serializer.validated_data["trail"]
         now = timezone.now()
 
-        # Obtenemos el usuario autenticado o el primero de la base de datos
-        from django.contrib.auth import get_user_model
         User = get_user_model()
         user = request.user if request.user.is_authenticated else User.objects.first()
 
-        # Calculamos una estimación temporal (+8 horas) requerida por el modelo
         estimated_datetime = now + timedelta(hours=8)
 
         trekking = Trekking.objects.create(
@@ -40,9 +44,10 @@ class StartTrekkingAPIView(generics.CreateAPIView):
 
         response_serializer = TrekkingSerializer(trekking)
 
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED,
+        return success_response(
+            data=response_serializer.data,
+            message="Trekking iniciado correctamente",
+            status_code=status.HTTP_201_CREATED,
         )
 
 
@@ -67,36 +72,30 @@ class FinishTrekkingAPIView(APIView):
     """
 
     def post(self, request, pk):
-
         try:
             trekking = Trekking.objects.get(pk=pk)
-
         except Trekking.DoesNotExist:
-            return Response(
-                {
-                    "detail": "Trekking no encontrado."
-                },
-                status=status.HTTP_404_NOT_FOUND,
+            return error_response(
+                message="Trekking no encontrado.",
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
         if trekking.status == TrekkingStatus.COMPLETED:
-            return Response(
-                {
-                    "detail": "El trekking ya está finalizado."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                message="El trekking ya está finalizado.",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         trekking.status = TrekkingStatus.COMPLETED
         trekking.finished_at = timezone.now()
-
         trekking.save()
 
         serializer = TrekkingSerializer(trekking)
 
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
+        return success_response(
+            data=serializer.data,
+            message="Trekking finalizado correctamente",
+            status_code=status.HTTP_200_OK,
         )
 
 
