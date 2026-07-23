@@ -44,6 +44,11 @@ urlpatterns = [
         include("apps.rescues.urls"),
     ),
 
+    path(
+        "api/",
+        include("apps.sync.urls"),
+    ),
+
 ]
 
 if settings.DEBUG:
