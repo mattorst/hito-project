@@ -105,3 +105,19 @@ class CheckpointRecordCreateAPIView(generics.CreateAPIView):
     """
 
     serializer_class = CheckpointRecordSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return error_response(
+                errors=serializer.errors,
+                message="Error al registrar checkpoint",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        self.perform_create(serializer)
+        return success_response(
+            data=serializer.data,
+            message="Checkpoint registrado correctamente",
+            status_code=status.HTTP_201_CREATED,
+        )
