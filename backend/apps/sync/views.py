@@ -1,6 +1,11 @@
+from django.db import transaction
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.trekkings.models import CheckpointRecord
+from apps.incidents.models import Incident
 
 from apps.sync.serializers import SyncSerializer
 
@@ -20,25 +25,47 @@ class SyncAPIView(APIView):
         data = serializer.validated_data
 
 
-        checkpoint_records = data.get(
+        checkpoint_records_data = data.get(
             "checkpoint_records",
             []
         )
 
-        incidents = data.get(
+        incidents_data = data.get(
             "incidents",
             []
         )
 
 
+        created_checkpoint_records = 0
+        created_incidents = 0
+
+
+        with transaction.atomic():
+
+            for checkpoint_data in checkpoint_records_data:
+
+                CheckpointRecord.objects.create(
+                    **checkpoint_data
+                )
+
+                created_checkpoint_records += 1
+
+
+            for incident_data in incidents_data:
+
+                Incident.objects.create(
+                    **incident_data
+                )
+
+                created_incidents += 1
+
+
         return Response(
             {
-                "checkpoint_records_received": len(
-                    checkpoint_records
-                ),
-                "incidents_received": len(
-                    incidents
-                ),
+                "created": {
+                    "checkpoint_records": created_checkpoint_records,
+                    "incidents": created_incidents,
+                }
             },
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
