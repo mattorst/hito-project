@@ -33,6 +33,12 @@ urlpatterns = [
         "api/",
         include("apps.trekkings.urls"),
     ),
+
+    path(
+        "api/",
+        include("apps.incidents.urls"),
+    ),
+
 ]
 
 if settings.DEBUG:

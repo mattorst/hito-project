@@ -1,3 +1,13 @@
-from django.shortcuts import render
+from rest_framework import generics
 
-# Create your views here.
+from apps.incidents.models import Incident
+from apps.incidents.serializers import IncidentSerializer
+
+
+class IncidentCreateAPIView(generics.CreateAPIView):
+    """
+    Crea reportes de incidentes enviados desde terreno.
+    """
+
+    queryset = Incident.objects.all()
+    serializer_class = IncidentSerializer
