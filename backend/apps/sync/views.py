@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -6,7 +7,6 @@ from apps.trekkings.models import CheckpointRecord
 from apps.incidents.models import Incident
 from apps.sync.serializers import SyncSerializer
 from apps.shared.responses import success_response, error_response
-
 
 
 def create_checkpoint_record(data):
@@ -23,7 +23,13 @@ def create_incident(data):
 
 class SyncAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = SyncSerializer
 
+    @extend_schema(
+        request=SyncSerializer,
+        summary="Sincronizar eventos fuera de línea",
+        description="Recibe lotes de registros de checkpoints e incidentes creados offline para persistirlos en la base de datos.",
+    )
     def post(self, request):
         serializer = SyncSerializer(
             data=request.data

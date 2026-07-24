@@ -24,9 +24,8 @@ paths:
               $ref: '#/components/schemas/CheckpointRecord'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
+      - jwtAuth: []
+      - BearerAuth: []
       responses:
         '201':
           content:
@@ -40,8 +39,8 @@ paths:
       tags:
       - checkpoints
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -64,8 +63,8 @@ paths:
       tags:
       - checkpoints
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -77,7 +76,6 @@ paths:
   /api/incidents/:
     post:
       operationId: incidents_create
-      description: Crea reportes de incidentes enviados desde terreno.
       tags:
       - incidents
       requestBody:
@@ -93,9 +91,8 @@ paths:
               $ref: '#/components/schemas/Incident'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
+      - jwtAuth: []
+      - BearerAuth: []
       responses:
         '201':
           content:
@@ -109,8 +106,8 @@ paths:
       tags:
       - parks
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -133,8 +130,8 @@ paths:
       tags:
       - parks
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -146,7 +143,6 @@ paths:
   /api/rescues/:
     post:
       operationId: rescues_create
-      description: Crea una operación de rescate.
       tags:
       - rescues
       requestBody:
@@ -162,9 +158,8 @@ paths:
               $ref: '#/components/schemas/Rescue'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
+      - jwtAuth: []
+      - BearerAuth: []
       responses:
         '201':
           content:
@@ -175,23 +170,98 @@ paths:
   /api/sync/:
     post:
       operationId: sync_create
+      description: Recibe lotes de registros de checkpoints e incidentes creados offline
+        para persistirlos en la base de datos.
+      summary: Sincronizar eventos fuera de línea
       tags:
       - sync
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sync'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Sync'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Sync'
       security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
+      - jwtAuth: []
+      - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sync'
+          description: ''
+  /api/token/:
+    post:
+      operationId: token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/token/refresh/:
+    post:
+      operationId: token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
   /api/trails/:
     get:
       operationId: trails_list
       tags:
       - trails
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -214,8 +284,8 @@ paths:
       tags:
       - trails
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -231,8 +301,8 @@ paths:
       tags:
       - trekkings
       security:
-      - cookieAuth: []
-      - basicAuth: []
+      - jwtAuth: []
+      - BearerAuth: []
       - {}
       responses:
         '200':
@@ -247,6 +317,7 @@ paths:
     post:
       operationId: trekkings_finish_create
       description: Finaliza un trekking activo.
+      summary: Finalizar un trekking activo
       parameters:
       - in: path
         name: id
@@ -256,12 +327,15 @@ paths:
       tags:
       - trekkings
       security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
+      - jwtAuth: []
+      - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trekking'
+          description: ''
   /api/trekkings/start/:
     post:
       operationId: trekkings_start_create
@@ -280,9 +354,8 @@ paths:
               $ref: '#/components/schemas/StartTrekking'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
-      - {}
+      - jwtAuth: []
+      - BearerAuth: []
       responses:
         '201':
           content:
@@ -562,6 +635,114 @@ components:
           type: integer
       required:
       - trail
+    Sync:
+      type: object
+      properties:
+        checkpoint_records:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncCheckpointRecord'
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncIncident'
+    SyncCheckpointRecord:
+      type: object
+      properties:
+        trekking:
+          type: integer
+        checkpoint:
+          type: integer
+        registered_at:
+          type: string
+          format: date-time
+          title: Fecha y hora del registro
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Latitud registrada
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Longitud registrada
+      required:
+      - checkpoint
+      - latitude
+      - longitude
+      - registered_at
+      - trekking
+    SyncIncident:
+      type: object
+      properties:
+        trekking:
+          type: integer
+        incident_type:
+          allOf:
+          - $ref: '#/components/schemas/IncidentTypeEnum'
+          title: Tipo de incidente
+        description:
+          type: string
+          title: Descripción
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Latitud
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          title: Longitud
+        registered_at:
+          type: string
+          format: date-time
+          title: Fecha y hora del registro
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          title: Fotografía
+      required:
+      - description
+      - incident_type
+      - latitude
+      - longitude
+      - registered_at
+      - trekking
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
     Trail:
       type: object
       properties:
@@ -666,10 +847,7 @@ components:
         * `RESCUE` - Rescate
         * `CANCELLED` - Cancelado
   securitySchemes:
-    basicAuth:
+    jwtAuth:
       type: http
-      scheme: basic
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: sessionid
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,5 +1,6 @@
 from datetime import timedelta
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, status
@@ -70,6 +71,11 @@ class FinishTrekkingAPIView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={200: TrekkingSerializer},
+        summary="Finalizar un trekking activo",
+    )
     def post(self, request, pk):
         try:
             trekking = Trekking.objects.get(pk=pk)
