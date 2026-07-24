@@ -1,9 +1,6 @@
 from rest_framework import serializers
-from apps.trekkings.models import Trekking
-from apps.parks.models import Trail
-from apps.parks.models import Checkpoint
-from apps.trekkings.models import CheckpointRecord
-
+from apps.trekkings.models import Trekking, CheckpointRecord
+from apps.parks.models import Trail, Checkpoint
 
 
 class TrekkingSerializer(serializers.ModelSerializer):
@@ -39,7 +36,6 @@ class CheckpointRecordSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CheckpointRecord
-
         fields = (
             "id",
             "trekking",

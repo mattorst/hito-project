@@ -1,6 +1,5 @@
 from datetime import timedelta
 from django.utils import timezone
-from django.contrib.auth import get_user_model
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, status
@@ -30,14 +29,11 @@ class StartTrekkingAPIView(generics.CreateAPIView):
 
         trail = serializer.validated_data["trail"]
         now = timezone.now()
-
-        User = get_user_model()
-        user = request.user if request.user.is_authenticated else User.objects.first()
-
         estimated_datetime = now + timedelta(hours=8)
 
+        # Asignación limpia y segura del usuario autenticado
         trekking = Trekking.objects.create(
-            user=user,
+            user=request.user,
             trail=trail,
             status=TrekkingStatus.IN_PROGRESS,
             started_at=now,
