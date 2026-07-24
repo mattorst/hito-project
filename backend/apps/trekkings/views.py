@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, status
 from rest_framework.views import APIView
 
@@ -15,6 +16,7 @@ from apps.shared.responses import success_response, error_response
 
 
 class StartTrekkingAPIView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = StartTrekkingSerializer
 
     def create(self, request, *args, **kwargs):
@@ -70,6 +72,7 @@ class FinishTrekkingAPIView(APIView):
     """
     Finaliza un trekking activo.
     """
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
         try:
@@ -103,7 +106,7 @@ class CheckpointRecordCreateAPIView(generics.CreateAPIView):
     """
     Registra un checkpoint alcanzado durante un trekking.
     """
-
+    permission_classes = [IsAuthenticated]
     serializer_class = CheckpointRecordSerializer
 
     def create(self, request, *args, **kwargs):

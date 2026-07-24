@@ -1,10 +1,12 @@
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from apps.trekkings.models import CheckpointRecord
 from apps.incidents.models import Incident
 from apps.sync.serializers import SyncSerializer
 from apps.shared.responses import success_response, error_response
+
 
 
 def create_checkpoint_record(data):
@@ -20,6 +22,7 @@ def create_incident(data):
 
 
 class SyncAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = SyncSerializer(

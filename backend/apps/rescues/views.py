@@ -3,8 +3,10 @@ from apps.rescues.models import Rescue
 from apps.rescues.serializers import RescueSerializer
 from apps.shared.responses import success_response, error_response
 
+from rest_framework.permissions import IsAuthenticated
 
 class RescueCreateAPIView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
     """
     Registra una solicitud de rescate.
     """

@@ -3,8 +3,11 @@ from apps.incidents.models import Incident
 from apps.incidents.serializers import IncidentSerializer
 from apps.shared.responses import success_response, error_response
 
+from rest_framework.permissions import IsAuthenticated
+
 
 class IncidentCreateAPIView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
     """
     Registra un nuevo incidente durante un trekking.
     """
