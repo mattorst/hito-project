@@ -114,3 +114,48 @@ hito-project/
 ## Licencia
 
 Pendiente de definir.
+
+
+## Autenticación JWT
+
+### Obtener tokens
+
+POST /api/token/
+
+```json
+{
+  "username": "admin",
+  "password": "********"
+}
+```
+
+Respuesta:
+
+```json
+{
+  "refresh": "...",
+  "access": "..."
+}
+```
+
+### Renovar token
+
+POST /api/token/refresh/
+
+```json
+{
+  "refresh": "..."
+}
+```
+
+Respuesta:
+
+```json
+{
+  "access": "..."
+}
+```
+
+Los endpoints protegidos requieren el encabezado:
+
+Authorization: Bearer <access_token>
