@@ -1,15 +1,5 @@
-import { View, Text } from "react-native";
+import LoginScreen from "./login";
 
-export default function Home() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Hito Mobile</Text>
-    </View>
-  );
+export default function Index() {
+  return <LoginScreen />;
 }
