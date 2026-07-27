@@ -9,13 +9,19 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAuth } from "../src/features/auth/context/AuthContext";
+import { Redirect } from "expo-router";
+import { useAuth } from "@/features/auth/context/AuthContext";
 
 export default function LoginScreen() {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, isAuthenticated } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  // Si ya está autenticado, redirige automáticamente a las pantallas protegidas
+  if (isAuthenticated) {
+    return <Redirect href="/(protected)" />;
+  }
 
   async function handleLogin() {
     try {
