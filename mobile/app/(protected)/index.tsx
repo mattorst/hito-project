@@ -1,14 +1,8 @@
 import { Button, SafeAreaView, StyleSheet, Text } from "react-native";
-import { router } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
 
 export default function HomeScreen() {
   const { logout } = useAuth();
-
-  async function handleLogout() {
-    await logout();
-    router.replace("/login");
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -16,7 +10,7 @@ export default function HomeScreen() {
 
       <Button
         title="Cerrar sesión"
-        onPress={handleLogout}
+        onPress={logout}
       />
     </SafeAreaView>
   );

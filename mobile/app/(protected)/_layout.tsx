@@ -1,11 +1,16 @@
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
+import { useAuth } from "@/features/auth/context/AuthContext";
 
-import { AuthProvider } from "@/features/auth/context/AuthContext";
+export default function ProtectedLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
 
-export default function RootLayout() {
-  return (
-    <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </AuthProvider>
-  );
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
