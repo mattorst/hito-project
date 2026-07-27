@@ -1,98 +1,82 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { login as loginService } from "../services/authService";
-import type { LoginRequest } from "../types";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { registerLogoutHandler } from "../session";
 import {
   clearTokens,
   getAccessToken,
   saveAccessToken,
   saveRefreshToken,
-} from "../../../storage";
+} from "@/storage/secureStorage";
 
-interface AuthContextValue {
+interface AuthContextType {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
+  login: (tokens: { access: string; refresh: string }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // 1. Cargar token guardado al abrir la aplicación
   useEffect(() => {
-    async function restoreSession() {
+    const loadStoredAuth = async () => {
       try {
-        const token = await getAccessToken();
-
-        if (token) {
-          setAccessToken(token);
+        const storedToken = await getAccessToken();
+        if (storedToken) {
+          setAccessToken(storedToken);
         }
+      } catch (error) {
+        console.error("Error al recuperar el token almacenado:", error);
       } finally {
+        // Garantizamos que la pantalla de carga desaparezca siempre
         setIsLoading(false);
       }
-    }
+    };
 
-    restoreSession();
+    loadStoredAuth();
   }, []);
 
-  async function login(credentials: LoginRequest) {
-    setIsLoading(true);
+  // 2. Función para Iniciar Sesión (guardar tokens y actualizar estado)
+  const login = useCallback(async (tokens: { access: string; refresh: string }) => {
+    await saveAccessToken(tokens.access);
+    await saveRefreshToken(tokens.refresh);
+    setAccessToken(tokens.access);
+  }, []);
 
-    try {
-      const tokens = await loginService(credentials);
-
-      await saveAccessToken(tokens.access);
-      await saveRefreshToken(tokens.refresh);
-
-      setAccessToken(tokens.access);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function logout() {
+  // 3. Función para Cerrar Sesión (limpiar storage y estado)
+  const logout = useCallback(async () => {
     await clearTokens();
     setAccessToken(null);
-  }
+  }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      accessToken,
-      isAuthenticated: accessToken !== null,
-      isLoading,
-      login,
-      logout,
-    }),
-    [accessToken, isLoading],
-  );
+  // 4. Registrar handler para el interceptor
+  useEffect(() => {
+    registerLogoutHandler(logout);
+  }, [logout]);
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        accessToken,
+        isAuthenticated: !!accessToken,
+        isLoading,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth(): AuthContextValue {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth debe ser usado dentro de un AuthProvider");
   }
-
   return context;
-}
+};

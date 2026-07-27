@@ -11,24 +11,29 @@ import {
 } from "react-native";
 import { Redirect } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
+// 1. Importamos la función que hace la petición HTTP a Django
+import { login as loginService } from "@/features/auth/services/authService";
 
 export default function LoginScreen() {
-  const { login, isLoading, isAuthenticated } = useAuth();
+  const { login: setAuthTokens, isLoading, isAuthenticated } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // Si ya está autenticado, redirige automáticamente a las pantallas protegidas
   if (isAuthenticated) {
     return <Redirect href="/(protected)" />;
   }
 
   async function handleLogin() {
     try {
-      await login({
+      // 2. Hacemos el POST /api/token/ a la API
+      const tokens = await loginService({
         username: username.trim(),
         password,
       });
+
+      // 3. Guardamos los tokens en el SecureStore/Contexto
+      await setAuthTokens(tokens);
 
       Alert.alert("Éxito", "Inicio de sesión correcto.");
     } catch {

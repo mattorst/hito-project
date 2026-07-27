@@ -2,11 +2,11 @@ import { AxiosError, InternalAxiosRequestConfig } from "axios";
 import apiClient from "./client";
 import { refreshToken } from "@/features/auth/services/authService";
 import {
-  clearTokens,
   getAccessToken,
   getRefreshToken,
   saveAccessToken,
 } from "@/storage/secureStorage";
+import { triggerLogout } from "@/features/auth/session"; 
 
 interface RetryAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
@@ -76,7 +76,7 @@ export function setupInterceptors() {
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        await clearTokens();
+        await triggerLogout();
 
         return Promise.reject(refreshError);
       }
