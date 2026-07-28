@@ -9,7 +9,8 @@ import * as SecureStore from "expo-secure-store";
 import * as authService from "../services/authService";
 import type { Trekking } from "@/features/trekking/types";
 
-const TOKEN_KEY = "auth_token";
+const ACCESS_TOKEN_KEY = "auth_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
 
 interface AuthContextType {
   accessToken: string | null;
@@ -30,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const initAuth = useCallback(async () => {
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const token = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
       if (token) {
         setAccessToken(token);
       }
@@ -47,15 +48,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: any) => {
     const data = await authService.login(credentials);
+    
+    // Guardamos tanto access como refresh token si la API los devuelve
     if (data?.access) {
-      await SecureStore.setItemAsync(TOKEN_KEY, data.access);
+      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, data.access);
+      if (data?.refresh) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh);
+      }
       setAccessToken(data.access);
     }
   };
 
   const logout = async () => {
     try {
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     } finally {

@@ -1,6 +1,8 @@
 import { useLocalSearchParams, router } from "expo-router";
 import {
   ActivityIndicator,
+  Alert,
+  Button,
   FlatList,
   TouchableOpacity,
   SafeAreaView,
@@ -9,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { useTrails } from "@/features/parks/hooks/useTrails";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import { startTrekking } from "@/features/trekking/services/trekkingService";
 
 export default function ParkDetailScreen() {
   const { parkId } = useLocalSearchParams<{
@@ -23,6 +27,38 @@ export default function ParkDetailScreen() {
     error,
     reload,
   } = useTrails(numericParkId);
+
+  const { activeTrekking, setActiveTrekking } = useAuth();
+
+  const handleStartTrekking = async (trailId: number) => {
+    if (activeTrekking) {
+      Alert.alert(
+        "Trekking activo",
+        "Ya tienes un trekking en curso."
+      );
+      return;
+    }
+
+    try {
+      const trekking = await startTrekking({
+        trail: trailId,
+      });
+
+      setActiveTrekking(trekking);
+
+      Alert.alert(
+        "Trekking iniciado",
+        "Tu recorrido comenzó correctamente."
+      );
+    } catch (error) {
+      console.error(error);
+
+      Alert.alert(
+        "Error",
+        "No fue posible iniciar el trekking."
+      );
+    }
+  };
 
   if (isLoading) {
     return (
@@ -60,11 +96,11 @@ export default function ParkDetailScreen() {
           refreshing={isLoading}
           onRefresh={reload}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.push(`/(protected)/parks/trails/${item.id}`)}
-            >
-              <View style={styles.card}>
+            <View style={styles.card}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push(`/(protected)/parks/trails/${item.id}`)}
+              >
                 <Text style={styles.name}>
                   {item.name}
                 </Text>
@@ -80,8 +116,15 @@ export default function ParkDetailScreen() {
                 <Text style={styles.info}>
                   Duración estimada: {item.estimated_duration}
                 </Text>
+              </TouchableOpacity>
+
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="Iniciar Trekking"
+                  onPress={() => handleStartTrekking(item.id)}
+                />
               </View>
-            </TouchableOpacity>
+            </View>
           )}
         />
       )}
@@ -137,6 +180,10 @@ const styles = StyleSheet.create({
   info: {
     color: "#666",
     fontSize: 14,
+  },
+
+  buttonContainer: {
+    marginTop: 12,
   },
 
   error: {
