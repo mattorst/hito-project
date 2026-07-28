@@ -11,36 +11,40 @@ import {
 } from "react-native";
 import { Redirect } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
-// 1. Importamos la función que hace la petición HTTP a Django
-import { login as loginService } from "@/features/auth/services/authService";
 
 export default function LoginScreen() {
-  const { login: setAuthTokens, isLoading, isAuthenticated } = useAuth();
+  const { login, isLoading, isAuthenticated } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (isAuthenticated) {
     return <Redirect href="/(protected)" />;
   }
 
   async function handleLogin() {
+    if (!username.trim() || !password) {
+      Alert.alert("Atención", "Por favor ingresa usuario y contraseña.");
+      return;
+    }
+
     try {
-      // 2. Hacemos el POST /api/token/ a la API
-      const tokens = await loginService({
+      setIsSubmitting(true);
+      // El contexto se encarga de llamar al servicio y guardar los tokens
+      await login({
         username: username.trim(),
         password,
       });
 
-      // 3. Guardamos los tokens en el SecureStore/Contexto
-      await setAuthTokens(tokens);
-
       Alert.alert("Éxito", "Inicio de sesión correcto.");
-    } catch {
+    } catch (error) {
       Alert.alert(
         "Error",
-        "Usuario o contraseña incorrectos.",
+        "Usuario o contraseña incorrectos."
       );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -65,7 +69,7 @@ export default function LoginScreen() {
           style={styles.input}
         />
 
-        {isLoading ? (
+        {isLoading || isSubmitting ? (
           <ActivityIndicator size="large" />
         ) : (
           <Button
