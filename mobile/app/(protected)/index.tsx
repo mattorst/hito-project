@@ -2,12 +2,13 @@ import {
   ActivityIndicator,
   Button,
   FlatList,
+  TouchableOpacity,
   SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-
+import { router } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useParks } from "@/features/parks/hooks/useParks";
 
@@ -62,15 +63,23 @@ export default function ParksScreen() {
           refreshing={isLoading}
           onRefresh={reload}
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.parkName}>
-                {item.name}
-              </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                console.log("Navegando al parque ID:", item.id);
+                router.push(`/(protected)/parks/${item.id}`);
+              }}
+            >
+              <View style={styles.card}>
+                <Text style={styles.parkName}>
+                  {item.name}
+                </Text>
 
-              <Text style={styles.description}>
-                {item.description}
-              </Text>
-            </View>
+                <Text style={styles.description}>
+                  {item.description}
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
         />
       )}
@@ -83,7 +92,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 48,
-
   },
 
   header: {
