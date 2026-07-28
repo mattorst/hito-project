@@ -1,7 +1,8 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
+  TouchableOpacity,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -14,7 +15,6 @@ export default function ParkDetailScreen() {
     parkId: string;
   }>();
 
-  // Convertimos a número de forma segura
   const numericParkId = parkId ? parseInt(parkId, 10) : 0;
 
   const {
@@ -36,7 +36,7 @@ export default function ParkDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>
-        Senderos (Parque #{parkId})
+        Senderos
       </Text>
 
       {error && (
@@ -60,23 +60,28 @@ export default function ParkDetailScreen() {
           refreshing={isLoading}
           onRefresh={reload}
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.name}>
-                {item.name}
-              </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push(`/(protected)/parks/trails/${item.id}`)}
+            >
+              <View style={styles.card}>
+                <Text style={styles.name}>
+                  {item.name}
+                </Text>
 
-              <Text style={styles.description}>
-                {item.description}
-              </Text>
+                <Text style={styles.description}>
+                  {item.description}
+                </Text>
 
-              <Text style={styles.info}>
-                Distancia: {item.distance_km} km
-              </Text>
+                <Text style={styles.info}>
+                  Distancia: {item.distance_km} km
+                </Text>
 
-              <Text style={styles.info}>
-                Duración estimada: {item.estimated_duration}
-              </Text>
-            </View>
+                <Text style={styles.info}>
+                  Duración estimada: {item.estimated_duration}
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
         />
       )}
