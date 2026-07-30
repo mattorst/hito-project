@@ -12,3 +12,10 @@ export interface Trekking {
   finished_at: string | null;
   tracking_enabled: boolean;
 }
+
+export interface CheckpointRecord {
+  id: number;
+  trekking: number;
+  checkpoint: number;
+  registered_at: string;
+}

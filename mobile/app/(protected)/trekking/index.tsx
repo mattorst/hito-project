@@ -91,6 +91,13 @@ export default function ActiveTrekkingScreen() {
 
         <View style={styles.buttonContainer}>
           <Button
+            title="Escanear checkpoint"
+            onPress={() => router.push("/scan")}
+          />
+
+          <View style={styles.spacing} />
+
+          <Button
             title="Finalizar Trekking"
             color="#d32f2f"
             onPress={handleFinishTrekking}
@@ -174,5 +181,8 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 28,
+  },
+  spacing: {
+    height: 12,
   },
 });
