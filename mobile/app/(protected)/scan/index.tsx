@@ -13,11 +13,12 @@ import {
   BarcodeScanningResult,
   useCameraPermissions,
 } from "expo-camera";
+import { useScan } from "@/features/checkpoints/context/ScanContext";
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(true);
-  const [scannedData, setScannedData] = useState<string | null>(null);
+  const { setScannedQr } = useScan();
 
   const handleBarcodeScanned = useCallback(
     (result: BarcodeScanningResult) => {
@@ -26,16 +27,12 @@ export default function ScanScreen() {
       }
 
       setIsScanning(false);
-      setScannedData(result.data);
+      setScannedQr(result.data);
       console.log("QR leído:", result.data);
+      router.back();
     },
-    [isScanning],
+    [isScanning, setScannedQr],
   );
-
-  const handleRescan = () => {
-    setScannedData(null);
-    setIsScanning(true);
-  };
 
   if (!permission) {
     return (
@@ -85,14 +82,6 @@ export default function ScanScreen() {
           Escanea el código QR del checkpoint
         </Text>
 
-        {!isScanning && (
-          <View style={styles.detectedContainer}>
-            <Text style={styles.detected}>Código detectado:</Text>
-            <Text style={styles.scannedDataText}>{scannedData}</Text>
-            <Button title="Escanear de nuevo" onPress={handleRescan} />
-          </View>
-        )}
-
         <Button
           title="Cancelar"
           onPress={() => router.back()}
@@ -130,26 +119,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     padding: 8,
     borderRadius: 8,
-  },
-
-  detectedContainer: {
-    backgroundColor: "rgba(0,0,0,0.8)",
-    padding: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-
-  detected: {
-    color: "#4CAF50",
-    textAlign: "center",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-
-  scannedDataText: {
-    color: "white",
-    textAlign: "center",
-    fontSize: 14,
   },
 
   message: {

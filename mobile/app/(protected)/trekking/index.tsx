@@ -1,11 +1,46 @@
+import { useEffect } from "react";
 import { Alert, Button, StyleSheet, Text, View, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { finishTrekking } from "@/features/trekking/services/trekkingService";
+import { useScan } from "@/features/checkpoints/context/ScanContext";
+import { findCheckpointByQr } from "@/features/checkpoints/utils";
+import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
 
 export default function ActiveTrekkingScreen() {
   const { activeTrekking, setActiveTrekking } = useAuth();
+  const { scannedQr, setScannedQr } = useScan();
+
+  // Obtenemos los checkpoints del sendero activo correctamente
+  const { checkpoints } = useCheckpoints(activeTrekking?.trail ?? 0);
+
+  // Efecto para validar el QR escaneado localmente
+  useEffect(() => {
+    if (!scannedQr) {
+      return;
+    }
+
+    const checkpoint = findCheckpointByQr(
+      checkpoints,
+      scannedQr,
+    );
+
+    if (!checkpoint) {
+      Alert.alert(
+        "QR inválido",
+        "Este checkpoint no pertenece al sendero actual.",
+      );
+      setScannedQr(null);
+      return;
+    }
+
+    Alert.alert(
+      "Checkpoint válido",
+      checkpoint.name,
+    );
+    setScannedQr(null);
+  }, [scannedQr, checkpoints, setScannedQr]);
 
   const handleFinishTrekking = async () => {
     if (!activeTrekking) {
