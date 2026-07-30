@@ -20,3 +20,24 @@ export async function startTrekking(
 
   return response.data.data;
 }
+
+export async function getActiveTrekking(): Promise<Trekking | null> {
+  const response = await apiClient.get<any>("/trekkings/");
+
+  const rawData = response.data;
+  const list: Trekking[] = Array.isArray(rawData)
+    ? rawData
+    : Array.isArray(rawData?.data)
+    ? rawData.data
+    : Array.isArray(rawData?.results)
+    ? rawData.results
+    : [];
+
+  // Busca el trekking cuyo estado sea IN_PROGRESS o ACTIVE
+  const active = list.find((trekking) => {
+    const status = trekking.status?.toUpperCase();
+    return status === "IN_PROGRESS" || status === "ACTIVE";
+  });
+
+  return active ?? null;
+}

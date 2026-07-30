@@ -7,6 +7,7 @@ import {
 } from "react";
 import * as SecureStore from "expo-secure-store";
 import * as authService from "../services/authService";
+import { getActiveTrekking } from "@/features/trekking/services/trekkingService";
 import type { Trekking } from "@/features/trekking/types";
 
 const ACCESS_TOKEN_KEY = "auth_token";
@@ -34,6 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
       if (token) {
         setAccessToken(token);
+
+        // Consultamos al backend si hay un trekking activo guardado
+        try {
+          const trekking = await getActiveTrekking();
+          setActiveTrekking(trekking);
+        } catch (error) {
+          console.error("Error al obtener trekking activo en restauración:", error);
+          setActiveTrekking(null);
+        }
       }
     } catch (error) {
       console.error("Error al restaurar sesión:", error);
@@ -56,6 +66,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh);
       }
       setAccessToken(data.access);
+
+      // Sincronizamos el trekking activo inmediatamente tras el login
+      try {
+        const trekking = await getActiveTrekking();
+        setActiveTrekking(trekking);
+      } catch (error) {
+        console.error("Error al obtener trekking activo en login:", error);
+        setActiveTrekking(null);
+      }
     }
   };
 
