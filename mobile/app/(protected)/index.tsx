@@ -38,10 +38,16 @@ export default function ParksScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Parques</Text>
 
-        <Button
-          title="Cerrar sesión"
-          onPress={logout}
-        />
+        <View style={styles.headerButtons}>
+          <Button
+            title="Escáner QR"
+            onPress={() => router.push("/scan")}
+          />
+          <Button
+            title="Cerrar sesión"
+            onPress={logout}
+          />
+        </View>
       </View>
 
       {/* Botón condicional de Trekking Activo */}
@@ -110,6 +116,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+  },
+
+  headerButtons: {
+    flexDirection: "row",
+    gap: 8,
   },
 
   title: {
