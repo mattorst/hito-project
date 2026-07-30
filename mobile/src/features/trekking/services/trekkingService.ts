@@ -41,3 +41,13 @@ export async function getActiveTrekking(): Promise<Trekking | null> {
 
   return active ?? null;
 }
+
+export async function finishTrekking(
+  trekkingId: number,
+): Promise<Trekking> {
+  const response = await apiClient.post<ApiResponse<Trekking>>(
+    `/trekkings/${trekkingId}/finish/`,
+  );
+
+  return response.data.data;
+}

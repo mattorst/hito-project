@@ -1,68 +1,178 @@
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, Button, StyleSheet, Text, View, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { finishTrekking } from "@/features/trekking/services/trekkingService";
 
 export default function ActiveTrekkingScreen() {
-  const { activeTrekking } = useAuth();
+  const { activeTrekking, setActiveTrekking } = useAuth();
+
+  const handleFinishTrekking = async () => {
+    if (!activeTrekking) {
+      return;
+    }
+
+    try {
+      await finishTrekking(activeTrekking.id);
+
+      // Redirigimos primero al Home
+      router.replace("/");
+
+      // Limpiamos el contexto global
+      setActiveTrekking(null);
+
+      Alert.alert(
+        "Trekking finalizado",
+        "El recorrido terminó correctamente.",
+      );
+    } catch (error) {
+      console.error(error);
+
+      Alert.alert(
+        "Error",
+        "No fue posible finalizar el trekking.",
+      );
+    }
+  };
 
   if (!activeTrekking) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text>No existe un trekking activo.</Text>
+        <Text style={styles.emptyText}>No existe un trekking activo.</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>
-        Trekking en curso
-      </Text>
+    <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right", "bottom"]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.title}>Trekking en curso</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.item}>ID: {activeTrekking.id}</Text>
-        <Text style={styles.item}>Sendero: {activeTrekking.trail}</Text>
-        <Text style={styles.item}>Estado: {activeTrekking.status}</Text>
-        <Text style={styles.item}>
-          Inicio:{" "}
-          {new Date(activeTrekking.started_at).toLocaleString()}
-        </Text>
-        <Text style={styles.item}>
-          Retorno estimado:{" "}
-          {new Date(
-            activeTrekking.estimated_return_time,
-          ).toLocaleString()}
-        </Text>
-      </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.label}>ID del recorrido:</Text>
+            <Text style={styles.value}>#{activeTrekking.id}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Sendero:</Text>
+            <Text style={styles.value}>{activeTrekking.trail}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Estado:</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{activeTrekking.status}</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.column}>
+            <Text style={styles.label}>Inicio:</Text>
+            <Text style={styles.value}>
+              {new Date(activeTrekking.started_at).toLocaleString()}
+            </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.column}>
+            <Text style={styles.label}>Retorno estimado:</Text>
+            <Text style={styles.value}>
+              {new Date(activeTrekking.estimated_return_time).toLocaleString()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Finalizar Trekking"
+            color="#d32f2f"
+            onPress={handleFinishTrekking}
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
-    padding: 16,
     backgroundColor: "#fff",
+  },
+  scrollContent: {
+    padding: 20,
+    paddingTop: 12,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "700",
+    color: "#1a1a1a",
     marginBottom: 20,
   },
   card: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    padding: 16,
-    backgroundColor: "#f9f9f9",
-    gap: 8,
+    borderColor: "#e0e0e0",
+    borderRadius: 12,
+    padding: 18,
+    backgroundColor: "#fcfcfc",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  item: {
-    fontSize: 16,
-    color: "#333",
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  column: {
+    gap: 4,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 12,
+  },
+  label: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  value: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#222",
+  },
+  badge: {
+    backgroundColor: "#e8f5e9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeText: {
+    color: "#2e7d32",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  buttonContainer: {
+    marginTop: 28,
   },
 });
