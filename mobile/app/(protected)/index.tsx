@@ -13,7 +13,7 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import { useParks } from "@/features/parks/hooks/useParks";
 
 export default function ParksScreen() {
-  const { logout } = useAuth();
+  const { logout, activeTrekking } = useAuth();
 
   const {
     parks,
@@ -43,6 +43,17 @@ export default function ParksScreen() {
           onPress={logout}
         />
       </View>
+
+      {/* Botón condicional de Trekking Activo */}
+      {activeTrekking && (
+        <View style={styles.activeBanner}>
+          <Button
+            title="Ver trekking activo"
+            color="#2e7d32"
+            onPress={() => router.push("/(protected)/trekking")}
+          />
+        </View>
+      )}
 
       {error && (
         <Text style={styles.error}>
@@ -98,12 +109,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 12,
   },
 
   title: {
     fontSize: 28,
     fontWeight: "700",
+  },
+
+  activeBanner: {
+    marginBottom: 16,
   },
 
   card: {
