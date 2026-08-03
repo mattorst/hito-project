@@ -7,6 +7,8 @@ import { finishTrekking } from "@/features/trekking/services/trekkingService";
 import { useScan } from "@/features/checkpoints/context/ScanContext";
 import { findCheckpointByQr } from "@/features/checkpoints/utils";
 import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
+import { registerCheckpoint } from "@/features/checkpoints/services/checkpointService";
+import { enqueueCheckpoint } from "@/features/checkpoints/services/offlineQueue";
 
 export default function ActiveTrekkingScreen() {
   const { activeTrekking, setActiveTrekking } = useAuth();
@@ -15,7 +17,7 @@ export default function ActiveTrekkingScreen() {
   // Obtenemos los checkpoints del sendero activo correctamente
   const { checkpoints } = useCheckpoints(activeTrekking?.trail ?? 0);
 
-  // Efecto para validar el QR escaneado localmente
+  // Efecto para validar el QR escaneado localmente y enviarlo al backend
   useEffect(() => {
     if (!scannedQr) {
       return;
@@ -35,12 +37,53 @@ export default function ActiveTrekkingScreen() {
       return;
     }
 
-    Alert.alert(
-      "Checkpoint válido",
-      checkpoint.name,
-    );
-    setScannedQr(null);
-  }, [scannedQr, checkpoints, setScannedQr]);
+    // Si es válido, procedemos a registrarlo en el backend o en cola offline
+    (async () => {
+      try {
+        if (!activeTrekking) return;
+
+        await registerCheckpoint({
+          trekking: activeTrekking.id,
+          checkpoint: checkpoint.id,
+          latitude: 0.0, // Requerido por el backend
+          longitude: 0.0, // Requerido por el backend
+          registered_at: new Date().toISOString(),
+        });
+
+        Alert.alert(
+          "Checkpoint registrado",
+          `"${checkpoint.name}" sincronizado correctamente.`,
+        );
+      } catch (error: any) {
+        console.log("DETALLE DEL ERROR DE DJANGO:", error.response?.data);
+
+        if (error.response) {
+          Alert.alert(
+            "Error",
+            "No fue posible registrar el checkpoint.",
+          );
+        } else {
+          // Error de conectividad (sin respuesta HTTP) -> Guardamos en cola offline
+          if (activeTrekking) {
+            await enqueueCheckpoint({
+              trekking: activeTrekking.id,
+              checkpoint: checkpoint.id,
+              latitude: 0.0,
+              longitude: 0.0,
+              registered_at: new Date().toISOString(),
+            });
+          }
+
+          Alert.alert(
+            "Modo sin conexión",
+            "El checkpoint fue guardado y se sincronizará cuando vuelva la conexión.",
+          );
+        }
+      } finally {
+        setScannedQr(null);
+      }
+    })();
+  }, [scannedQr, checkpoints, setScannedQr, activeTrekking]);
 
   const handleFinishTrekking = async () => {
     if (!activeTrekking) {
