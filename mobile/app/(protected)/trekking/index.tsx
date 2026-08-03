@@ -45,8 +45,6 @@ export default function ActiveTrekkingScreen() {
         await registerCheckpoint({
           trekking: activeTrekking.id,
           checkpoint: checkpoint.id,
-          latitude: 0.0, // Requerido por el backend
-          longitude: 0.0, // Requerido por el backend
           registered_at: new Date().toISOString(),
         });
 
@@ -68,8 +66,6 @@ export default function ActiveTrekkingScreen() {
             await enqueueCheckpoint({
               trekking: activeTrekking.id,
               checkpoint: checkpoint.id,
-              latitude: 0.0,
-              longitude: 0.0,
               registered_at: new Date().toISOString(),
             });
           }
