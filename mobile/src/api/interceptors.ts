@@ -39,18 +39,27 @@ export function setupInterceptors() {
     },
   );
 
-  // Interceptor de Response: Maneja errores 401 y renueva el Access Token
+  // Interceptor de Response: Maneja errores 401 y renueva el Access Token de forma segura
   apiClient.interceptors.response.use(
     (response) => response,
 
     async (error: AxiosError) => {
       const originalRequest = error.config as RetryAxiosRequestConfig | undefined;
 
-      if (
-        error.response?.status !== 401 ||
-        !originalRequest ||
-        originalRequest._retry
-      ) {
+      // 1. Si no es un error 401 o no hay configuración, lo rechazamos de inmediato
+      if (error.response?.status !== 401 || !originalRequest) {
+        return Promise.reject(error);
+      }
+
+      // 2. ANTI-BUCLE: Si la petición que falló con 401 es el propio endpoint de refresh,
+      // cortamos aquí para evitar bucles infinitos, cerramos sesión y salimos.
+      if (originalRequest.url?.includes("/token/refresh/")) {
+        await triggerLogout();
+        return Promise.reject(error);
+      }
+
+      // 3. Si ya intentamos reintentar esta petición antes, evitamos otro reintento
+      if (originalRequest._retry) {
         return Promise.reject(error);
       }
 
@@ -69,13 +78,14 @@ export function setupInterceptors() {
 
         await saveAccessToken(response.access);
 
-        // Actualizamos el header con el nuevo token para el reintento
+        // Actualizamos el header con el nuevo token para repetir la petición original
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${response.access}`;
         }
 
         return apiClient(originalRequest);
       } catch (refreshError) {
+        // Si el proceso de refresh falla por completo, limpiamos y deslogueamos
         await triggerLogout();
 
         return Promise.reject(refreshError);
