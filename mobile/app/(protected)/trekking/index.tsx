@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, StyleSheet, Text, View, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -13,6 +13,9 @@ import { enqueueCheckpoint } from "@/features/checkpoints/services/offlineQueue"
 export default function ActiveTrekkingScreen() {
   const { activeTrekking, setActiveTrekking } = useAuth();
   const { scannedQr, setScannedQr } = useScan();
+  
+  // Estado para prevenir doble pulsación al finalizar
+  const [isFinishing, setIsFinishing] = useState(false);
 
   // Obtenemos los checkpoints del sendero activo correctamente
   const { checkpoints } = useCheckpoints(activeTrekking?.trail ?? 0);
@@ -82,18 +85,20 @@ export default function ActiveTrekkingScreen() {
   }, [scannedQr, checkpoints, setScannedQr, activeTrekking]);
 
   const handleFinishTrekking = async () => {
-    if (!activeTrekking) {
+    if (!activeTrekking || isFinishing) {
       return;
     }
+
+    setIsFinishing(true);
 
     try {
       await finishTrekking(activeTrekking.id);
 
-      // Redirigimos primero al Home
-      router.replace("/");
-
-      // Limpiamos el contexto global
+      // Limpiamos el contexto global primero
       setActiveTrekking(null);
+
+      // Luego redirigimos al Home
+      router.replace("/");
 
       Alert.alert(
         "Trekking finalizado",
@@ -106,6 +111,8 @@ export default function ActiveTrekkingScreen() {
         "Error",
         "No fue posible finalizar el trekking.",
       );
+    } finally {
+      setIsFinishing(false);
     }
   };
 
@@ -172,9 +179,10 @@ export default function ActiveTrekkingScreen() {
           <View style={styles.spacing} />
 
           <Button
-            title="Finalizar Trekking"
+            title={isFinishing ? "Finalizando..." : "Finalizar Trekking"}
             color="#d32f2f"
             onPress={handleFinishTrekking}
+            disabled={isFinishing}
           />
         </View>
       </ScrollView>
