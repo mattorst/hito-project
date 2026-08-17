@@ -6,3 +6,40 @@ export interface SyncEvent {
   createdAt: string;
   payload: any;
 }
+
+
+export interface SyncCheckpointRecord {
+  trekking: number;
+  checkpoint: number;
+  registered_at: string;
+}
+
+export interface SyncIncident {
+  trekking: number;
+  description: string;
+  latitude: number;
+  longitude: number;
+  photo?: string | null;
+}
+
+export interface SyncRequest {
+  checkpoint_records: SyncCheckpointRecord[];
+  incidents: SyncIncident[];
+}
+
+export interface SyncFailedEvent {
+  index: number;
+  type: string;
+  error: string;
+}
+
+export interface SyncData {
+  synchronized: number;
+  failed: SyncFailedEvent[];
+}
+
+export interface SyncResponse {
+  success: boolean;
+  data: SyncData;
+  message: string;
+}
