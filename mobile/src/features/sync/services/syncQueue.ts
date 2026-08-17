@@ -1,55 +1,70 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SyncEvent } from "../types";
 
-const STORAGE_KEY = "SYNC_QUEUE";
+import type { SyncEvent } from "../types";
 
-export const syncQueue = {
-  async getAll(): Promise<SyncEvent[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error("Error reading sync queue:", error);
+const SYNC_QUEUE_KEY = "@hito/sync_queue";
+
+async function getAll(): Promise<SyncEvent[]> {
+  try {
+    const storedQueue = await AsyncStorage.getItem(SYNC_QUEUE_KEY);
+
+    if (!storedQueue) {
       return [];
     }
-  },
 
-  async saveAll(queue: SyncEvent[]): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-    } catch (error) {
-      console.error("Error saving sync queue:", error);
+    const parsedQueue: unknown = JSON.parse(storedQueue);
+
+    if (!Array.isArray(parsedQueue)) {
+      console.warn(
+        "[SyncQueue] El contenido almacenado no es una cola válida.",
+      );
+
+      return [];
     }
-  },
 
-  async enqueue(eventOmitId: Omit<SyncEvent, "id" | "createdAt">): Promise<SyncEvent> {
-    const queue = await this.getAll();
-    const newEvent: SyncEvent = {
-      ...eventOmitId,
-      id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
-      createdAt: new Date().toISOString(),
-    };
+    return parsedQueue as SyncEvent[];
+  } catch (error) {
+    console.error(
+      "[SyncQueue] Error al obtener la cola:",
+      error,
+    );
 
-    queue.push(newEvent);
-    await this.saveAll(queue);
-    return newEvent;
-  },
+    return [];
+  }
+}
 
-  async remove(idsToRemove: string[]): Promise<void> {
-    let queue = await this.getAll();
-    queue = queue.filter((item) => !idsToRemove.includes(item.id));
-    await this.saveAll(queue);
-  },
+async function saveQueue(queue: SyncEvent[]): Promise<void> {
+  await AsyncStorage.setItem(
+    SYNC_QUEUE_KEY,
+    JSON.stringify(queue),
+  );
+}
 
-  async replace(newQueue: SyncEvent[]): Promise<void> {
-    await this.saveAll(newQueue);
-  },
+async function enqueue(event: SyncEvent): Promise<void> {
+  const queue = await getAll();
 
-  async clear(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-      console.error("Error clearing sync queue:", error);
-    }
-  },
+  queue.push(event);
+
+  await saveQueue(queue);
+}
+
+async function remove(eventId: string): Promise<void> {
+  const queue = await getAll();
+
+  const updatedQueue = queue.filter(
+    (event) => event.id !== eventId,
+  );
+
+  await saveQueue(updatedQueue);
+}
+
+async function clear(): Promise<void> {
+  await AsyncStorage.removeItem(SYNC_QUEUE_KEY);
+}
+
+export const syncQueue = {
+  enqueue,
+  getAll,
+  remove,
+  clear,
 };
