@@ -7,7 +7,6 @@ export interface SyncEvent {
   payload: any;
 }
 
-
 export interface SyncCheckpointRecord {
   trekking: number;
   checkpoint: number;
@@ -27,9 +26,10 @@ export interface SyncRequest {
   incidents: SyncIncident[];
 }
 
+// Ajuste aquí: tipado estricto para el tipo de error
 export interface SyncFailedEvent {
   index: number;
-  type: string;
+  type: "checkpoint_record" | "incident";
   error: string;
 }
 
