@@ -11,7 +11,7 @@ import { registerCheckpoint } from "@/features/checkpoints/services/checkpointSe
 import { enqueueCheckpoint } from "@/features/checkpoints/services/offlineQueue";
 
 export default function ActiveTrekkingScreen() {
-  const { activeTrekking, setActiveTrekking } = useAuth();
+  const { activeTrekking, setActiveTrekking, setLastCompletedTrekking } = useAuth();
   const { scannedQr, setScannedQr } = useScan();
   
   // Estado para prevenir doble pulsación al finalizar
@@ -92,18 +92,13 @@ export default function ActiveTrekkingScreen() {
     setIsFinishing(true);
 
     try {
-      await finishTrekking(activeTrekking.id);
+      // Guardamos la respuesta COMPLETED que devuelve Django
+      const completedTrekking = await finishTrekking(activeTrekking.id);
 
-      // Limpiamos el contexto global primero
+      setLastCompletedTrekking(completedTrekking);
       setActiveTrekking(null);
 
-      // Luego redirigimos al Home
-      router.replace("/");
-
-      Alert.alert(
-        "Trekking finalizado",
-        "El recorrido terminó correctamente.",
-      );
+      router.replace("/trekking/summary");
     } catch (error) {
       console.error(error);
 

@@ -19,6 +19,8 @@ interface AuthContextType {
   isLoading: boolean;
   activeTrekking: Trekking | null;
   setActiveTrekking: React.Dispatch<React.SetStateAction<Trekking | null>>;
+  lastCompletedTrekking: Trekking | null;
+  setLastCompletedTrekking: React.Dispatch<React.SetStateAction<Trekking | null>>;
   login: (credentials: any) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTrekking, setActiveTrekking] = useState<Trekking | null>(null);
+  const [lastCompletedTrekking, setLastCompletedTrekking] = useState<Trekking | null>(null);
 
   const initAuth = useCallback(async () => {
     try {
@@ -87,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setAccessToken(null);
       setActiveTrekking(null);
+      setLastCompletedTrekking(null);
     }
   };
 
@@ -98,6 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         activeTrekking,
         setActiveTrekking,
+        lastCompletedTrekking,
+        setLastCompletedTrekking,
         login,
         logout,
       }}
