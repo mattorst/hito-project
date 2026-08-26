@@ -31,14 +31,14 @@ export default function LoginScreen() {
 
     try {
       setIsSubmitting(true);
-      // El contexto se encarga de llamar al servicio y guardar los tokens
       await login({
-        username: username.trim(),
+        username: username.trim().toLowerCase(),
         password,
       });
 
       Alert.alert("Éxito", "Inicio de sesión correcto.");
     } catch (error) {
+      console.error("Error en login catch:", error);
       Alert.alert(
         "Error",
         "Usuario o contraseña incorrectos."
@@ -56,6 +56,8 @@ export default function LoginScreen() {
         <TextInput
           placeholder="Usuario"
           autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username"
           value={username}
           onChangeText={setUsername}
           style={styles.input}
@@ -64,6 +66,9 @@ export default function LoginScreen() {
         <TextInput
           placeholder="Contraseña"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="password"
           value={password}
           onChangeText={setPassword}
           style={styles.input}
@@ -75,6 +80,7 @@ export default function LoginScreen() {
           <Button
             title="Iniciar sesión"
             onPress={handleLogin}
+            disabled={isSubmitting}
           />
         )}
       </View>

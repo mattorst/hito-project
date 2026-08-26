@@ -50,18 +50,30 @@ class StartTrekkingAPIView(generics.CreateAPIView):
         )
 
 
-class TrekkingListAPIView(generics.ListAPIView):
+class TrekkingListAPIView(APIView):
     """
-    Lista los trekkings registrados.
+    Lista los trekkings del usuario autenticado.
     """
+    permission_classes = [IsAuthenticated]
 
-    serializer_class = TrekkingSerializer
-
-    def get_queryset(self):
-        return (
+    @extend_schema(
+        responses={200: TrekkingSerializer(many=True)},
+        summary="Listar historial de trekkings del usuario",
+    )
+    def get(self, request):
+        print("USUARIO ACTUAL EN LA PETICIÓN:", request.user)
+        trekkings = (
             Trekking.objects
+            .filter(user=request.user)
             .select_related("trail")
             .order_by("-started_at")
+        )
+
+        serializer = TrekkingSerializer(trekkings, many=True)
+
+        return success_response(
+            data=serializer.data,
+            message="Historial de trekkings obtenido correctamente",
         )
 
 

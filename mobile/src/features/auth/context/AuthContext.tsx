@@ -1,3 +1,5 @@
+import { clearApiAuthHeader } from "@/api/client";
+import { setMemoryToken } from "@/api/interceptors"; 
 import {
   createContext,
   useCallback,
@@ -6,6 +8,7 @@ import {
   useState,
 } from "react";
 import * as SecureStore from "expo-secure-store";
+import { router } from "expo-router";
 import * as authService from "../services/authService";
 import { getActiveTrekking } from "@/features/trekking/services/trekkingService";
 import type { Trekking } from "@/features/trekking/types";
@@ -33,13 +36,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeTrekking, setActiveTrekking] = useState<Trekking | null>(null);
   const [lastCompletedTrekking, setLastCompletedTrekking] = useState<Trekking | null>(null);
 
+  // Sincronizamos el token en memoria cada vez que cambie en React
+  const updateTokenState = (token: string | null) => {
+    setAccessToken(token);
+    setMemoryToken(token);
+  };
+
   const initAuth = useCallback(async () => {
     try {
       const token = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
       if (token) {
-        setAccessToken(token);
+        updateTokenState(token);
 
-        // Consultamos al backend si hay un trekking activo guardado
         try {
           const trekking = await getActiveTrekking();
           setActiveTrekking(trekking);
@@ -60,17 +68,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [initAuth]);
 
   const login = async (credentials: any) => {
+    try {
+      await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      clearApiAuthHeader();
+    } catch (e) {
+      console.error("Error limpiando tokens previos en login:", e);
+    }
+
+    updateTokenState(null);
+    setActiveTrekking(null);
+    setLastCompletedTrekking(null);
+
     const data = await authService.login(credentials);
     
-    // Guardamos tanto access como refresh token si la API los devuelve
     if (data?.access) {
       await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, data.access);
       if (data?.refresh) {
         await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh);
       }
-      setAccessToken(data.access);
+      updateTokenState(data.access);
 
-      // Sincronizamos el trekking activo inmediatamente tras el login
       try {
         const trekking = await getActiveTrekking();
         setActiveTrekking(trekking);
@@ -85,12 +103,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      clearApiAuthHeader();
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     } finally {
-      setAccessToken(null);
+      updateTokenState(null);
       setActiveTrekking(null);
       setLastCompletedTrekking(null);
+      
+      setTimeout(() => {
+        router.replace("/login");
+      }, 100);
     }
   };
 

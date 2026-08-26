@@ -297,13 +297,13 @@ paths:
   /api/trekkings/:
     get:
       operationId: trekkings_list
-      description: Lista los trekkings registrados.
+      description: Lista los trekkings del usuario autenticado.
+      summary: Listar historial de trekkings del usuario
       tags:
       - trekkings
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -424,25 +424,31 @@ components:
           type: integer
         checkpoint:
           type: integer
+        registered_at:
+          type: string
+          format: date-time
+          title: Fecha y hora del registro
         latitude:
           type: string
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
           title: Latitud registrada
         longitude:
           type: string
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
           title: Longitud registrada
-        registered_at:
+        created_at:
           type: string
           format: date-time
-          title: Fecha y hora del registro
+          readOnly: true
+          title: Fecha de creación
       required:
       - checkpoint
+      - created_at
       - id
-      - latitude
-      - longitude
       - registered_at
       - trekking
     CheckpointTypeEnum:
