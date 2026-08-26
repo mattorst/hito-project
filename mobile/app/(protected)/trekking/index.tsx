@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, StyleSheet, Text, View, ScrollView } from "react-native";
+import { Alert, Button, StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
@@ -115,6 +115,14 @@ export default function ActiveTrekkingScreen() {
     return (
       <SafeAreaView style={styles.center}>
         <Text style={styles.emptyText}>No existe un trekking activo.</Text>
+        
+        {/* Botón rápido para acceder al historial incluso si no hay trekking activo */}
+        <Pressable
+          style={[styles.historyButton, { marginTop: 20 }]}
+          onPress={() => router.push("/trekking/history")}
+        >
+          <Text style={styles.historyButtonText}>Mis trekkings</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -179,6 +187,16 @@ export default function ActiveTrekkingScreen() {
             onPress={handleFinishTrekking}
             disabled={isFinishing}
           />
+
+          <View style={styles.spacing} />
+
+          {/* Botón para ver el historial de trekkings */}
+          <Pressable
+            style={styles.historyButton}
+            onPress={() => router.push("/trekking/history")}
+          >
+            <Text style={styles.historyButtonText}>Mis trekkings</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -199,6 +217,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+    padding: 20,
   },
   emptyText: {
     fontSize: 16,
@@ -261,5 +280,16 @@ const styles = StyleSheet.create({
   },
   spacing: {
     height: 12,
+  },
+  historyButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "#e0e0e0",
+  },
+  historyButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
   },
 });

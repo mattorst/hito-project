@@ -51,3 +51,11 @@ export async function finishTrekking(
 
   return response.data.data;
 }
+
+export async function getTrekkings(): Promise<Trekking[]> {
+  const response = await apiClient.get<ApiResponse<Trekking[]>>(
+    "/trekkings/",
+  );
+
+  return response.data.data;
+}

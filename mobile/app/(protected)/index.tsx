@@ -2,6 +2,7 @@ import {
   ActivityIndicator,
   Button,
   FlatList,
+  Pressable,
   TouchableOpacity,
   SafeAreaView,
   StyleSheet,
@@ -60,6 +61,16 @@ export default function ParksScreen() {
           />
         </View>
       )}
+
+      {/* Botón para acceder al historial de trekkings */}
+      <Pressable
+        style={styles.historyButton}
+        onPress={() => router.push("/trekking/history")}
+      >
+        <Text style={styles.historyButtonText}>
+          Mis trekkings
+        </Text>
+      </Pressable>
 
       {error && (
         <Text style={styles.error}>
@@ -129,7 +140,22 @@ const styles = StyleSheet.create({
   },
 
   activeBanner: {
+    marginBottom: 8,
+  },
+
+  historyButton: {
+    marginTop: 4,
     marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "#e0e0e0",
+  },
+
+  historyButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
   },
 
   card: {
