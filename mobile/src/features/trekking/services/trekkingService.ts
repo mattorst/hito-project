@@ -59,3 +59,13 @@ export async function getTrekkings(): Promise<Trekking[]> {
 
   return response.data.data;
 }
+
+export async function getTrekkingById(
+  trekkingId: number,
+): Promise<Trekking> {
+  const response = await apiClient.get<ApiResponse<Trekking>>(
+    `/trekkings/${trekkingId}/`,
+  );
+
+  return response.data.data;
+}

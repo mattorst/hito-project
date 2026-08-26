@@ -29,7 +29,7 @@ export default function TrekkingHistoryScreen() {
         style={styles.card}
         onPress={() =>
           router.push(
-            `/trekking/history/${item.id}`,
+            `/trekking/${item.id}`,
           )
         }
       >

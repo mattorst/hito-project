@@ -3,6 +3,7 @@ from django.urls import path
 from apps.trekkings.views import (
     StartTrekkingAPIView,
     TrekkingListAPIView,
+    TrekkingDetailAPIView,
     FinishTrekkingAPIView,
     CheckpointRecordCreateAPIView,
 )
@@ -19,6 +20,12 @@ urlpatterns = [
         "trekkings/",
         TrekkingListAPIView.as_view(),
         name="trekking-list",
+    ),
+
+    path(
+        "trekkings/<int:pk>/",
+        TrekkingDetailAPIView.as_view(),
+        name="trekking-detail",
     ),
 
     path(

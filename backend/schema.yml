@@ -41,7 +41,6 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -65,7 +64,6 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -108,7 +106,6 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -132,7 +129,6 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -262,7 +258,6 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -286,7 +281,6 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -312,6 +306,29 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Trekking'
+          description: ''
+  /api/trekkings/{id}/:
+    get:
+      operationId: trekkings_retrieve
+      description: Obtiene el detalle de un trekking específico del usuario autenticado.
+      summary: Obtener detalle de un trekking por ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - trekkings
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trekking'
           description: ''
   /api/trekkings/{id}/finish/:
     post:

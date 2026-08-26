@@ -77,6 +77,34 @@ class TrekkingListAPIView(APIView):
         )
 
 
+class TrekkingDetailAPIView(APIView):
+    """
+    Obtiene el detalle de un trekking específico del usuario autenticado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: TrekkingSerializer},
+        summary="Obtener detalle de un trekking por ID",
+    )
+    def get(self, request, pk):
+        try:
+            # Filtramos estrictamente por ID y por el usuario logueado por seguridad
+            trekking = Trekking.objects.get(pk=pk, user=request.user)
+        except Trekking.DoesNotExist:
+            return error_response(
+                message="Trekking no encontrado o no autorizado.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = TrekkingSerializer(trekking)
+
+        return success_response(
+            data=serializer.data,
+            message="Detalle de trekking obtenido correctamente",
+        )
+
+
 class FinishTrekkingAPIView(APIView):
     """
     Finaliza un trekking activo.
