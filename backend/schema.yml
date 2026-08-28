@@ -78,13 +78,10 @@ paths:
       - incidents
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: '#/components/schemas/Incident'
           application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Incident'
-          multipart/form-data:
             schema:
               $ref: '#/components/schemas/Incident'
         required: true

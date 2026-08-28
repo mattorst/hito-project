@@ -1,13 +1,15 @@
 from rest_framework import generics, status
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
+
 from apps.incidents.models import Incident
 from apps.incidents.serializers import IncidentSerializer
-from apps.shared.responses import success_response, error_response
-
-from rest_framework.permissions import IsAuthenticated
+from apps.shared.responses import error_response, success_response
 
 
 class IncidentCreateAPIView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
     """
     Registra un nuevo incidente durante un trekking.
     """
