@@ -54,13 +54,19 @@ export default function IncidentScreen() {
   const handleSubmit = async () => {
     const createdIncident = await submitIncident();
 
-    if (!createdIncident) {
+    if (!createdIncident && !error) {
+      return;
+    }
+
+    if (error && !error.includes("Sin conexión")) {
       return;
     }
 
     Alert.alert(
       "Incidente reportado",
-      "El incidente fue registrado correctamente.",
+      error && error.includes("Sin conexión")
+        ? error
+        : "El incidente fue registrado correctamente.",
       [
         {
           text: "Aceptar",
@@ -101,9 +107,17 @@ export default function IncidentScreen() {
             Ubicación obtenida ({form.latitude}, {form.longitude})
           </Text>
         ) : (
-          <Text style={styles.locationError}>
-            No se ha podido obtener la ubicación.
-          </Text>
+          <View style={{ gap: 8, marginTop: 4 }}>
+            <Text style={styles.locationError}>
+              No se ha podido obtener la ubicación.
+            </Text>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={getCurrentLocation}
+            >
+              <Text>Reintentar obtener ubicación</Text>
+            </Pressable>
+          </View>
         )}
       </View>
 

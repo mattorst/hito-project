@@ -4,13 +4,23 @@ export interface SyncEvent {
   id: string;
   type: SyncEventType;
   createdAt: string;
-  payload: any;
+  payload: SyncCheckpointRecord | IncidentSyncPayload | any;
 }
 
 export interface SyncCheckpointRecord {
   trekking: number;
   checkpoint: number;
   registered_at: string;
+}
+
+export interface IncidentSyncPayload {
+  trekking: number;
+  incident_type: string;
+  description: string;
+  latitude: string;
+  longitude: string;
+  registered_at: string;
+  photoUri: string | null;
 }
 
 export interface SyncIncident {
@@ -26,7 +36,6 @@ export interface SyncRequest {
   incidents: SyncIncident[];
 }
 
-// Ajuste aquí: tipado estricto para el tipo de error
 export interface SyncFailedEvent {
   index: number;
   type: "checkpoint_record" | "incident";

@@ -1,7 +1,11 @@
 import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import { Alert } from "react-native";
+import { router } from "expo-router";
 import { createIncident } from "../services/incidentService";
+import { persistIncidentPhoto } from "../services/incidentFileStorage";
+import { syncQueue } from "@/features/sync/services/syncQueue";
 import type {
   CreateIncidentRequest,
   Incident,
@@ -201,21 +205,51 @@ export function useIncidents(): UseIncidentsReturn {
       const incidentData = await createIncident(form);
 
       if (!incidentData) {
-        setError("No se pudo registrar el incidente.");
-        return null;
+        throw new Error("No se pudo registrar el incidente en el servidor.");
       }
 
       setIncident(incidentData);
-
       return incidentData;
+
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        "No se pudo registrar el incidente. Verifica tu conexión.";
+      try {
+        const eventId = `incident_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        let persistentPhotoUri: string | null = null;
 
-      setError(message);
+        if (form.photo) {
+          persistentPhotoUri = await persistIncidentPhoto(
+            form.photo,
+            eventId,
+          );
+        }
 
-      return null;
+        await syncQueue.enqueue({
+          id: eventId,
+          type: "incident",
+          createdAt: new Date().toISOString(),
+          payload: {
+            trekking: form.trekking,
+            incident_type: form.incident_type,
+            description: form.description,
+            latitude: form.latitude,
+            longitude: form.longitude,
+            registered_at: form.registered_at,
+            photoUri: persistentPhotoUri,
+          },
+        });
+
+        Alert.alert(
+          "Guardado offline",
+          "El incidente se almacenó localmente porque el servidor no respondió y se sincronizará al recuperar la red.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+
+        return null;
+      } catch (queueErr) {
+        console.error("Error guardando incidente offline:", queueErr);
+        setError("No se pudo registrar el incidente ni guardarlo localmente.");
+        return null;
+      }
     } finally {
       setLoading(false);
     }
