@@ -40,7 +40,8 @@
         {
           "cameraPermission": "Hito necesita acceder a la cámara para escanear los códigos QR de los checkpoints."
         }
-      ]
+      ],
+      "expo-location"
     ]
   }
 }

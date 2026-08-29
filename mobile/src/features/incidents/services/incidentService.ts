@@ -33,6 +33,11 @@ export async function createIncident(
   const response = await client.post<ApiResponse<Incident>>(
     "/incidents/",
     formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
 
   return response.data.data;

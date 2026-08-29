@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
+import { Alert, StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
@@ -14,13 +14,10 @@ export default function ActiveTrekkingScreen() {
   const { activeTrekking, setActiveTrekking, setLastCompletedTrekking } = useAuth();
   const { scannedQr, setScannedQr } = useScan();
   
-  // Estado para prevenir doble pulsación al finalizar
   const [isFinishing, setIsFinishing] = useState(false);
 
-  // Obtenemos los checkpoints del sendero activo correctamente
   const { checkpoints } = useCheckpoints(activeTrekking?.trail ?? 0);
 
-  // Efecto para validar el QR escaneado localmente y enviarlo al backend
   useEffect(() => {
     if (!scannedQr) {
       return;
@@ -40,7 +37,6 @@ export default function ActiveTrekkingScreen() {
       return;
     }
 
-    // Si es válido, procedemos a registrarlo en el backend o en cola offline
     (async () => {
       try {
         if (!activeTrekking) return;
@@ -64,7 +60,6 @@ export default function ActiveTrekkingScreen() {
             "No fue posible registrar el checkpoint.",
           );
         } else {
-          // Error de conectividad (sin respuesta HTTP) -> Guardamos en cola offline
           if (activeTrekking) {
             await enqueueCheckpoint({
               trekking: activeTrekking.id,
@@ -92,7 +87,6 @@ export default function ActiveTrekkingScreen() {
     setIsFinishing(true);
 
     try {
-      // Guardamos la respuesta COMPLETED que devuelve Django
       const completedTrekking = await finishTrekking(activeTrekking.id);
 
       setLastCompletedTrekking(completedTrekking);
@@ -116,12 +110,11 @@ export default function ActiveTrekkingScreen() {
       <SafeAreaView style={styles.center}>
         <Text style={styles.emptyText}>No existe un trekking activo.</Text>
         
-        {/* Botón rápido para acceder al historial incluso si no hay trekking activo */}
         <Pressable
-          style={[styles.historyButton, { marginTop: 20 }]}
+          style={styles.historyButtonAlt}
           onPress={() => router.push("/trekking/history")}
         >
-          <Text style={styles.historyButtonText}>Mis trekkings</Text>
+          <Text style={styles.historyButtonTextAlt}>Mis trekkings</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -134,21 +127,21 @@ export default function ActiveTrekkingScreen() {
 
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.label}>ID del recorrido:</Text>
+            <Text style={styles.label}>ID del recorrido</Text>
             <Text style={styles.value}>#{activeTrekking.id}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.row}>
-            <Text style={styles.label}>Sendero:</Text>
+            <Text style={styles.label}>Sendero</Text>
             <Text style={styles.value}>{activeTrekking.trail}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.row}>
-            <Text style={styles.label}>Estado:</Text>
+            <Text style={styles.label}>Estado</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{activeTrekking.status}</Text>
             </View>
@@ -157,7 +150,7 @@ export default function ActiveTrekkingScreen() {
           <View style={styles.divider} />
 
           <View style={styles.column}>
-            <Text style={styles.label}>Inicio:</Text>
+            <Text style={styles.label}>Inicio</Text>
             <Text style={styles.value}>
               {new Date(activeTrekking.started_at).toLocaleString()}
             </Text>
@@ -166,7 +159,7 @@ export default function ActiveTrekkingScreen() {
           <View style={styles.divider} />
 
           <View style={styles.column}>
-            <Text style={styles.label}>Retorno estimado:</Text>
+            <Text style={styles.label}>Retorno estimado</Text>
             <Text style={styles.value}>
               {new Date(activeTrekking.estimated_return_time).toLocaleString()}
             </Text>
@@ -174,23 +167,30 @@ export default function ActiveTrekkingScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <Button
-            title="Escanear checkpoint"
+          <Pressable
+            style={styles.primaryButton}
             onPress={() => router.push("/scan")}
-          />
+          >
+            <Text style={styles.primaryButtonText}>Escanear checkpoint</Text>
+          </Pressable>
 
-          <View style={styles.spacing} />
+          <Pressable
+            style={styles.warningButton}
+            onPress={() => router.push("/trekking/incident")}
+          >
+            <Text style={styles.warningButtonText}>Reportar incidente</Text>
+          </Pressable>
 
-          <Button
-            title={isFinishing ? "Finalizando..." : "Finalizar Trekking"}
-            color="#d32f2f"
+          <Pressable
+            style={[styles.dangerButton, isFinishing && styles.buttonDisabled]}
             onPress={handleFinishTrekking}
             disabled={isFinishing}
-          />
+          >
+            <Text style={styles.dangerButtonText}>
+              {isFinishing ? "Finalizando..." : "Finalizar Trekking"}
+            </Text>
+          </Pressable>
 
-          <View style={styles.spacing} />
-
-          {/* Botón para ver el historial de trekkings */}
           <Pressable
             style={styles.historyButton}
             onPress={() => router.push("/trekking/history")}
@@ -206,40 +206,40 @@ export default function ActiveTrekkingScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f2f2f7", // Fondo gris claro típico de iOS system
   },
   scrollContent: {
     padding: 20,
-    paddingTop: 12,
+    paddingTop: 16,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#f2f2f7",
     padding: 20,
   },
   emptyText: {
     fontSize: 16,
-    color: "#666",
+    color: "#8e8e93",
+    fontWeight: "500",
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 20,
+    color: "#000000",
+    marginBottom: 16,
+    letterSpacing: -0.4,
   },
   card: {
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 12,
-    padding: 18,
-    backgroundColor: "#fcfcfc",
-    elevation: 2,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   row: {
     flexDirection: "row",
@@ -250,46 +250,93 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   divider: {
-    height: 1,
-    backgroundColor: "#eee",
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#c6c6c8",
     marginVertical: 12,
   },
   label: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
+    fontSize: 15,
+    color: "#3c3c43",
+    fontWeight: "400",
   },
   value: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#222",
+    color: "#000000",
   },
   badge: {
-    backgroundColor: "#e8f5e9",
+    backgroundColor: "#34c75915", // Fondo verde sutil estilo iOS
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
   },
   badgeText: {
-    color: "#2e7d32",
-    fontWeight: "700",
+    color: "#34c759", // Verde estilo iOS
+    fontWeight: "600",
     fontSize: 12,
   },
   buttonContainer: {
-    marginTop: 28,
+    marginTop: 24,
+    gap: 12,
   },
-  spacing: {
-    height: 12,
+  primaryButton: {
+    backgroundColor: "#007aff", // Azul iOS
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  warningButton: {
+    backgroundColor: "#ff9500", // Naranja sistema iOS
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  warningButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dangerButton: {
+    backgroundColor: "#ff3b30", // Rojo sistema iOS
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  dangerButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   historyButton: {
+    backgroundColor: "#e5e5ea", // Gris secundario iOS
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
-    backgroundColor: "#e0e0e0",
+    marginTop: 6,
   },
   historyButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: "#007aff",
+  },
+  historyButtonAlt: {
+    backgroundColor: "#007aff",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  historyButtonTextAlt: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
   },
 });
