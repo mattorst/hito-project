@@ -7,7 +7,9 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useTrekkings } from "@/features/trekking/hooks/useTrekkings";
 import type { Trekking } from "@/features/trekking/types";
 
@@ -34,9 +36,12 @@ export default function TrekkingHistoryScreen() {
         }
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.title}>
-            Trekking #{item.id}
-          </Text>
+          <View style={styles.titleContainer}>
+            <Ionicons name="trail-sign-outline" size={18} color="#111111" style={{ marginRight: 6 }} />
+            <Text style={styles.cardTitle}>
+              Trekking #{item.id}
+            </Text>
+          </View>
 
           <View style={styles.statusBadge}>
             <Text style={styles.statusText}>
@@ -45,18 +50,27 @@ export default function TrekkingHistoryScreen() {
           </View>
         </View>
 
-        <Text style={styles.info}>
-          Sendero #{item.trail}
-        </Text>
+        <View style={styles.infoRow}>
+          <Ionicons name="map-outline" size={15} color="#666666" style={styles.infoIcon} />
+          <Text style={styles.info}>
+            Sendero #{item.trail}
+          </Text>
+        </View>
 
-        <Text style={styles.info}>
-          Inicio: {formatDate(item.started_at)}
-        </Text>
+        <View style={styles.infoRow}>
+          <Ionicons name="calendar-outline" size={15} color="#666666" style={styles.infoIcon} />
+          <Text style={styles.info}>
+            Inicio: {formatDate(item.started_at)}
+          </Text>
+        </View>
 
         {item.finished_at && (
-          <Text style={styles.info}>
-            Finalizado: {formatDate(item.finished_at)}
-          </Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="checkmark-done-outline" size={15} color="#2E7D32" style={styles.infoIcon} />
+            <Text style={[styles.info, styles.finishedInfo]}>
+              Finalizado: {formatDate(item.finished_at)}
+            </Text>
+          </View>
         )}
       </Pressable>
     );
@@ -64,14 +78,14 @@ export default function TrekkingHistoryScreen() {
 
   if (isLoading && trekkings.length === 0) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-      </View>
+      <SafeAreaView style={styles.center} edges={["top", "left", "right", "bottom"]}>
+        <ActivityIndicator size="large" color="#111111" />
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <Text style={styles.header}>
         Mis trekkings
       </Text>
@@ -84,6 +98,7 @@ export default function TrekkingHistoryScreen() {
 
       {!isLoading && trekkings.length === 0 ? (
         <View style={styles.center}>
+          <Ionicons name="footsteps-outline" size={48} color="#999999" style={{ marginBottom: 12 }} />
           <Text style={styles.emptyText}>
             Todavía no tienes trekkings registrados.
           </Text>
@@ -99,12 +114,14 @@ export default function TrekkingHistoryScreen() {
             <RefreshControl
               refreshing={isLoading}
               onRefresh={refresh}
+              tintColor="#111111"
             />
           }
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -121,64 +138,93 @@ function formatDate(value: string): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: "#F4F5F7",
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: 24,
+    backgroundColor: "#F4F5F7",
   },
   header: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "700",
-    marginBottom: 20,
-    color: "#1a1a1a",
+    marginBottom: 16,
+    color: "#111111",
+    letterSpacing: -0.5,
+  },
+  listContainer: {
+    paddingBottom: 24,
   },
   card: {
     padding: 18,
-    borderRadius: 14,
-    backgroundColor: "#f9f9f9",
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 12,
+    borderColor: "#E5E7EB",
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 18,
+  titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  cardTitle: {
+    fontSize: 17,
     fontWeight: "700",
-    color: "#333",
+    color: "#111111",
   },
   statusBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: "#e8f5e9",
+    backgroundColor: "#E8F5E9",
   },
   statusText: {
     fontSize: 12,
-    fontWeight: "700",
-    color: "#2e7d32",
+    fontWeight: "600",
+    color: "#2E7D32",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  infoIcon: {
+    marginRight: 8,
   },
   info: {
     fontSize: 14,
-    marginBottom: 5,
-    color: "#555",
+    color: "#666666",
+    fontWeight: "400",
+  },
+  finishedInfo: {
+    color: "#2E7D32",
+    fontWeight: "500",
   },
   error: {
     marginBottom: 12,
     fontSize: 14,
-    color: "#d32f2f",
+    color: "#E53935",
+    textAlign: "center",
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 16,
-    color: "#666",
+    fontSize: 15,
+    color: "#666666",
+    fontWeight: "500",
   },
 });

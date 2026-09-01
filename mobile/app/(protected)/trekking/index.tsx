@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { finishTrekking } from "@/features/trekking/services/trekkingService";
 import { useScan } from "@/features/checkpoints/context/ScanContext";
@@ -105,9 +106,36 @@ export default function ActiveTrekkingScreen() {
     }
   };
 
+  // Función para dar formato amigable a la fecha (Ej: "Jueves 28 ago, 14:30")
+  const formatFriendlyDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return dateString;
+
+    const optionsDate: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+    };
+    const optionsTime: Intl.DateTimeFormatOptions = {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    };
+
+    const formattedDate = date.toLocaleDateString("es-CL", optionsDate);
+    const formattedTime = date.toLocaleTimeString("es-CL", optionsTime);
+
+    // Capitaliza la primera letra del día
+    const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+    return `${capitalizedDate}, ${formattedTime}`;
+  };
+
   if (!activeTrekking) {
     return (
-      <SafeAreaView style={styles.center}>
+      <SafeAreaView style={styles.center} edges={["top", "left", "right", "bottom"]}>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="compass-outline" size={40} color="#666666" />
+        </View>
         <Text style={styles.emptyText}>No existe un trekking activo.</Text>
         
         <Pressable
@@ -121,56 +149,84 @@ export default function ActiveTrekkingScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right", "bottom"]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Trekking en curso</Text>
+    <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* Cabecera Limpia y Proporcionada */}
+        <View style={styles.headerContainer}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Trekking en curso</Text>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+            </View>
+          </View>
+          <Text style={styles.subtitle}>Monitoreo de ruta en tiempo real</Text>
+        </View>
 
+        {/* Tarjeta Principal de Datos */}
         <View style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.label}>ID del recorrido</Text>
+            <View style={styles.labelGroup}>
+              <Ionicons name="finger-print-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Text style={styles.label}>ID del recorrido</Text>
+            </View>
             <Text style={styles.value}>#{activeTrekking.id}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.row}>
-            <Text style={styles.label}>Sendero</Text>
-            <Text style={styles.value}>{activeTrekking.trail}</Text>
+            <View style={styles.labelGroup}>
+              <Ionicons name="map-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Text style={styles.label}>Sendero</Text>
+            </View>
+            <Text style={styles.value}>Sendero #{activeTrekking.trail}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.row}>
-            <Text style={styles.label}>Estado</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{activeTrekking.status}</Text>
+            <View style={styles.labelGroup}>
+              <Ionicons name="shield-checkmark-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Text style={styles.label}>Estado</Text>
+            </View>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusPillText}>{activeTrekking.status}</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.column}>
-            <Text style={styles.label}>Inicio</Text>
-            <Text style={styles.value}>
-              {new Date(activeTrekking.started_at).toLocaleString()}
+            <View style={styles.labelGroup}>
+              <Ionicons name="time-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Text style={styles.label}>Hora de inicio</Text>
+            </View>
+            <Text style={styles.valueSub}>
+              {formatFriendlyDate(activeTrekking.started_at)}
             </Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.column}>
-            <Text style={styles.label}>Retorno estimado</Text>
-            <Text style={styles.value}>
-              {new Date(activeTrekking.estimated_return_time).toLocaleString()}
+            <View style={styles.labelGroup}>
+              <Ionicons name="alarm-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Text style={styles.label}>Retorno estimado</Text>
+            </View>
+            <Text style={styles.valueSub}>
+              {formatFriendlyDate(activeTrekking.estimated_return_time)}
             </Text>
           </View>
         </View>
 
+        {/* Contenedor de Botones de Acción */}
         <View style={styles.buttonContainer}>
           <Pressable
             style={styles.primaryButton}
             onPress={() => router.push("/scan")}
           >
+            <Ionicons name="scan-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={styles.primaryButtonText}>Escanear checkpoint</Text>
           </Pressable>
 
@@ -178,6 +234,7 @@ export default function ActiveTrekkingScreen() {
             style={styles.warningButton}
             onPress={() => router.push("/trekking/incident")}
           >
+            <Ionicons name="warning-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
             <Text style={styles.warningButtonText}>Reportar incidente</Text>
           </Pressable>
 
@@ -186,6 +243,7 @@ export default function ActiveTrekkingScreen() {
             onPress={handleFinishTrekking}
             disabled={isFinishing}
           >
+            <Ionicons name="stop-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={styles.dangerButtonText}>
               {isFinishing ? "Finalizando..." : "Finalizar Trekking"}
             </Text>
@@ -195,7 +253,9 @@ export default function ActiveTrekkingScreen() {
             style={styles.historyButton}
             onPress={() => router.push("/trekking/history")}
           >
+            <Ionicons name="time-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
             <Text style={styles.historyButtonText}>Mis trekkings</Text>
+            <Ionicons name="chevron-forward" size={16} color="#666666" style={{ marginLeft: "auto" }} />
           </Pressable>
         </View>
       </ScrollView>
@@ -206,40 +266,88 @@ export default function ActiveTrekkingScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#f2f2f7", // Fondo gris claro típico de iOS system
+    backgroundColor: "#F4F5F7",
   },
   scrollContent: {
     padding: 20,
     paddingTop: 16,
+    paddingBottom: 36,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f2f2f7",
-    padding: 20,
+    backgroundColor: "#F4F5F7",
+    padding: 24,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   emptyText: {
     fontSize: 16,
-    color: "#8e8e93",
+    color: "#666666",
     fontWeight: "500",
   },
+  headerContainer: {
+    marginBottom: 20,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
-    color: "#000000",
-    marginBottom: 16,
+    color: "#111111",
     letterSpacing: -0.4,
   },
+  liveIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#C8E6C9",
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#2E7D32",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#666666",
+    marginTop: 2,
+    fontWeight: "500",
+  },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   row: {
     flexDirection: "row",
@@ -249,66 +357,101 @@ const styles = StyleSheet.create({
   column: {
     gap: 4,
   },
+  labelGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#c6c6c8",
-    marginVertical: 12,
+    height: 1,
+    backgroundColor: "#F0F0F2",
+    marginVertical: 14,
   },
   label: {
-    fontSize: 15,
-    color: "#3c3c43",
-    fontWeight: "400",
+    fontSize: 14,
+    color: "#666666",
+    fontWeight: "500",
   },
   value: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000000",
+    color: "#111111",
   },
-  badge: {
-    backgroundColor: "#34c75915", // Fondo verde sutil estilo iOS
+  valueSub: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111111",
+    marginLeft: 22,
+  },
+  statusPill: {
+    backgroundColor: "#F4F5F7",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
-  badgeText: {
-    color: "#34c759", // Verde estilo iOS
+  statusPillText: {
+    color: "#111111",
     fontWeight: "600",
     fontSize: 12,
   },
   buttonContainer: {
-    marginTop: 24,
+    marginTop: 20,
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: "#007aff", // Azul iOS
+    flexDirection: "row",
+    backgroundColor: "#111111",
     padding: 16,
     borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
   warningButton: {
-    backgroundColor: "#ff9500", // Naranja sistema iOS
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     padding: 16,
     borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
   warningButtonText: {
-    color: "#ffffff",
+    color: "#111111",
     fontSize: 16,
     fontWeight: "600",
   },
   dangerButton: {
-    backgroundColor: "#ff3b30", // Rojo sistema iOS
+    flexDirection: "row",
+    backgroundColor: "#FF3B30",
     padding: 16,
     borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
   },
   dangerButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -316,23 +459,36 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   historyButton: {
-    backgroundColor: "#e5e5ea", // Gris secundario iOS
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     padding: 16,
     borderRadius: 14,
-    alignItems: "center",
-    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+    marginTop: 4,
   },
   historyButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#007aff",
+    color: "#111111",
   },
   historyButtonAlt: {
-    backgroundColor: "#007aff",
+    backgroundColor: "#111111",
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 14,
     marginTop: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   historyButtonTextAlt: {
     fontSize: 16,
