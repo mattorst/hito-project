@@ -8,7 +8,6 @@ const api = axios.create({
   },
 });
 
-// Función para limpiar el token de los headers globales de Axios al cerrar sesión
 export const clearApiAuthHeader = () => {
   delete api.defaults.headers.common["Authorization"];
 };

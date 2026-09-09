@@ -611,18 +611,22 @@ components:
         status:
           allOf:
           - $ref: '#/components/schemas/RescueStatusEnum'
+          readOnly: true
           title: Estado
         started_at:
           type: string
           format: date-time
+          readOnly: true
           title: Fecha y hora de inicio
         finished_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
           title: Fecha y hora de finalización
         closed_reason:
           type: string
+          readOnly: true
           title: Motivo de cierre
         notes:
           type: string
@@ -633,9 +637,12 @@ components:
           readOnly: true
           title: Fecha de creación
       required:
+      - closed_reason
       - created_at
+      - finished_at
       - id
       - started_at
+      - status
       - trekking
     RescueStatusEnum:
       enum:

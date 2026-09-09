@@ -3,6 +3,11 @@ export type RescueStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+export interface CreateRescueRequest {
+  trekking: number;
+  notes?: string;
+}
+
 export interface Rescue {
   id: number;
   trekking: number;
@@ -12,13 +17,4 @@ export interface Rescue {
   closed_reason: string;
   notes: string;
   created_at: string;
-}
-
-export interface CreateRescueRequest {
-  trekking: number;
-  status?: RescueStatus;
-  started_at: string;
-  finished_at?: string | null;
-  closed_reason?: string;
-  notes?: string;
 }
