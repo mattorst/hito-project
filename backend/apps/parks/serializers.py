@@ -30,6 +30,8 @@ class TrailSerializer(serializers.ModelSerializer):
             "status",
             "estimated_duration",
             "distance_km",
+            "max_altitude",
+            "route_geojson",
         )
 
 

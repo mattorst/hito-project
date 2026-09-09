@@ -129,6 +129,12 @@ class Trail(models.Model):
         verbose_name="Altitud máxima (msnm)",
     )
 
+    route_geojson = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Geometría de la ruta",
+    )
+
     is_active = models.BooleanField(
         default=True,
         verbose_name="Activo",
