@@ -10,14 +10,35 @@ import { findCheckpointByQr } from "@/features/checkpoints/utils";
 import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
 import { registerCheckpoint } from "@/features/checkpoints/services/checkpointService";
 import { enqueueCheckpoint } from "@/features/checkpoints/services/offlineQueue";
+import { useRescue } from "@/features/rescues/hooks/useRescue";
 
 export default function ActiveTrekkingScreen() {
   const { activeTrekking, setActiveTrekking, setLastCompletedTrekking } = useAuth();
   const { scannedQr, setScannedQr } = useScan();
   
   const [isFinishing, setIsFinishing] = useState(false);
+  
+  const {
+    activeRescue,
+    activeRescueLoading,
+    loading: rescueLoading,
+    closingRescue,
+    cancellingRescue,
+    requestRescue,
+    loadActiveRescue,
+    closeActiveRescue,
+    cancelActiveRescue,
+  } = useRescue();
 
   const { checkpoints } = useCheckpoints(activeTrekking?.trail ?? 0);
+
+  useEffect(() => {
+    if (!activeTrekking) {
+      return;
+    }
+
+    loadActiveRescue(activeTrekking.id);
+  }, [activeTrekking?.id]);
 
   useEffect(() => {
     if (!scannedQr) {
@@ -104,6 +125,99 @@ export default function ActiveTrekkingScreen() {
     } finally {
       setIsFinishing(false);
     }
+  };
+
+  const handleRequestRescue = () => {
+    if (
+      !activeTrekking ||
+      rescueLoading ||
+      activeRescue
+    ) {
+      return;
+    }
+
+    Alert.alert(
+      "Solicitar rescate",
+      "¿Estás seguro de que necesitas solicitar un rescate? Esta acción notificará que necesitas asistencia.",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Solicitar rescate",
+          style: "destructive",
+          onPress: async () => {
+            const rescue = await requestRescue({
+              trekking: activeTrekking.id,
+            });
+
+            if (rescue) {
+              Alert.alert(
+                "Rescate solicitado",
+                "Tu solicitud de rescate fue registrada correctamente.",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleCloseRescue = () => {
+    if (!activeRescue || closingRescue || cancellingRescue) return;
+
+    Alert.alert(
+      "Cerrar rescate",
+      "Confirma que la situación de emergencia ya fue atendida y deseas finalizar la solicitud de rescate.",
+      [
+        {
+          text: "Volver",
+          style: "cancel",
+        },
+        {
+          text: "Cerrar rescate",
+          style: "default",
+          onPress: async () => {
+            const result = await closeActiveRescue(activeRescue.id);
+            if (result) {
+              Alert.alert(
+                "Rescate cerrado",
+                "El rescate ha sido marcado como completado.",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleCancelRescue = () => {
+    if (!activeRescue || closingRescue || cancellingRescue) return;
+
+    Alert.alert(
+      "Cancelar rescate",
+      "Confirma que ya no necesitas la asistencia de rescate.",
+      [
+        {
+          text: "Volver",
+          style: "cancel",
+        },
+        {
+          text: "Cancelar rescate",
+          style: "destructive",
+          onPress: async () => {
+            const result = await cancelActiveRescue(activeRescue.id);
+            if (result) {
+              Alert.alert(
+                "Rescate cancelado",
+                "La solicitud de rescate fue cancelada correctamente.",
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   // Función para dar formato amigable a la fecha (Ej: "Jueves 28 ago, 14:30")
@@ -237,6 +351,58 @@ export default function ActiveTrekkingScreen() {
             <Ionicons name="warning-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
             <Text style={styles.warningButtonText}>Reportar incidente</Text>
           </Pressable>
+
+          {!activeRescueLoading && activeRescue ? (
+            <View style={styles.rescueActiveContainer}>
+              <View style={styles.rescueActiveHeader}>
+                <Ionicons name="alert-circle" size={20} color="#D32F2F" style={{ marginRight: 6 }} />
+                <Text style={styles.rescueActiveTitle}>Rescate activo</Text>
+              </View>
+              <Text style={styles.rescueActiveText}>
+                Tu solicitud de rescate está registrada y en curso.
+              </Text>
+
+              <View style={styles.rescueActionButtons}>
+                <Pressable
+                  style={[styles.completeRescueButton, closingRescue && styles.buttonDisabled]}
+                  onPress={handleCloseRescue}
+                  disabled={closingRescue || cancellingRescue}
+                >
+                  <Text style={styles.completeRescueButtonText}>
+                    {closingRescue ? "Cerrando..." : "Cerrar rescate"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.cancelRescueButton, cancellingRescue && styles.buttonDisabled]}
+                  onPress={handleCancelRescue}
+                  disabled={closingRescue || cancellingRescue}
+                >
+                  <Text style={styles.cancelRescueButtonText}>
+                    {cancellingRescue ? "Cancelando..." : "Cancelar rescate"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              style={[
+                styles.rescueButton,
+                (rescueLoading || activeRescueLoading) && styles.buttonDisabled,
+              ]}
+              onPress={handleRequestRescue}
+              disabled={rescueLoading || activeRescueLoading}
+            >
+              <Ionicons name="alert-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.rescueButtonText}>
+                {rescueLoading
+                  ? "Solicitando rescate..."
+                  : activeRescueLoading
+                    ? "Consultando rescate..."
+                    : "Solicitar rescate"}
+              </Text>
+            </Pressable>
+          )}
 
           <Pressable
             style={[styles.dangerButton, isFinishing && styles.buttonDisabled]}
@@ -435,6 +601,77 @@ const styles = StyleSheet.create({
   warningButtonText: {
     color: "#111111",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  rescueButton: {
+    flexDirection: "row",
+    backgroundColor: "#D32F2F",
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  rescueButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  rescueActiveContainer: {
+    backgroundColor: "#FDEDEC",
+    borderWidth: 1,
+    borderColor: "#F5B7B1",
+    padding: 16,
+    borderRadius: 14,
+    gap: 10,
+  },
+  rescueActiveHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rescueActiveTitle: {
+    color: "#C0392B",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  rescueActiveText: {
+    color: "#922B21",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  rescueActionButtons: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  completeRescueButton: {
+    flex: 1,
+    backgroundColor: "#27AE60",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  completeRescueButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  cancelRescueButton: {
+    flex: 1,
+    backgroundColor: "#C0392B",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelRescueButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "600",
   },
   dangerButton: {

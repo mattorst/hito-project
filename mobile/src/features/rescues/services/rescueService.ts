@@ -21,3 +21,38 @@ export const createRescue = async (
 
   return response.data;
 };
+
+export const getActiveRescue = async (
+  trekkingId: number,
+): Promise<ApiResponse<Rescue | null>> => {
+  const response = await client.get<ApiResponse<Rescue | null>>(
+    "/rescues/active/",
+    {
+      params: {
+        trekking: trekkingId,
+      },
+    },
+  );
+
+  return response.data;
+};
+
+export const completeRescue = async (
+  rescueId: number,
+): Promise<ApiResponse<Rescue>> => {
+  const response = await client.post<ApiResponse<Rescue>>(
+    `/rescues/${rescueId}/complete/`,
+  );
+
+  return response.data;
+};
+
+export const cancelRescue = async (
+  rescueId: number,
+): Promise<ApiResponse<Rescue>> => {
+  const response = await client.post<ApiResponse<Rescue>>(
+    `/rescues/${rescueId}/cancel/`,
+  );
+
+  return response.data;
+};
