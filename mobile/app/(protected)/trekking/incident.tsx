@@ -17,6 +17,25 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import { useIncidents } from "@/features/incidents/hooks/useIncidents";
 import type { IncidentType } from "@/features/incidents/types";
 
+// --- Paleta -----------------------------------------------------------------
+// Consistente con Parques y Trekking activo: negro como lienzo, blanco/gris
+// para jerarquía de texto, un único verde lima como acento y estado
+// "seleccionado". Sin rojo: lo negativo se resuelve con outline neutro.
+const COLORS = {
+  bg: "#0B0C0D",
+  surface: "#17181B",
+  surfaceBorder: "rgba(255,255,255,0.08)",
+  glass: "rgba(255,255,255,0.06)",
+  glassBorder: "rgba(255,255,255,0.10)",
+  ink: "#FFFFFF",
+  inkSecondary: "#9BA1A6",
+  inkTertiary: "#6E7378",
+  lime: "#C6FF4D",
+  limeDim: "rgba(198,255,77,0.14)",
+  limeBorder: "rgba(198,255,77,0.35)",
+  black: "#0B0C0D",
+};
+
 const incidentTypes: {
   value: IncidentType;
   label: string;
@@ -31,6 +50,14 @@ const incidentTypes: {
   { value: "WEATHER", label: "Condiciones climáticas", icon: "cloud-outline" },
   { value: "OTHER", label: "Otro", icon: "alert-circle-outline" },
 ];
+
+function BackButton() {
+  return (
+    <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+      <Ionicons name="chevron-back" size={20} color={COLORS.ink} />
+    </Pressable>
+  );
+}
 
 export default function IncidentScreen() {
   const { activeTrekking } = useAuth();
@@ -83,12 +110,11 @@ export default function IncidentScreen() {
   if (!activeTrekking) {
     return (
       <SafeAreaView style={styles.center} edges={["top", "left", "right", "bottom"]}>
-        <Ionicons name="alert-circle-outline" size={56} color="#999999" style={{ marginBottom: 12 }} />
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="alert-circle-outline" size={40} color={COLORS.inkTertiary} />
+        </View>
         <Text style={styles.emptyText}>No existe un trekking activo.</Text>
-        <Pressable
-          style={styles.primaryButton}
-          onPress={() => router.back()}
-        >
+        <Pressable style={styles.primaryButton} onPress={() => router.back()}>
           <Text style={styles.primaryButtonText}>Volver</Text>
         </Pressable>
       </SafeAreaView>
@@ -102,30 +128,33 @@ export default function IncidentScreen() {
   return (
     <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        
+
         {/* Cabecera */}
         <View style={styles.headerContainer}>
+          <View style={styles.topRow}>
+            <BackButton />
+          </View>
           <Text style={styles.title}>Reportar incidente</Text>
-          <Text style={styles.subtitle}>
-            Expedición activa #{activeTrekking.id}
-          </Text>
+          <Text style={styles.subtitle}>Expedición activa #{activeTrekking.id}</Text>
         </View>
 
         {/* Estado de la geolocalización automática */}
         <View style={styles.locationContainer}>
           <View style={styles.locationHeader}>
-            <Ionicons name="location-outline" size={18} color="#111111" />
+            <View style={styles.locationIconWrap}>
+              <Ionicons name="location-outline" size={16} color={COLORS.lime} />
+            </View>
             <Text style={styles.labelInline}>Ubicación GPS</Text>
           </View>
-          
+
           {locationLoading ? (
             <View style={styles.locationStatusRow}>
-              <ActivityIndicator size="small" color="#111111" />
+              <ActivityIndicator size="small" color={COLORS.lime} />
               <Text style={styles.locationInfo}>Obteniendo ubicación actual...</Text>
             </View>
           ) : hasValidLocation ? (
             <View style={styles.locationStatusRow}>
-              <Ionicons name="checkmark-circle" size={18} color="#2E7D32" />
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.lime} />
               <Text style={styles.locationSuccess}>
                 Ubicación fijada ({lat.toFixed(4)}, {lon.toFixed(4)})
               </Text>
@@ -133,16 +162,13 @@ export default function IncidentScreen() {
           ) : (
             <View style={{ gap: 10, marginTop: 4 }}>
               <View style={styles.locationStatusRow}>
-                <Ionicons name="close-circle" size={18} color="#E53935" />
+                <Ionicons name="close-circle-outline" size={18} color={COLORS.inkSecondary} />
                 <Text style={styles.locationError}>
                   No se ha podido obtener la ubicación.
                 </Text>
               </View>
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={getCurrentLocation}
-              >
-                <Ionicons name="refresh-outline" size={16} color="#111111" style={{ marginRight: 6 }} />
+              <Pressable style={styles.secondaryButton} onPress={getCurrentLocation}>
+                <Ionicons name="refresh-outline" size={16} color={COLORS.ink} style={{ marginRight: 6 }} />
                 <Text style={styles.secondaryButtonText}>Reintentar ubicación</Text>
               </Pressable>
             </View>
@@ -158,19 +184,14 @@ export default function IncidentScreen() {
             return (
               <Pressable
                 key={type.value}
-                style={[
-                  styles.optionCard,
-                  isSelected && styles.optionSelected,
-                ]}
-                onPress={() =>
-                  setField("incident_type", type.value)
-                }
+                style={[styles.optionCard, isSelected && styles.optionSelected]}
+                onPress={() => setField("incident_type", type.value)}
               >
-                <Ionicons 
-                  name={type.icon} 
-                  size={24} 
-                  color={isSelected ? "#2E7D32" : "#555555"} 
-                  style={{ marginBottom: 6 }}
+                <Ionicons
+                  name={type.icon}
+                  size={22}
+                  color={isSelected ? COLORS.lime : COLORS.inkSecondary}
+                  style={{ marginBottom: 8 }}
                 />
                 <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                   {type.label}
@@ -185,11 +206,9 @@ export default function IncidentScreen() {
         <TextInput
           style={styles.textArea}
           value={form.description}
-          onChangeText={(value) =>
-            setField("description", value)
-          }
+          onChangeText={(value) => setField("description", value)}
           placeholder="Describe detalladamente lo ocurrido..."
-          placeholderTextColor="#999999"
+          placeholderTextColor={COLORS.inkTertiary}
           multiline
           textAlignVertical="top"
         />
@@ -199,58 +218,39 @@ export default function IncidentScreen() {
 
         {form.photo ? (
           <View style={styles.photoPreviewContainer}>
-            <Image
-              source={{ uri: form.photo }}
-              style={styles.preview}
-            />
-            <Pressable
-              style={styles.dangerOutlineButton}
-              onPress={removePhoto}
-            >
-              <Ionicons name="trash-outline" size={16} color="#E53935" style={{ marginRight: 6 }} />
-              <Text style={styles.dangerOutlineButtonText}>Eliminar fotografía</Text>
+            <Image source={{ uri: form.photo }} style={styles.preview} />
+            <Pressable style={styles.removePhotoButton} onPress={removePhoto}>
+              <Ionicons name="trash-outline" size={16} color={COLORS.ink} style={{ marginRight: 6 }} />
+              <Text style={styles.removePhotoButtonText}>Eliminar fotografía</Text>
             </Pressable>
           </View>
         ) : (
           <View style={styles.photoActions}>
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={takePhoto}
-            >
-              <Ionicons name="camera-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
+            <Pressable style={styles.secondaryButton} onPress={takePhoto}>
+              <Ionicons name="camera-outline" size={18} color={COLORS.ink} style={{ marginRight: 8 }} />
               <Text style={styles.secondaryButtonText}>Tomar fotografía</Text>
             </Pressable>
 
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={pickPhoto}
-            >
-              <Ionicons name="image-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
+            <Pressable style={styles.secondaryButton} onPress={pickPhoto}>
+              <Ionicons name="image-outline" size={18} color={COLORS.ink} style={{ marginRight: 8 }} />
               <Text style={styles.secondaryButtonText}>Elegir de la galería</Text>
             </Pressable>
           </View>
         )}
 
-        {error && (
-          <Text style={styles.errorText}>
-            {error}
-          </Text>
-        )}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
         {/* Botones de Acción */}
         <View style={styles.footerActions}>
           <Pressable
-            style={[
-              styles.primaryButton,
-              (loading || locationLoading) && styles.buttonDisabled,
-            ]}
+            style={[styles.primaryButton, (loading || locationLoading) && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={loading || locationLoading}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" style={styles.loaderSpacing} />
+              <ActivityIndicator size="small" color={COLORS.black} style={styles.loaderSpacing} />
             ) : (
-              <Ionicons name="send-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Ionicons name="send-outline" size={18} color={COLORS.black} style={{ marginRight: 8 }} />
             )}
             <Text style={styles.primaryButtonText}>
               {loading
@@ -261,15 +261,10 @@ export default function IncidentScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            style={styles.cancelButton}
-            onPress={() => router.back()}
-            disabled={loading}
-          >
+          <Pressable style={styles.cancelButton} onPress={() => router.back()} disabled={loading}>
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </Pressable>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -278,11 +273,11 @@ export default function IncidentScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#F4F5F7",
+    backgroundColor: COLORS.bg,
   },
   container: {
     padding: 20,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 36,
   },
   center: {
@@ -290,51 +285,80 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "#F4F5F7",
+    backgroundColor: COLORS.bg,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
   emptyText: {
     fontSize: 16,
-    color: "#666666",
+    color: COLORS.inkSecondary,
     fontWeight: "500",
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.glass,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   headerContainer: {
     marginBottom: 20,
   },
+  topRow: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
   title: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: "800",
+    color: COLORS.ink,
+    letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 14,
-    color: "#666666",
+    color: COLORS.inkSecondary,
     marginTop: 4,
     fontWeight: "500",
   },
   locationContainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.surfaceBorder,
     marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
   },
   locationHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  locationIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.limeDim,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
   },
   labelInline: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111111",
-    marginLeft: 8,
+    color: COLORS.ink,
   },
   locationStatusRow: {
     flexDirection: "row",
@@ -342,24 +366,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   locationInfo: {
-    color: "#007AFF",
+    color: COLORS.inkSecondary,
     fontSize: 14,
     fontWeight: "500",
   },
   locationSuccess: {
-    color: "#2E7D32",
+    color: COLORS.lime,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+    flexShrink: 1,
   },
   locationError: {
-    color: "#E53935",
+    color: COLORS.inkSecondary,
     fontSize: 14,
     fontWeight: "500",
+    flexShrink: 1,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
-    color: "#111111",
+    color: COLORS.ink,
     marginBottom: 12,
     marginTop: 4,
   },
@@ -371,48 +397,38 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     width: "48%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.surfaceBorder,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
   },
   optionSelected: {
-    borderColor: "#2E7D32",
-    backgroundColor: "#F0F7F0",
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.limeDim,
   },
   optionText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#333333",
+    color: COLORS.inkSecondary,
     textAlign: "center",
   },
   optionTextSelected: {
-    color: "#2E7D32",
+    color: COLORS.lime,
     fontWeight: "700",
   },
   textArea: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     minHeight: 120,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 16,
+    borderColor: COLORS.surfaceBorder,
+    borderRadius: 18,
     padding: 16,
     fontSize: 15,
-    color: "#111111",
+    color: COLORS.ink,
     marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
   },
   photoActions: {
     gap: 10,
@@ -424,10 +440,10 @@ const styles = StyleSheet.create({
   preview: {
     width: "100%",
     height: 220,
-    borderRadius: 16,
+    borderRadius: 18,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.surfaceBorder,
   },
   footerActions: {
     marginTop: 10,
@@ -435,20 +451,15 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flexDirection: "row",
-    backgroundColor: "#111111",
+    backgroundColor: COLORS.lime,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   primaryButtonText: {
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontWeight: "800",
+    color: COLORS.black,
     fontSize: 16,
   },
   buttonDisabled: {
@@ -459,38 +470,33 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.glass,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: COLORS.glassBorder,
   },
   secondaryButtonText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111111",
+    color: COLORS.ink,
   },
-  dangerOutlineButton: {
+  removePhotoButton: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#FFCDD2",
+    borderColor: COLORS.glassBorder,
   },
-  dangerOutlineButtonText: {
+  removePhotoButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#E53935",
+    color: COLORS.ink,
   },
   cancelButton: {
     padding: 14,
@@ -500,13 +506,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#666666",
+    color: COLORS.inkSecondary,
   },
   errorText: {
-    color: "#E53935",
+    color: COLORS.ink,
     fontSize: 14,
     marginBottom: 16,
     textAlign: "center",
-    fontWeight: "500",
+    fontWeight: "600",
   },
 });

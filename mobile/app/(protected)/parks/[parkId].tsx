@@ -8,24 +8,32 @@ import {
   StyleSheet,
   Text,
   View,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTrails } from "@/features/parks/hooks/useTrails";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { startTrekking } from "@/features/trekking/services/trekkingService";
 
-// --- Definición de Colores iOS en Fondo Blanco ---
+// --- Paleta -----------------------------------------------------------------
+// Misma línea que Resumen y Detalle de trekking: negro como lienzo,
+// blanco/gris para jerarquía de texto, un único verde lima como acento.
 const COLORS = {
-  paper: "#F4F5F7",      // Fondo gris muy claro estilo iOS (como en el index)
-  ink: "#111111",        // Texto principal oscuro
-  pine: "#2E7D32",       // Verde naturaleza / iOS
-  slate: "#666666",      // Texto secundario
-  cloud: "#FFFFFF",      // Fondo de tarjetas blanco puro
-  mist: "#E5E7EB",       // Bordes sutiles
-  danger: "#FF3B30",     // Rojo para alertas
-  cardBorder: "#E5E7EB", // Borde limpio para tarjetas
+  bg: "#0B0C0D",
+  surface: "#17181B",
+  surfaceBorder: "rgba(255,255,255,0.08)",
+  divider: "rgba(255,255,255,0.08)",
+  glass: "rgba(255,255,255,0.06)",
+  glassBorder: "rgba(255,255,255,0.10)",
+  ink: "#FFFFFF",
+  inkSecondary: "#9BA1A6",
+  inkTertiary: "#6E7378",
+  lime: "#C6FF4D",
+  limeDim: "rgba(198,255,77,0.14)",
+  limeBorder: "rgba(198,255,77,0.35)",
+  danger: "#FF6B5E",
+  dangerDim: "rgba(255,107,94,0.12)",
+  black: "#0B0C0D",
 };
 
 export default function ParkDetailScreen() {
@@ -80,7 +88,7 @@ export default function ParkDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, styles.center]} edges={['top', 'left', 'right']}>
-        <ActivityIndicator size="large" color={COLORS.ink} />
+        <ActivityIndicator size="large" color={COLORS.lime} />
         <Text style={styles.loadingText}>Cargando rutas...</Text>
       </SafeAreaView>
     );
@@ -88,19 +96,22 @@ export default function ParkDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      
-      {/* Header Estilo iOS con botón de volver alineado y espaciado correcto */}
+
+      {/* Cabecera minimalista, misma línea que el resto del flujo */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={24} color={COLORS.ink} />
-            <Text style={styles.backText}>Parques</Text>
+          <View style={styles.roundButton}>
+            <Ionicons name="chevron-back" size={20} color={COLORS.ink} />
+          </View>
+          <Text style={styles.backText}>Parques</Text>
         </TouchableOpacity>
         <Text style={styles.mainTitle}>Senderos</Text>
+        <Text style={styles.subtitle}>Elige una ruta y comienza tu recorrido</Text>
       </View>
 
       {error && (
         <View style={styles.statusContainer}>
-          <Ionicons name="alert-circle" size={24} color={COLORS.danger} />
+          <Ionicons name="alert-circle" size={22} color={COLORS.danger} />
           <Text style={styles.error}>{error}</Text>
           <TouchableOpacity onPress={reload} style={styles.retryButton}>
             <Text style={styles.retryText}>Reintentar</Text>
@@ -110,14 +121,16 @@ export default function ParkDetailScreen() {
 
       {!error && trails.length === 0 && (
         <View style={styles.center}>
-           <Ionicons name="trail-sign-outline" size={48} color={COLORS.slate} style={{ marginBottom: 12 }} />
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="trail-sign-outline" size={30} color={COLORS.inkTertiary} />
+          </View>
           <Text style={styles.emptyText}>
             Este parque aún no posee senderos registrados.
           </Text>
         </View>
       )}
 
-      {/* Lista de Senderos Estilo iOS Claro */}
+      {/* Lista de Senderos */}
       {!error && trails.length > 0 && (
         <FlatList
           data={trails}
@@ -134,8 +147,11 @@ export default function ParkDetailScreen() {
                 style={styles.cardTouch}
               >
                 <View style={styles.cardHeaderRow}>
-                   <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                   <Ionicons name="chevron-forward" size={16} color={COLORS.slate} />
+                  <View style={styles.trailIconWrap}>
+                    <MaterialCommunityIcons name="terrain" size={18} color={COLORS.lime} />
+                  </View>
+                  <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.inkTertiary} />
                 </View>
 
                 <Text style={styles.description} numberOfLines={3}>
@@ -144,24 +160,24 @@ export default function ParkDetailScreen() {
 
                 <View style={styles.metaContainer}>
                   <View style={styles.metaItem}>
-                      <Ionicons name="map-outline" size={15} color={COLORS.slate} />
-                      <Text style={styles.info}>{item.distance_km} km</Text>
+                    <Ionicons name="map-outline" size={14} color={COLORS.lime} />
+                    <Text style={styles.info}>{item.distance_km} km</Text>
                   </View>
                   <View style={styles.metaDivider} />
                   <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={15} color={COLORS.slate} />
+                    <Ionicons name="time-outline" size={14} color={COLORS.lime} />
                     <Text style={styles.info}>{item.estimated_duration}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
 
-              {/* Botón de Acción Principal - Negro Minimalista con acento iOS */}
+              {/* Botón de Acción Principal */}
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleStartTrekking(item.id, item.name)}
                 activeOpacity={0.85}
               >
-                <Ionicons name="navigate-outline" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Ionicons name="navigate-outline" size={16} color={COLORS.black} style={{ marginRight: 8 }} />
                 <Text style={styles.actionButtonText}>Iniciar Trekking</Text>
               </TouchableOpacity>
             </View>
@@ -175,7 +191,7 @@ export default function ParkDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Fondo claro unificado con el Index
+    backgroundColor: COLORS.bg,
     paddingHorizontal: 20,
     paddingTop: 8,
   },
@@ -186,63 +202,81 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: 18,
     marginTop: 8,
     paddingHorizontal: 4,
   },
   backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginLeft: -6,
-      marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: -6,
+    marginBottom: 14,
+  },
+  roundButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.glass,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    marginRight: 6,
   },
   backText: {
-      color: COLORS.ink,
-      fontSize: 16,
-      fontWeight: '500',
-      marginLeft: 2,
+    color: COLORS.inkSecondary,
+    fontSize: 15,
+    fontWeight: '500',
   },
   mainTitle: {
-    fontSize: 30, // Título principal elegante alineado con el resto de la app
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
     color: COLORS.ink,
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.inkSecondary,
+    marginTop: 4,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 15,
-    color: COLORS.slate,
+    color: COLORS.inkSecondary,
     fontWeight: '500',
   },
   listContent: {
     paddingBottom: 36,
   },
-  // Tarjeta estilo iOS Limpia y Clara
+  // Tarjeta estilo oscuro minimalista
   card: {
-    backgroundColor: COLORS.cloud,
+    backgroundColor: COLORS.surface,
     borderRadius: 20,
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: COLORS.surfaceBorder,
     overflow: 'hidden',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
   },
   cardTouch: {
     padding: 18,
     paddingBottom: 14,
   },
   cardHeaderRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  trailIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.limeDim,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
   },
   name: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
     color: COLORS.ink,
     flex: 1,
@@ -251,63 +285,61 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    color: COLORS.slate,
+    color: COLORS.inkSecondary,
     marginBottom: 14,
     lineHeight: 18,
+    marginLeft: 40,
   },
   metaContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderTopWidth: 1,
-      borderTopColor: COLORS.mist,
-      paddingTop: 12,
-      marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+    paddingTop: 12,
+    marginTop: 2,
   },
   metaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   metaDivider: {
-      width: 1,
-      height: 12,
-      backgroundColor: COLORS.mist,
-      marginHorizontal: 12,
+    width: 1,
+    height: 12,
+    backgroundColor: COLORS.divider,
+    marginHorizontal: 12,
   },
   info: {
-    color: COLORS.slate,
+    color: COLORS.inkSecondary,
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     marginLeft: 5,
   },
-  // Botón de acción principal sólido y moderno
+  // Botón de acción principal — acento lima, coherente con el resto de la app
   actionButton: {
     flexDirection: 'row',
-    backgroundColor: "#111111",
+    backgroundColor: COLORS.lime,
     margin: 16,
     marginTop: 4,
     height: 48,
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
   },
   actionButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.black,
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "800",
   },
   statusContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 16,
-      backgroundColor: 'rgba(255, 59, 48, 0.08)',
-      marginVertical: 12,
-      borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: COLORS.dangerDim,
+    marginVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,94,0.25)',
   },
   error: {
     color: COLORS.danger,
@@ -317,19 +349,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   retryButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      backgroundColor: COLORS.mist,
-      borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: COLORS.glass,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   retryText: {
-      color: COLORS.ink,
-      fontSize: 13,
-      fontWeight: '600',
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
   emptyText: {
     fontSize: 15,
-    color: COLORS.slate,
+    color: COLORS.inkSecondary,
     textAlign: "center",
     fontWeight: '500',
   },

@@ -12,12 +12,44 @@ import { registerCheckpoint } from "@/features/checkpoints/services/checkpointSe
 import { enqueueCheckpoint } from "@/features/checkpoints/services/offlineQueue";
 import { useRescue } from "@/features/rescues/hooks/useRescue";
 
+// --- Paleta -----------------------------------------------------------------
+// La misma que en Parques: negro como lienzo, blanco/gris para jerarquía de
+// texto, y un único verde lima como acento. Sin rojo: la urgencia se comunica
+// con contraste, borde y tipografía, no con otro color.
+const COLORS = {
+  bg: "#0B0C0D",
+  surface: "#17181B",
+  surfaceBorder: "rgba(255,255,255,0.08)",
+  divider: "rgba(255,255,255,0.08)",
+  glass: "rgba(255,255,255,0.06)",
+  glassBorder: "rgba(255,255,255,0.10)",
+  ink: "#FFFFFF",
+  inkSecondary: "#9BA1A6",
+  inkTertiary: "#6E7378",
+  lime: "#C6FF4D",
+  limeDim: "rgba(198,255,77,0.14)",
+  limeBorder: "rgba(198,255,77,0.35)",
+  black: "#0B0C0D",
+};
+
+function BackButton() {
+  return (
+    <Pressable
+      style={styles.backButton}
+      onPress={() => router.back()}
+      hitSlop={8}
+    >
+      <Ionicons name="chevron-back" size={20} color={COLORS.ink} />
+    </Pressable>
+  );
+}
+
 export default function ActiveTrekkingScreen() {
   const { activeTrekking, setActiveTrekking, setLastCompletedTrekking } = useAuth();
   const { scannedQr, setScannedQr } = useScan();
-  
+
   const [isFinishing, setIsFinishing] = useState(false);
-  
+
   const {
     activeRescue,
     activeRescueLoading,
@@ -247,17 +279,23 @@ export default function ActiveTrekkingScreen() {
   if (!activeTrekking) {
     return (
       <SafeAreaView style={styles.center} edges={["top", "left", "right", "bottom"]}>
-        <View style={styles.emptyIconContainer}>
-          <Ionicons name="compass-outline" size={40} color="#666666" />
+        <View style={styles.emptyHeader}>
+          <BackButton />
         </View>
-        <Text style={styles.emptyText}>No existe un trekking activo.</Text>
-        
-        <Pressable
-          style={styles.historyButtonAlt}
-          onPress={() => router.push("/trekking/history")}
-        >
-          <Text style={styles.historyButtonTextAlt}>Mis trekkings</Text>
-        </Pressable>
+
+        <View style={styles.emptyBody}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="compass-outline" size={40} color={COLORS.inkTertiary} />
+          </View>
+          <Text style={styles.emptyText}>No existe un trekking activo.</Text>
+
+          <Pressable
+            style={styles.historyButtonAlt}
+            onPress={() => router.push("/trekking/history")}
+          >
+            <Text style={styles.historyButtonTextAlt}>Mis trekkings</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }
@@ -265,15 +303,19 @@ export default function ActiveTrekkingScreen() {
   return (
     <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Cabecera Limpia y Proporcionada */}
+
+        {/* Cabecera */}
         <View style={styles.headerContainer}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>Trekking en curso</Text>
+          <View style={styles.topRow}>
+            <BackButton />
+
             <View style={styles.liveIndicator}>
               <View style={styles.liveDot} />
+              <Text style={styles.liveIndicatorText}>En vivo</Text>
             </View>
           </View>
+
+          <Text style={styles.title}>Trekking en curso</Text>
           <Text style={styles.subtitle}>Monitoreo de ruta en tiempo real</Text>
         </View>
 
@@ -281,7 +323,7 @@ export default function ActiveTrekkingScreen() {
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.labelGroup}>
-              <Ionicons name="finger-print-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Ionicons name="finger-print-outline" size={16} color={COLORS.inkSecondary} style={{ marginRight: 6 }} />
               <Text style={styles.label}>ID del recorrido</Text>
             </View>
             <Text style={styles.value}>#{activeTrekking.id}</Text>
@@ -291,7 +333,7 @@ export default function ActiveTrekkingScreen() {
 
           <View style={styles.row}>
             <View style={styles.labelGroup}>
-              <Ionicons name="map-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Ionicons name="map-outline" size={16} color={COLORS.inkSecondary} style={{ marginRight: 6 }} />
               <Text style={styles.label}>Sendero</Text>
             </View>
             <Text style={styles.value}>Sendero #{activeTrekking.trail}</Text>
@@ -301,7 +343,7 @@ export default function ActiveTrekkingScreen() {
 
           <View style={styles.row}>
             <View style={styles.labelGroup}>
-              <Ionicons name="shield-checkmark-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.inkSecondary} style={{ marginRight: 6 }} />
               <Text style={styles.label}>Estado</Text>
             </View>
             <View style={styles.statusPill}>
@@ -313,7 +355,7 @@ export default function ActiveTrekkingScreen() {
 
           <View style={styles.column}>
             <View style={styles.labelGroup}>
-              <Ionicons name="time-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Ionicons name="time-outline" size={16} color={COLORS.inkSecondary} style={{ marginRight: 6 }} />
               <Text style={styles.label}>Hora de inicio</Text>
             </View>
             <Text style={styles.valueSub}>
@@ -325,7 +367,7 @@ export default function ActiveTrekkingScreen() {
 
           <View style={styles.column}>
             <View style={styles.labelGroup}>
-              <Ionicons name="alarm-outline" size={16} color="#666666" style={{ marginRight: 6 }} />
+              <Ionicons name="alarm-outline" size={16} color={COLORS.inkSecondary} style={{ marginRight: 6 }} />
               <Text style={styles.label}>Retorno estimado</Text>
             </View>
             <Text style={styles.valueSub}>
@@ -337,25 +379,25 @@ export default function ActiveTrekkingScreen() {
         {/* Contenedor de Botones de Acción */}
         <View style={styles.buttonContainer}>
           <Pressable
-            style={styles.primaryButton}
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
             onPress={() => router.push("/scan")}
           >
-            <Ionicons name="scan-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Ionicons name="scan-outline" size={18} color={COLORS.black} style={{ marginRight: 8 }} />
             <Text style={styles.primaryButtonText}>Escanear checkpoint</Text>
           </Pressable>
 
           <Pressable
-            style={styles.warningButton}
+            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
             onPress={() => router.push("/trekking/incident")}
           >
-            <Ionicons name="warning-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
-            <Text style={styles.warningButtonText}>Reportar incidente</Text>
+            <Ionicons name="warning-outline" size={18} color={COLORS.ink} style={{ marginRight: 8 }} />
+            <Text style={styles.secondaryButtonText}>Reportar incidente</Text>
           </Pressable>
 
           {!activeRescueLoading && activeRescue ? (
             <View style={styles.rescueActiveContainer}>
               <View style={styles.rescueActiveHeader}>
-                <Ionicons name="alert-circle" size={20} color="#D32F2F" style={{ marginRight: 6 }} />
+                <Ionicons name="alert-circle" size={20} color={COLORS.lime} style={{ marginRight: 6 }} />
                 <Text style={styles.rescueActiveTitle}>Rescate activo</Text>
               </View>
               <Text style={styles.rescueActiveText}>
@@ -393,7 +435,7 @@ export default function ActiveTrekkingScreen() {
               onPress={handleRequestRescue}
               disabled={rescueLoading || activeRescueLoading}
             >
-              <Ionicons name="alert-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Ionicons name="alert-circle-outline" size={18} color={COLORS.lime} style={{ marginRight: 8 }} />
               <Text style={styles.rescueButtonText}>
                 {rescueLoading
                   ? "Solicitando rescate..."
@@ -409,7 +451,7 @@ export default function ActiveTrekkingScreen() {
             onPress={handleFinishTrekking}
             disabled={isFinishing}
           >
-            <Ionicons name="stop-circle-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Ionicons name="stop-circle-outline" size={18} color={COLORS.black} style={{ marginRight: 8 }} />
             <Text style={styles.dangerButtonText}>
               {isFinishing ? "Finalizando..." : "Finalizar Trekking"}
             </Text>
@@ -419,9 +461,11 @@ export default function ActiveTrekkingScreen() {
             style={styles.historyButton}
             onPress={() => router.push("/trekking/history")}
           >
-            <Ionicons name="time-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
+            <View style={styles.historyIconWrap}>
+              <Ionicons name="time-outline" size={17} color={COLORS.lime} />
+            </View>
             <Text style={styles.historyButtonText}>Mis trekkings</Text>
-            <Ionicons name="chevron-forward" size={16} color="#666666" style={{ marginLeft: "auto" }} />
+            <Ionicons name="chevron-forward" size={16} color={COLORS.inkTertiary} style={{ marginLeft: "auto" }} />
           </Pressable>
         </View>
       </ScrollView>
@@ -432,88 +476,102 @@ export default function ActiveTrekkingScreen() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#F4F5F7",
+    backgroundColor: COLORS.bg,
   },
   scrollContent: {
     padding: 20,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 36,
   },
   center: {
     flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  emptyHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  emptyBody: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F4F5F7",
     padding: 24,
   },
   emptyIconContainer: {
     width: 72,
     height: 72,
     borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: COLORS.surfaceBorder,
   },
   emptyText: {
     fontSize: 16,
-    color: "#666666",
+    color: COLORS.inkSecondary,
     fontWeight: "500",
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.glass,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   headerContainer: {
     marginBottom: 20,
   },
-  titleRow: {
+  topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: -0.4,
+    fontSize: 26,
+    fontWeight: "800",
+    color: COLORS.ink,
+    letterSpacing: -0.5,
   },
   liveIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#E8F5E9",
-    justifyContent: "center",
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: COLORS.limeDim,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#C8E6C9",
+    borderColor: COLORS.limeBorder,
+    gap: 6,
   },
   liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#2E7D32",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.lime,
+  },
+  liveIndicatorText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.lime,
   },
   subtitle: {
     fontSize: 14,
-    color: "#666666",
-    marginTop: 2,
+    color: COLORS.inkSecondary,
+    marginTop: 4,
     fontWeight: "500",
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderRadius: 20,
     padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.surfaceBorder,
   },
   row: {
     flexDirection: "row",
@@ -529,104 +587,100 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#F0F0F2",
+    backgroundColor: COLORS.divider,
     marginVertical: 14,
   },
   label: {
     fontSize: 14,
-    color: "#666666",
+    color: COLORS.inkSecondary,
     fontWeight: "500",
   },
   value: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111111",
+    color: COLORS.ink,
   },
   valueSub: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111111",
+    color: COLORS.ink,
     marginLeft: 22,
   },
   statusPill: {
-    backgroundColor: "#F4F5F7",
+    backgroundColor: COLORS.limeDim,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: COLORS.limeBorder,
   },
   statusPillText: {
-    color: "#111111",
-    fontWeight: "600",
+    color: COLORS.lime,
+    fontWeight: "700",
     fontSize: 12,
   },
   buttonContainer: {
     marginTop: 20,
     gap: 12,
   },
+  pressed: {
+    opacity: 0.85,
+  },
+  // CTA principal: única superficie 100% lima, igual criterio que "Ver parque".
   primaryButton: {
     flexDirection: "row",
-    backgroundColor: "#111111",
+    backgroundColor: COLORS.lime,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.black,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "800",
   },
-  warningButton: {
+  // Secundario: vidrio sobre negro, mismo lenguaje que los íconos del header.
+  secondaryButton: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.glass,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: COLORS.glassBorder,
   },
-  warningButtonText: {
-    color: "#111111",
+  secondaryButtonText: {
+    color: COLORS.ink,
     fontSize: 16,
     fontWeight: "600",
   },
+  // Rescate: no hay rojo disponible, así que la urgencia se marca con un
+  // borde lima grueso sobre fondo negro en vez de un color de alarma.
   rescueButton: {
     flexDirection: "row",
-    backgroundColor: "#D32F2F",
+    backgroundColor: COLORS.black,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: COLORS.lime,
   },
   rescueButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.lime,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   rescueActiveContainer: {
-    backgroundColor: "#FDEDEC",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "#F5B7B1",
+    borderColor: COLORS.limeBorder,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.lime,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     gap: 10,
   },
   rescueActiveHeader: {
@@ -634,12 +688,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rescueActiveTitle: {
-    color: "#C0392B",
+    color: COLORS.ink,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   rescueActiveText: {
-    color: "#922B21",
+    color: COLORS.inkSecondary,
     fontSize: 14,
     fontWeight: "500",
   },
@@ -650,86 +704,84 @@ const styles = StyleSheet.create({
   },
   completeRescueButton: {
     flex: 1,
-    backgroundColor: "#27AE60",
+    backgroundColor: COLORS.lime,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   completeRescueButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.black,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   cancelRescueButton: {
     flex: 1,
-    backgroundColor: "#C0392B",
+    backgroundColor: "transparent",
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   cancelRescueButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.ink,
     fontSize: 14,
     fontWeight: "600",
   },
+  // Finalizar trekking: acción decisiva y definitiva -> blanco sólido,
+  // el mayor contraste posible sobre el lienzo negro.
   dangerButton: {
     flexDirection: "row",
-    backgroundColor: "#FF3B30",
+    backgroundColor: COLORS.ink,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
   },
   dangerButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.black,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "800",
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   historyButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: COLORS.surfaceBorder,
     marginTop: 4,
   },
+  historyIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.limeDim,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
   historyButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#111111",
+    color: COLORS.ink,
   },
   historyButtonAlt: {
-    backgroundColor: "#111111",
+    backgroundColor: COLORS.lime,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 14,
+    borderRadius: 16,
     marginTop: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
   },
   historyButtonTextAlt: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#ffffff",
+    fontWeight: "800",
+    color: COLORS.black,
   },
 });

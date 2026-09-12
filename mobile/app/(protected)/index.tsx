@@ -14,34 +14,44 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useParks } from "@/features/parks/hooks/useParks";
 
+// --- Paleta ----------------------------------------------------------------
+// Solo negro, blanco, gris y verde — pero llevado a un modo oscuro más
+// editorial: el negro es el lienzo, el verde (un lima vibrante) es la única
+// nota de color y se usa con confianza, no como detalle tímido.
+const COLORS = {
+  bg: "#0B0C0D",
+  surface: "#17181B",
+  surfaceBorder: "rgba(255,255,255,0.08)",
+  glass: "rgba(255,255,255,0.06)",
+  glassBorder: "rgba(255,255,255,0.10)",
+  ink: "#FFFFFF",
+  inkSecondary: "#9BA1A6",
+  inkTertiary: "#6E7378",
+  lime: "#C6FF4D",
+  limeDim: "rgba(198,255,77,0.14)",
+  black: "#0B0C0D",
+};
+
 export default function ParksScreen() {
   const { logout, activeTrekking } = useAuth();
 
-  const {
-    parks,
-    isLoading,
-    error,
-    reload,
-  } = useParks();
+  const { parks, isLoading, error, reload } = useParks();
 
   // --- Identificador Único para Torres del Paine ---
-  const TORRES_DEL_PAINE_ID = '1'; 
+  const TORRES_DEL_PAINE_ID = "1";
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color="#111111" />
-        <Text style={styles.message}>
-          Cargando parques...
-        </Text>
+        <ActivityIndicator size="large" color={COLORS.lime} />
+        <Text style={styles.message}>Cargando parques...</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      
-      {/* Header Principal Minimalista iOS */}
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      {/* Header Principal */}
       <View style={styles.header}>
         <Text style={styles.title}>Parques</Text>
 
@@ -51,29 +61,36 @@ export default function ParksScreen() {
             onPress={() => router.push("/scan")}
             activeOpacity={0.7}
           >
-            <Ionicons name="scan-outline" size={20} color="#111111" />
+            <Ionicons name="scan-outline" size={19} color={COLORS.ink} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.iconButtonOutline}
+            style={styles.iconButton}
             onPress={logout}
             activeOpacity={0.7}
           >
-            <Ionicons name="log-out-outline" size={20} color="#111111" />
+            <Ionicons name="log-out-outline" size={19} color={COLORS.ink} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Botón condicional de Trekking Activo */}
+      {/* Botón condicional de Trekking Activo — la única superficie 100% lima */}
       {activeTrekking && (
         <TouchableOpacity
           style={styles.activeBanner}
           onPress={() => router.push("/(protected)/trekking")}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Ionicons name="navigate" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.activeBannerText}>Ver trekking activo</Text>
-          <Ionicons name="chevron-forward" size={16} color="#FFFFFF" style={{ marginLeft: "auto" }} />
+          <View style={styles.activeBannerIconWrap}>
+            <Ionicons name="navigate" size={17} color={COLORS.lime} />
+          </View>
+          <View style={styles.activeBannerTextWrap}>
+            <Text style={styles.activeBannerEyebrow}>EN CURSO</Text>
+            <Text style={styles.activeBannerText}>Ver trekking activo</Text>
+          </View>
+          <View style={styles.activeBannerChevronWrap}>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.black} />
+          </View>
         </TouchableOpacity>
       )}
 
@@ -83,22 +100,20 @@ export default function ParksScreen() {
         onPress={() => router.push("/trekking/history")}
         activeOpacity={0.8}
       >
-        <Ionicons name="time-outline" size={18} color="#111111" style={{ marginRight: 8 }} />
-        <Text style={styles.historyButtonText}>
-          Mis trekkings
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color="#666666" style={{ marginLeft: "auto" }} />
+        <View style={styles.historyIconWrap}>
+          <Ionicons name="time-outline" size={17} color={COLORS.lime} />
+        </View>
+        <Text style={styles.historyButtonText}>Mis trekkings</Text>
+        <Ionicons name="chevron-forward" size={16} color={COLORS.inkTertiary} />
       </TouchableOpacity>
 
-      {error && (
-        <Text style={styles.error}>
-          {error}
-        </Text>
-      )}
+      {error && <Text style={styles.error}>{error}</Text>}
 
       {!error && parks.length === 0 && (
         <View style={styles.center}>
-          <Ionicons name="map-outline" size={48} color="#999999" style={{ marginBottom: 12 }} />
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="map-outline" size={30} color={COLORS.inkTertiary} />
+          </View>
           <Text style={styles.emptyText}>No existen parques disponibles.</Text>
         </View>
       )}
@@ -112,44 +127,71 @@ export default function ParksScreen() {
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            
             const isTorresDelPaine = item.id.toString() === TORRES_DEL_PAINE_ID;
 
             return (
               <TouchableOpacity
                 style={styles.card}
-                activeOpacity={0.88}
+                activeOpacity={0.92}
                 onPress={() => {
                   router.push(`/(protected)/parks/${item.id}`);
                 }}
               >
-                {/* Imagen destacada superior estilo tarjeta de viaje */}
-              <View style={styles.cardImageContainer}>
+                {/* Tarjeta "poster": la foto ocupa toda la tarjeta y el
+                    contenido flota encima, como una portada de ruta. */}
                 <Image
                   source={require("../../assets/torres.jpg")}
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
-                  {isTorresDelPaine && (
+
+                {/* Velo en dos capas para simular degradado sin dependencias */}
+                <View style={styles.cardScrimSoft} />
+                <View style={styles.cardScrimStrong} />
+
+                {/* Fila superior: badge de región + insignia */}
+                <View style={styles.cardTopRow}>
+                  {isTorresDelPaine ? (
                     <View style={styles.regionBadge}>
-                      <Ionicons name="location" size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
-                      <Text style={styles.regionBadgeText}>Magallanes y de la Antártica Chilena</Text>
+                      <Ionicons
+                        name="location"
+                        size={12}
+                        color={COLORS.lime}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={styles.regionBadgeText} numberOfLines={1}>
+                        Magallanes y de la Antártica Chilena
+                      </Text>
                     </View>
+                  ) : (
+                    <View />
                   )}
+
+                  <View style={styles.cardLeafBadge}>
+                    <Ionicons name="leaf" size={14} color={COLORS.lime} />
+                  </View>
                 </View>
 
-                {/* Contenido de la Tarjeta */}
+                {/* Contenido inferior, flotando sobre la imagen */}
                 <View style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.parkName}>
-                      {item.name}
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color="#888888" />
-                  </View>
+                  <Text style={styles.parkName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
 
                   <Text style={styles.description} numberOfLines={2}>
                     {item.description}
                   </Text>
+
+                  <View style={styles.cardFooter}>
+                    <View style={styles.ctaPill}>
+                      <Text style={styles.ctaPillText}>Ver parque</Text>
+                      <Ionicons
+                        name="arrow-forward"
+                        size={14}
+                        color={COLORS.black}
+                      />
+                    </View>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -163,7 +205,7 @@ export default function ParksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F5F7",
+    backgroundColor: COLORS.bg,
     paddingHorizontal: 20,
     paddingTop: 8,
   },
@@ -172,9 +214,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
-    marginTop: 8,
-    paddingHorizontal: 4,
+    marginBottom: 18,
+    marginTop: 6,
   },
 
   headerButtons: {
@@ -183,129 +224,155 @@ const styles = StyleSheet.create({
   },
 
   iconButton: {
-    backgroundColor: "#FFFFFF",
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    backgroundColor: COLORS.glass,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  iconButtonOutline: {
-    backgroundColor: "#FFFFFF",
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: COLORS.glassBorder,
   },
 
   title: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: -0.5,
+    fontSize: 32,
+    fontWeight: "800",
+    color: COLORS.ink,
+    letterSpacing: -0.8,
   },
 
+  // --- Banner de trekking activo ---
   activeBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#111111",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    backgroundColor: COLORS.lime,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  },
+
+  activeBannerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.black,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  activeBannerTextWrap: {
+    flex: 1,
+  },
+
+  activeBannerEyebrow: {
+    color: "rgba(11,12,13,0.6)",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    marginBottom: 1,
   },
 
   activeBannerText: {
-    color: "#FFFFFF",
+    color: COLORS.black,
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "800",
+  },
+
+  activeBannerChevronWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(11,12,13,0.14)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   historyButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 20,
+    backgroundColor: COLORS.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 22,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: COLORS.surfaceBorder,
+  },
+
+  historyIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.limeDim,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
 
   historyButtonText: {
+    flex: 1,
     fontSize: 15,
     fontWeight: "600",
-    color: "#111111",
+    color: COLORS.ink,
   },
 
   listContainer: {
     paddingBottom: 24,
   },
 
-  // --- Estilo Tarjeta con Imagen (Estilo App de Viajes) ---
+  // --- Tarjeta "poster" de ruta ---
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    height: 280,
+    borderRadius: 28,
     marginBottom: 18,
+    overflow: "hidden",
+    backgroundColor: "#1B1C1E",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    overflow: "hidden", // Para recortar la imagen en las esquinas superiores
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-
-  cardImageContainer: {
-    height: 160,
-    width: "100%",
-    backgroundColor: "#E1E4E8",
-    position: "relative",
+    borderColor: COLORS.surfaceBorder,
   },
 
   cardImage: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
+  },
+
+  cardScrimSoft: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.18)",
+  },
+
+  cardScrimStrong: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "62%",
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
+
+  cardTopRow: {
+    position: "absolute",
+    top: 14,
+    left: 14,
+    right: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
 
   regionBadge: {
-    position: "absolute",
-    top: 12,
-    left: 12,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    backgroundColor: "rgba(11,12,13,0.55)",
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 20,
+    maxWidth: "78%",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
   },
 
   regionBadgeText: {
@@ -314,36 +381,65 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  cardContent: {
-    padding: 16,
+  cardLeafBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(11,12,13,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
   },
 
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
+  cardContent: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 16,
   },
 
   parkName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: -0.3,
-    flex: 1,
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: -0.4,
+    marginBottom: 4,
   },
 
   description: {
     fontSize: 13,
-    color: "#666666",
+    color: "rgba(255,255,255,0.72)",
     lineHeight: 18,
+    marginBottom: 14,
+  },
+
+  cardFooter: {
+    flexDirection: "row",
+  },
+
+  ctaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 16,
+    gap: 6,
+  },
+
+  ctaPillText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: COLORS.black,
   },
 
   error: {
-    color: "#E53935",
+    color: COLORS.ink,
     fontSize: 14,
     marginBottom: 12,
     textAlign: "center",
+    fontWeight: "600",
   },
 
   center: {
@@ -351,18 +447,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#F4F5F7",
+    backgroundColor: COLORS.bg,
+  },
+
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
   },
 
   message: {
     marginTop: 12,
     fontSize: 15,
-    color: "#666666",
+    color: COLORS.inkSecondary,
   },
 
   emptyText: {
     fontSize: 15,
-    color: "#666666",
+    color: COLORS.inkSecondary,
     fontWeight: "500",
   },
 });
