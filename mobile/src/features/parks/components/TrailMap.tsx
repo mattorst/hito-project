@@ -1,10 +1,12 @@
-import React, { useMemo } from "react";
-
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import MapView, {
   Marker,
   Polyline,
 } from "react-native-maps";
-
 import type {
   Checkpoint,
   GeoJSONLineString,
@@ -19,6 +21,8 @@ export default function TrailMap({
   routeGeoJSON,
   checkpoints,
 }: TrailMapProps) {
+  const mapRef = useRef<MapView | null>(null);
+
   const routeCoordinates = useMemo(() => {
     if (!routeGeoJSON) {
       return [];
@@ -71,8 +75,44 @@ export default function TrailMap({
       );
   }, [checkpoints]);
 
+  const mapCoordinates = useMemo(() => {
+    return [
+      ...routeCoordinates,
+      ...validCheckpoints.map(
+        ({ latitude, longitude }) => ({
+          latitude,
+          longitude,
+        }),
+      ),
+    ];
+  }, [routeCoordinates, validCheckpoints]);
+
+  useEffect(() => {
+    if (!mapRef.current || mapCoordinates.length === 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      mapRef.current?.fitToCoordinates(
+        mapCoordinates,
+        {
+          edgePadding: {
+            top: 40,
+            right: 40,
+            bottom: 70,
+            left: 40,
+          },
+          animated: false,
+        },
+      );
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [mapCoordinates]);
+
   return (
     <MapView
+      ref={mapRef}
       style={{ flex: 1 }}
     >
       {routeCoordinates.length >= 2 && (
