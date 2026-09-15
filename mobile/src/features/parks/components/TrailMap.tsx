@@ -13,6 +13,7 @@ import MapView, {
   Polyline,
 } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
+import type { LocationObject } from "expo-location";
 import type {
   Checkpoint,
   GeoJSONLineString,
@@ -29,11 +30,13 @@ const COLORS = {
 interface TrailMapProps {
   routeGeoJSON: GeoJSONLineString | null;
   checkpoints: Checkpoint[];
+  location?: LocationObject | null;
 }
 
 export default function TrailMap({
   routeGeoJSON,
   checkpoints,
+  location,
 }: TrailMapProps) {
   const mapRef = useRef<MapView | null>(null);
 
@@ -89,6 +92,32 @@ export default function TrailMap({
       );
   }, [checkpoints]);
 
+  // Validar y calcular la coordenada actual del usuario
+  const userCoordinate = useMemo(() => {
+    if (!location) {
+      return null;
+    }
+
+    const { latitude, longitude } = location.coords;
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return null;
+    }
+
+    return {
+      latitude,
+      longitude,
+    };
+  }, [location]);
+
+  // Excluimos deliberadamente userCoordinate de fitToCoordinates para no deformar el zoom del sendero
   const mapCoordinates = useMemo(() => {
     return [
       ...routeCoordinates,
@@ -168,6 +197,14 @@ export default function TrailMap({
             title={checkpoint.name}
           />
         ),
+      )}
+
+      {/* Marcador de la posición actual del usuario */}
+      {userCoordinate && (
+        <Marker
+          coordinate={userCoordinate}
+          title="Mi ubicación"
+        />
       )}
     </MapView>
   );
