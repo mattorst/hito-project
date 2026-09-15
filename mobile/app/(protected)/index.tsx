@@ -71,6 +71,15 @@ export default function ParksScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Parques</Text>
 
+
+         <TouchableOpacity
+        style={styles.iconButton}
+        onPress={() => router.push("/location-test")}
+        activeOpacity={0.7}
+        >
+        <Ionicons name="location-outline" size={19} color={COLORS.ink} />
+        </TouchableOpacity>
+
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.iconButton}
@@ -89,6 +98,9 @@ export default function ParksScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+
+     
 
       {/* Botón condicional de Trekking Activo */}
       {activeTrekking && (

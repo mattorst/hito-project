@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Hito utiliza la cámara para escanear códigos QR de los checkpoints durante el recorrido."
+        "NSCameraUsageDescription": "Hito utiliza la cámara para escanear códigos QR de los checkpoints durante el recorrido.",
+        "NSLocationWhenInUseUsageDescription": "Hito utiliza tu ubicación para mostrar tu posición en el mapa y registrar tu ruta durante el trekking."
       }
     },
     "android": {
@@ -26,7 +27,9 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
@@ -41,7 +44,12 @@
           "cameraPermission": "Hito necesita acceder a la cámara para escanear los códigos QR de los checkpoints."
         }
       ],
-      "expo-location"
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Hito necesita tu ubicación para registrar tu ruta en el trekking."
+        }
+      ]
     ]
   }
 }
