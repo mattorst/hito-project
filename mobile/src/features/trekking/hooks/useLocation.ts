@@ -10,6 +10,7 @@ import {
 export type LocationStatus =
   | "idle"
   | "checking"
+  | "permission_undetermined"
   | "permission_denied"
   | "location_disabled"
   | "ready"
@@ -40,29 +41,36 @@ export function useLocation(): UseLocationResult {
     try {
       const permissionStatus = await getForegroundPermissionStatus();
 
-      if (permissionStatus !== "granted") {
+      if (permissionStatus === "undetermined") {
+        setHasPermission(false);
+        setLocation(null);
+        setStatus("permission_undetermined");
+        return;
+      }
+
+      if (permissionStatus === "denied") {
         setHasPermission(false);
         setLocation(null);
         setStatus("permission_denied");
+        setError("Hito necesita permiso para acceder a tu ubicación.");
         return;
       }
 
       setHasPermission(true);
 
       const enabled = await isLocationEnabled();
-
       setLocationEnabled(enabled);
 
       if (!enabled) {
         setLocation(null);
         setStatus("location_disabled");
+        setError("Los servicios de ubicación están desactivados. Actívalos para continuar.");
         return;
       }
 
       setStatus("ready");
     } catch (err) {
       console.error("Error al verificar ubicación:", err);
-
       setStatus("error");
       setError("No fue posible verificar el estado de la ubicación.");
     }
@@ -79,25 +87,25 @@ export function useLocation(): UseLocationResult {
         setHasPermission(false);
         setLocation(null);
         setStatus("permission_denied");
+        setError("Hito necesita permiso para acceder a tu ubicación.");
         return;
       }
 
       setHasPermission(true);
 
       const enabled = await isLocationEnabled();
-
       setLocationEnabled(enabled);
 
       if (!enabled) {
         setLocation(null);
         setStatus("location_disabled");
+        setError("Los servicios de ubicación están desactivados. Actívalos para continuar.");
         return;
       }
 
       setStatus("ready");
     } catch (err) {
       console.error("Error al solicitar permiso de ubicación:", err);
-
       setStatus("error");
       setError("No fue posible configurar el acceso a la ubicación.");
     }
@@ -109,36 +117,42 @@ export function useLocation(): UseLocationResult {
     try {
       const permissionStatus = await getForegroundPermissionStatus();
 
-      if (permissionStatus !== "granted") {
+      if (permissionStatus === "undetermined") {
+        setHasPermission(false);
+        setLocation(null);
+        setStatus("permission_undetermined");
+        return;
+      }
+
+      if (permissionStatus === "denied") {
         setHasPermission(false);
         setLocation(null);
         setStatus("permission_denied");
+        setError("Hito necesita permiso para acceder a tu ubicación.");
         return;
       }
 
       setHasPermission(true);
 
       const enabled = await isLocationEnabled();
-
       setLocationEnabled(enabled);
 
       if (!enabled) {
         setLocation(null);
         setStatus("location_disabled");
+        setError("Los servicios de ubicación están desactivados. Actívalos para continuar.");
         return;
       }
 
       setStatus("checking");
 
       const currentLocation = await getCurrentLocation();
-
       setLocation(currentLocation);
       setStatus("ready");
     } catch (err) {
       console.error("Error al obtener ubicación:", err);
-
       setStatus("error");
-      setError("No fue posible obtener la ubicación actual.");
+      setError("No fue posible obtener la ubicación actual. Inténtalo nuevamente.");
     }
   }, []);
 

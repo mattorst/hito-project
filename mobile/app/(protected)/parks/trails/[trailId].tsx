@@ -15,7 +15,6 @@ import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
 import { getTrails } from "@/features/parks/services/parksService";
 import type { Trail } from "@/features/parks/types";
 import TrailMap from "@/features/parks/components/TrailMap";
-import { useLocation } from "@/features/trekking/hooks/useLocation";
 
 // --- Paleta de Colores iOS Auténtica ---
 const COLORS = {
@@ -41,9 +40,6 @@ export default function TrailDetailScreen() {
   const [trail, setTrail] = useState<Trail | null>(null);
   const [isTrailLoading, setIsTrailLoading] = useState(true);
   const [isMapModalVisible, setIsMapModalVisible] = useState(false);
-
-  // Integración de localización
-  const { location, getLocation } = useLocation();
 
   const {
     checkpoints,
@@ -136,18 +132,7 @@ export default function TrailDetailScreen() {
                 <TrailMap 
                   routeGeoJSON={trail?.route_geojson ?? null} 
                   checkpoints={checkpoints} 
-                  location={location}
                 />
-
-                {/* Botón temporal de prueba para obtener posición actual */}
-                <TouchableOpacity
-                  style={styles.locationButton}
-                  onPress={getLocation}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="locate-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.locationButtonText}>Mostrar mi ubicación</Text>
-                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.expandButton}
@@ -253,7 +238,6 @@ export default function TrailDetailScreen() {
             <TrailMap 
               routeGeoJSON={trail?.route_geojson ?? null} 
               checkpoints={checkpoints} 
-              location={location}
             />
           </View>
         </SafeAreaView>
@@ -347,28 +331,6 @@ const styles = StyleSheet.create({
     height: 220,
     width: "100%",
     position: 'relative',
-  },
-  locationButton: {
-    position: "absolute",
-    bottom: 14,
-    left: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  locationButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 5,
   },
   expandButton: {
     position: 'absolute',
