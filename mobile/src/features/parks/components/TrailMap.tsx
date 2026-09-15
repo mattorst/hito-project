@@ -3,14 +3,28 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import MapView, {
   Marker,
   Polyline,
 } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
 import type {
   Checkpoint,
   GeoJSONLineString,
 } from "../types";
+
+// Paleta oscura consistente con el resto de la app
+const COLORS = {
+  surface: "#17181B",
+  surfaceBorder: "rgba(255,255,255,0.08)",
+  inkSecondary: "#9BA1A6",
+  inkTertiary: "#6E7378",
+};
 
 interface TrailMapProps {
   routeGeoJSON: GeoJSONLineString | null;
@@ -110,6 +124,23 @@ export default function TrailMap({
     return () => clearTimeout(timer);
   }, [mapCoordinates]);
 
+  // Si no hay puntos de ruta ni checkpoints válidos, mostrar estado vacío
+  const hasData = mapCoordinates.length > 0;
+
+  if (!hasData) {
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name="map-outline" size={28} color={COLORS.inkTertiary} />
+        </View>
+        <Text style={styles.emptyTitle}>Mapa no disponible</Text>
+        <Text style={styles.emptySubtitle}>
+          Este sendero aún no tiene una ruta o checkpoints configurados.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <MapView
       ref={mapRef}
@@ -141,3 +172,37 @@ export default function TrailMap({
     </MapView>
   );
 }
+
+const styles = StyleSheet.create({
+  emptyContainer: {
+    flex: 1,
+    backgroundColor: "#111214",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: COLORS.inkSecondary,
+    textAlign: "center",
+    maxWidth: 240,
+    lineHeight: 18,
+  },
+});
