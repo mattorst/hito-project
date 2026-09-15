@@ -15,9 +15,6 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import { useParks } from "@/features/parks/hooks/useParks";
 
 // --- Paleta ----------------------------------------------------------------
-// Solo negro, blanco, gris y verde — pero llevado a un modo oscuro más
-// editorial: el negro es el lienzo, el verde (un lima vibrante) es la única
-// nota de color y se usa con confianza, no como detalle tímido.
 const COLORS = {
   bg: "#0B0C0D",
   surface: "#17181B",
@@ -32,13 +29,32 @@ const COLORS = {
   black: "#0B0C0D",
 };
 
+// --- Mapeo de Assets y Ubicaciones por Parque ---
+const PARK_ASSETS: Record<
+  string,
+  { image: any; region: string }
+> = {
+  // Torres del Paine
+  "1": {
+    image: require("../../assets/torres.jpg"),
+    region: "Magallanes y de la Antártica Chilena",
+  },
+  // Altos de Lircay
+  "2": {
+    image: require("../../assets/altoslircay.jpg"),
+    region: "Región del Maule",
+  },
+};
+
+// Configuración por defecto si entra un parque no mapeado
+const DEFAULT_ASSET = {
+  image: require("../../assets/torres.jpg"),
+  region: "Chile",
+};
+
 export default function ParksScreen() {
   const { logout, activeTrekking } = useAuth();
-
   const { parks, isLoading, error, reload } = useParks();
-
-  // --- Identificador Único para Torres del Paine ---
-  const TORRES_DEL_PAINE_ID = "1";
 
   if (isLoading) {
     return (
@@ -74,7 +90,7 @@ export default function ParksScreen() {
         </View>
       </View>
 
-      {/* Botón condicional de Trekking Activo — la única superficie 100% lima */}
+      {/* Botón condicional de Trekking Activo */}
       {activeTrekking && (
         <TouchableOpacity
           style={styles.activeBanner}
@@ -127,7 +143,21 @@ export default function ParksScreen() {
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const isTorresDelPaine = item.id.toString() === TORRES_DEL_PAINE_ID;
+            const parkIdStr = item.id.toString();
+            const parkNameLower = item.name.toLowerCase();
+
+            // Determinar asset según ID o nombre
+            let parkData = PARK_ASSETS[parkIdStr];
+
+            if (!parkData) {
+              if (parkNameLower.includes("lircay")) {
+                parkData = PARK_ASSETS["2"];
+              } else if (parkNameLower.includes("paine")) {
+                parkData = PARK_ASSETS["1"];
+              } else {
+                parkData = DEFAULT_ASSET;
+              }
+            }
 
             return (
               <TouchableOpacity
@@ -137,42 +167,37 @@ export default function ParksScreen() {
                   router.push(`/(protected)/parks/${item.id}`);
                 }}
               >
-                {/* Tarjeta "poster": la foto ocupa toda la tarjeta y el
-                    contenido flota encima, como una portada de ruta. */}
+                {/* Imagen dinámica por Parque */}
                 <Image
-                  source={require("../../assets/torres.jpg")}
+                  source={parkData.image}
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
 
-                {/* Velo en dos capas para simular degradado sin dependencias */}
+                {/* Velo en dos capas para degradado */}
                 <View style={styles.cardScrimSoft} />
                 <View style={styles.cardScrimStrong} />
 
                 {/* Fila superior: badge de región + insignia */}
                 <View style={styles.cardTopRow}>
-                  {isTorresDelPaine ? (
-                    <View style={styles.regionBadge}>
-                      <Ionicons
-                        name="location"
-                        size={12}
-                        color={COLORS.lime}
-                        style={{ marginRight: 4 }}
-                      />
-                      <Text style={styles.regionBadgeText} numberOfLines={1}>
-                        Magallanes y de la Antártica Chilena
-                      </Text>
-                    </View>
-                  ) : (
-                    <View />
-                  )}
+                  <View style={styles.regionBadge}>
+                    <Ionicons
+                      name="location"
+                      size={12}
+                      color={COLORS.lime}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.regionBadgeText} numberOfLines={1}>
+                      {parkData.region}
+                    </Text>
+                  </View>
 
                   <View style={styles.cardLeafBadge}>
                     <Ionicons name="leaf" size={14} color={COLORS.lime} />
                   </View>
                 </View>
 
-                {/* Contenido inferior, flotando sobre la imagen */}
+                {/* Contenido inferior */}
                 <View style={styles.cardContent}>
                   <Text style={styles.parkName} numberOfLines={1}>
                     {item.name}
@@ -241,7 +266,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
 
-  // --- Banner de trekking activo ---
   activeBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -322,7 +346,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
 
-  // --- Tarjeta "poster" de ruta ---
   card: {
     height: 280,
     borderRadius: 28,

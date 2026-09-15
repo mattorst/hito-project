@@ -129,7 +129,7 @@ export default function TrailDetailScreen() {
             {/* Tarjeta de Mapa Inmersiva con Estilo iOS Moderno */}
             <View style={styles.mapCard}>
               <View style={styles.mapContainer}>
-                <TrailMap routeGeoJSON={trail?.route_geojson ?? null} />
+                <TrailMap routeGeoJSON={trail?.route_geojson ?? null} checkpoints={checkpoints} />
                 <TouchableOpacity
                   style={styles.expandButton}
                   onPress={() => setIsMapModalVisible(true)}
@@ -231,7 +231,7 @@ export default function TrailDetailScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.modalMapWrapper}>
-            <TrailMap routeGeoJSON={trail?.route_geojson ?? null} />
+            <TrailMap routeGeoJSON={trail?.route_geojson ?? null} checkpoints={checkpoints} />
           </View>
         </SafeAreaView>
       </Modal>
