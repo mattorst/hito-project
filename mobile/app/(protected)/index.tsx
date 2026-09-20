@@ -80,6 +80,14 @@ export default function ParksScreen() {
         <Ionicons name="location-outline" size={19} color={COLORS.ink} />
         </TouchableOpacity>
 
+        <TouchableOpacity
+        style={styles.iconButton}
+        onPress={() => router.push("/tracking-test")}
+        activeOpacity={0.7}
+        >
+        <Ionicons name="navigate-outline" size={19} color={COLORS.ink} />
+        </TouchableOpacity>
+
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.iconButton}

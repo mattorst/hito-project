@@ -21,3 +21,16 @@ export async function getCurrentLocation(): Promise<Location.LocationObject> {
     accuracy: Location.Accuracy.High,
   });
 }
+
+export async function watchLocation(
+  callback: Location.LocationCallback,
+): Promise<Location.LocationSubscription> {
+  return Location.watchPositionAsync(
+    {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 5000,
+      distanceInterval: 10,
+    },
+    callback,
+  );
+}
