@@ -26,17 +26,12 @@ interface UseTrackingResult {
 }
 
 export function useTracking(): UseTrackingResult {
-  const [status, setStatus] =
-    useState<TrackingStatus>("idle");
+  const [status, setStatus] = useState<TrackingStatus>("idle");
+  const [location, setLocation] = useState<LocationObject | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [location, setLocation] =
-    useState<LocationObject | null>(null);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const subscriptionRef =
-    useRef<LocationSubscription | null>(null);
+  const subscriptionRef = useRef<LocationSubscription | null>(null);
+  const trackingSessionRef = useRef(0);
 
   const startTracking = useCallback(async () => {
     if (subscriptionRef.current) {
@@ -46,44 +41,54 @@ export function useTracking(): UseTrackingResult {
     setStatus("starting");
     setError(null);
 
+    const sessionId = trackingSessionRef.current + 1;
+    trackingSessionRef.current = sessionId;
+
     try {
-      const subscription = await watchLocation(
-        (newLocation) => {
-          setLocation(newLocation);
-        },
-      );
+      const subscription = await watchLocation((newLocation) => {
+        if (trackingSessionRef.current !== sessionId) {
+          return;
+        }
+
+        setLocation(newLocation);
+      });
+
+      if (trackingSessionRef.current !== sessionId) {
+        subscription.remove();
+        return;
+      }
 
       subscriptionRef.current = subscription;
-
       setStatus("tracking");
     } catch (err) {
-      console.error(
-        "Error al iniciar tracking:",
-        err,
-      );
+      if (trackingSessionRef.current !== sessionId) {
+        return;
+      }
 
+      console.error("Error al iniciar tracking:", err);
       setStatus("error");
-      setError(
-        "No fue posible iniciar el seguimiento de ubicación.",
-      );
+      setError("No fue posible iniciar el seguimiento de ubicación.");
     }
   }, []);
 
   const stopTracking = useCallback(() => {
-    if (!subscriptionRef.current) {
+    trackingSessionRef.current += 1;
+
+    const subscription = subscriptionRef.current;
+    subscriptionRef.current = null;
+
+    if (!subscription) {
       setStatus("stopped");
       return;
     }
 
-    subscriptionRef.current.remove();
-
-    subscriptionRef.current = null;
-
+    subscription.remove();
     setStatus("stopped");
   }, []);
 
   useEffect(() => {
     return () => {
+      trackingSessionRef.current += 1;
       subscriptionRef.current?.remove();
       subscriptionRef.current = null;
     };

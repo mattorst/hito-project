@@ -1,5 +1,11 @@
 import * as Location from "expo-location";
 
+export const TRACKING_LOCATION_OPTIONS: Location.LocationOptions = {
+  accuracy: Location.Accuracy.High,
+  timeInterval: 5000,
+  distanceInterval: 10,
+};
+
 export async function getForegroundPermissionStatus(): Promise<Location.PermissionStatus> {
   const { status } = await Location.getForegroundPermissionsAsync();
 
@@ -26,11 +32,7 @@ export async function watchLocation(
   callback: Location.LocationCallback,
 ): Promise<Location.LocationSubscription> {
   return Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.High,
-      timeInterval: 5000,
-      distanceInterval: 10,
-    },
+    TRACKING_LOCATION_OPTIONS,
     callback,
   );
 }
