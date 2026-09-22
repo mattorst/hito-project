@@ -213,3 +213,85 @@ class CheckpointRecord(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+        
+
+class TrackingPoint(models.Model):
+    local_id = models.UUIDField(
+        unique=True,
+        verbose_name="ID local",
+    )
+    trekking = models.ForeignKey(
+        Trekking,
+        on_delete=models.CASCADE,
+        related_name="tracking_points",
+        verbose_name="Trekking",
+    )
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        verbose_name="Latitud",
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        verbose_name="Longitud",
+    )
+    accuracy = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Precisión GPS",
+    )
+    altitude = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Altitud",
+    )
+    speed = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Velocidad",
+    )
+    recorded_at = models.DateTimeField(
+        verbose_name="Fecha y hora del registro GPS",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación",
+    )
+
+    class Meta:
+        verbose_name = "Punto de tracking"
+        verbose_name_plural = "Puntos de tracking"
+        ordering = ["recorded_at"]
+
+    def __str__(self):
+        return (
+            f"{self.trekking.user.username} | "
+            f"{self.recorded_at:%d/%m/%Y %H:%M:%S}"
+        )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        errors = {}
+
+        if self.latitude < -90 or self.latitude > 90:
+            errors["latitude"] = "La latitud debe estar entre -90 y 90."
+
+        if self.longitude < -180 or self.longitude > 180:
+            errors["longitude"] = "La longitud debe estar entre -180 y 180."
+
+        if errors:
+            raise ValidationError(errors)
+
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

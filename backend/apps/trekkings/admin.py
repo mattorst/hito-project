@@ -65,3 +65,38 @@ class CheckpointRecordAdmin(admin.ModelAdmin):
     ordering = (
         "registered_at",
     )
+
+
+from django.contrib import admin
+from apps.trekkings.models import (
+    Trekking,
+    CheckpointRecord,
+    TrackingPoint,
+)
+
+@admin.register(TrackingPoint)
+class TrackingPointAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "local_id",
+        "trekking",
+        "latitude",
+        "longitude",
+        "recorded_at",
+        "created_at",
+    )
+    list_filter = (
+        "recorded_at",
+        "created_at",
+    )
+    search_fields = (
+        "local_id",
+        "trekking__user__username",
+        "trekking__trail__name",
+    )
+    autocomplete_fields = (
+        "trekking",
+    )
+    ordering = (
+        "-recorded_at",
+    )
