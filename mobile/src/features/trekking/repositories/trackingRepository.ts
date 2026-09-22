@@ -4,32 +4,32 @@ import type {
   TrackingSyncStatus,
 } from "../types/tracking";
 
-export interface CreateTrackingPointInput {
+export type CreateTrackingPointInput = {
   localId: string;
   trekkingId: number;
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  altitude?: number | null;
+  speed?: number | null;
+  recordedAt: string;
+};
+
+type TrackingPointRow = {
+  id: number;
+  local_id: string;
+  trekking_id: number;
   latitude: number;
   longitude: number;
   accuracy: number | null;
   altitude: number | null;
   speed: number | null;
-  recordedAt: string;
-}
+  recorded_at: string;
+  sync_status: TrackingSyncStatus;
+  created_at: string;
+};
 
-function mapTrackingPoint(
-  row: {
-    id: number;
-    local_id: string;
-    trekking_id: number;
-    latitude: number;
-    longitude: number;
-    accuracy: number | null;
-    altitude: number | null;
-    speed: number | null;
-    recorded_at: string;
-    sync_status: TrackingSyncStatus;
-    created_at: string;
-  },
-): TrackingPoint {
+function mapTrackingPoint(row: TrackingPointRow): TrackingPoint {
   return {
     id: row.id,
     localId: row.local_id,
@@ -46,11 +46,10 @@ function mapTrackingPoint(
 }
 
 export async function createTrackingPoint(
-  input: CreateTrackingPointInput,
-): Promise<TrackingPoint> {
+  data: CreateTrackingPointInput,
+): Promise<number> {
   const database = await getDatabase();
-
-  const createdAt = new Date().toISOString();
+  const now = new Date().toISOString();
 
   const result = await database.runAsync(
     `
@@ -65,80 +64,34 @@ export async function createTrackingPoint(
         recorded_at,
         sync_status,
         created_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?);
     `,
-    input.localId,
-    input.trekkingId,
-    input.latitude,
-    input.longitude,
-    input.accuracy,
-    input.altitude,
-    input.speed,
-    input.recordedAt,
-    "pending",
-    createdAt,
+    data.localId,
+    data.trekkingId,
+    data.latitude,
+    data.longitude,
+    data.accuracy ?? null,
+    data.altitude ?? null,
+    data.speed ?? null,
+    data.recordedAt,
+    now,
   );
 
-  const row = await database.getFirstAsync<{
-    id: number;
-    local_id: string;
-    trekking_id: number;
-    latitude: number;
-    longitude: number;
-    accuracy: number | null;
-    altitude: number | null;
-    speed: number | null;
-    recorded_at: string;
-    sync_status: TrackingSyncStatus;
-    created_at: string;
-  }>(
-    `
-      SELECT
-        id,
-        local_id,
-        trekking_id,
-        latitude,
-        longitude,
-        accuracy,
-        altitude,
-        speed,
-        recorded_at,
-        sync_status,
-        created_at
-      FROM tracking_points
-      WHERE id = ?;
-    `,
-    result.lastInsertRowId,
-  );
-
-  if (!row) {
-    throw new Error(
-      "No fue posible recuperar el punto GPS creado.",
-    );
-  }
-
-  return mapTrackingPoint(row);
+  return result.lastInsertRowId;
 }
 
 export async function getPendingTrackingPoints(
   limit = 100,
 ): Promise<TrackingPoint[]> {
+  if (!Number.isInteger(limit) || limit <= 0) {
+    throw new Error(
+      "El límite de puntos pendientes debe ser un entero positivo.",
+    );
+  }
+
   const database = await getDatabase();
 
-  const rows = await database.getAllAsync<{
-    id: number;
-    local_id: string;
-    trekking_id: number;
-    latitude: number;
-    longitude: number;
-    accuracy: number | null;
-    altitude: number | null;
-    speed: number | null;
-    recorded_at: string;
-    sync_status: TrackingSyncStatus;
-    created_at: string;
-  }>(
+  const rows = await database.getAllAsync<TrackingPointRow>(
     `
       SELECT
         id,
@@ -154,7 +107,7 @@ export async function getPendingTrackingPoints(
         created_at
       FROM tracking_points
       WHERE sync_status = 'pending'
-      ORDER BY recorded_at ASC
+      ORDER BY recorded_at ASC, id ASC
       LIMIT ?;
     `,
     limit,
@@ -168,19 +121,7 @@ export async function getTrackingPointsByTrekking(
 ): Promise<TrackingPoint[]> {
   const database = await getDatabase();
 
-  const rows = await database.getAllAsync<{
-    id: number;
-    local_id: string;
-    trekking_id: number;
-    latitude: number;
-    longitude: number;
-    accuracy: number | null;
-    altitude: number | null;
-    speed: number | null;
-    recorded_at: string;
-    sync_status: TrackingSyncStatus;
-    created_at: string;
-  }>(
+  const rows = await database.getAllAsync<TrackingPointRow>(
     `
       SELECT
         id,
@@ -196,7 +137,7 @@ export async function getTrackingPointsByTrekking(
         created_at
       FROM tracking_points
       WHERE trekking_id = ?
-      ORDER BY recorded_at ASC;
+      ORDER BY recorded_at ASC, id ASC;
     `,
     trekkingId,
   );
@@ -207,19 +148,7 @@ export async function getTrackingPointsByTrekking(
 export async function getLatestTrackingPoint(): Promise<TrackingPoint | null> {
   const database = await getDatabase();
 
-  const row = await database.getFirstAsync<{
-    id: number;
-    local_id: string;
-    trekking_id: number;
-    latitude: number;
-    longitude: number;
-    accuracy: number | null;
-    altitude: number | null;
-    speed: number | null;
-    recorded_at: string;
-    sync_status: TrackingSyncStatus;
-    created_at: string;
-  }>(
+  const row = await database.getFirstAsync<TrackingPointRow>(
     `
       SELECT
         id,
@@ -240,4 +169,59 @@ export async function getLatestTrackingPoint(): Promise<TrackingPoint | null> {
   );
 
   return row ? mapTrackingPoint(row) : null;
+}
+
+export async function markTrackingPointsAsSynced(
+  localIds: string[],
+): Promise<void> {
+  if (localIds.length === 0) {
+    return;
+  }
+
+  const database = await getDatabase();
+
+  await database.withTransactionAsync(async () => {
+    for (const localId of localIds) {
+      await database.runAsync(
+        `
+          UPDATE tracking_points
+          SET sync_status = 'synced'
+          WHERE local_id = ?
+            AND sync_status = 'pending';
+        `,
+        localId,
+      );
+    }
+  });
+}
+
+export async function getPendingTrackingPointCount(): Promise<number> {
+  const database = await getDatabase();
+
+  const row = await database.getFirstAsync<{ count: number }>(
+    `
+      SELECT COUNT(*) AS count
+      FROM tracking_points
+      WHERE sync_status = 'pending';
+    `,
+  );
+
+  return row?.count ?? 0;
+}
+
+export async function getTrackingPointCountByStatus(
+  status: TrackingSyncStatus,
+): Promise<number> {
+  const database = await getDatabase();
+
+  const row = await database.getFirstAsync<{ count: number }>(
+    `
+      SELECT COUNT(*) AS count
+      FROM tracking_points
+      WHERE sync_status = ?;
+    `,
+    status,
+  );
+
+  return row?.count ?? 0;
 }
