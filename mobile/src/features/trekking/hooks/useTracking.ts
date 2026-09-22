@@ -8,7 +8,7 @@ import type {
   LocationObject,
   LocationSubscription,
 } from "expo-location";
-import { watchLocation } from "../services/locationService";
+import { startTracking as startTrackingService } from "../services/trackingService";
 
 export type TrackingStatus =
   | "idle"
@@ -21,17 +21,31 @@ interface UseTrackingResult {
   status: TrackingStatus;
   location: LocationObject | null;
   error: string | null;
+  persistenceError: string | null;
   startTracking: () => Promise<void>;
   stopTracking: () => void;
 }
 
-export function useTracking(): UseTrackingResult {
-  const [status, setStatus] = useState<TrackingStatus>("idle");
-  const [location, setLocation] = useState<LocationObject | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function useTracking(
+  trekkingId: number,
+): UseTrackingResult {
+  const [status, setStatus] =
+    useState<TrackingStatus>("idle");
 
-  const subscriptionRef = useRef<LocationSubscription | null>(null);
-  const trackingSessionRef = useRef(0);
+  const [location, setLocation] =
+    useState<LocationObject | null>(null);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [persistenceError, setPersistenceError] =
+    useState<string | null>(null);
+
+  const subscriptionRef =
+    useRef<LocationSubscription | null>(null);
+
+  const trackingSessionRef =
+    useRef(0);
 
   const startTracking = useCallback(async () => {
     if (subscriptionRef.current) {
@@ -40,41 +54,81 @@ export function useTracking(): UseTrackingResult {
 
     setStatus("starting");
     setError(null);
+    setPersistenceError(null);
 
-    const sessionId = trackingSessionRef.current + 1;
+    const sessionId =
+      trackingSessionRef.current + 1;
+
     trackingSessionRef.current = sessionId;
 
     try {
-      const subscription = await watchLocation((newLocation) => {
-        if (trackingSessionRef.current !== sessionId) {
-          return;
-        }
+      const subscription =
+        await startTrackingService({
+          trekkingId,
 
-        setLocation(newLocation);
-      });
+          onLocation: (newLocation) => {
+            if (
+              trackingSessionRef.current !== sessionId
+            ) {
+              return;
+            }
 
-      if (trackingSessionRef.current !== sessionId) {
+            setLocation(newLocation);
+          },
+
+          onPersistenceError: (persistError) => {
+            if (
+              trackingSessionRef.current !== sessionId
+            ) {
+              return;
+            }
+
+            console.error(
+              "Error de persistencia GPS:",
+              persistError,
+            );
+
+            setPersistenceError(
+              "No fue posible guardar una posición GPS localmente.",
+            );
+          },
+        });
+
+      if (
+        trackingSessionRef.current !== sessionId
+      ) {
         subscription.remove();
         return;
       }
 
       subscriptionRef.current = subscription;
+
       setStatus("tracking");
     } catch (err) {
-      if (trackingSessionRef.current !== sessionId) {
+      if (
+        trackingSessionRef.current !== sessionId
+      ) {
         return;
       }
 
-      console.error("Error al iniciar tracking:", err);
+      console.error(
+        "Error al iniciar tracking:",
+        err,
+      );
+
       setStatus("error");
-      setError("No fue posible iniciar el seguimiento de ubicación.");
+      setError(
+        "No fue posible iniciar el seguimiento de ubicación.",
+      );
     }
-  }, []);
+  }, [trekkingId]);
 
   const stopTracking = useCallback(() => {
     trackingSessionRef.current += 1;
 
-    const subscription = subscriptionRef.current;
+    const subscription =
+      subscriptionRef.current;
+
     subscriptionRef.current = null;
 
     if (!subscription) {
@@ -83,13 +137,16 @@ export function useTracking(): UseTrackingResult {
     }
 
     subscription.remove();
+
     setStatus("stopped");
   }, []);
 
   useEffect(() => {
     return () => {
       trackingSessionRef.current += 1;
+
       subscriptionRef.current?.remove();
+
       subscriptionRef.current = null;
     };
   }, []);
@@ -98,6 +155,7 @@ export function useTracking(): UseTrackingResult {
     status,
     location,
     error,
+    persistenceError,
     startTracking,
     stopTracking,
   };

@@ -203,3 +203,41 @@ export async function getTrackingPointsByTrekking(
 
   return rows.map(mapTrackingPoint);
 }
+
+export async function getLatestTrackingPoint(): Promise<TrackingPoint | null> {
+  const database = await getDatabase();
+
+  const row = await database.getFirstAsync<{
+    id: number;
+    local_id: string;
+    trekking_id: number;
+    latitude: number;
+    longitude: number;
+    accuracy: number | null;
+    altitude: number | null;
+    speed: number | null;
+    recorded_at: string;
+    sync_status: TrackingSyncStatus;
+    created_at: string;
+  }>(
+    `
+      SELECT
+        id,
+        local_id,
+        trekking_id,
+        latitude,
+        longitude,
+        accuracy,
+        altitude,
+        speed,
+        recorded_at,
+        sync_status,
+        created_at
+      FROM tracking_points
+      ORDER BY id DESC
+      LIMIT 1;
+    `,
+  );
+
+  return row ? mapTrackingPoint(row) : null;
+}

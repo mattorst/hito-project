@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  Button,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Button, StyleSheet, Text, View } from "react-native";
 import { useTracking } from "../../src/features/trekking/hooks/useTracking";
 
 export default function TrackingTestScreen() {
@@ -12,69 +7,43 @@ export default function TrackingTestScreen() {
     status,
     location,
     error,
+    persistenceError,
     startTracking,
     stopTracking,
-  } = useTracking();
+  } = useTracking(1);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Tracking test
-      </Text>
+      <Text style={styles.title}>Tracking GPS + SQLite Test</Text>
 
-      <Text>
-        Estado: {status}
-      </Text>
+      <Text style={styles.label}>Estado: {status}</Text>
+
+      {error && <Text style={styles.error}>{error}</Text>}
+      {persistenceError && (
+        <Text style={styles.error}>{persistenceError}</Text>
+      )}
 
       {location && (
-        <View style={styles.location}>
+        <View style={styles.locationContainer}>
+          <Text>Latitud: {location.coords.latitude}</Text>
+          <Text>Longitud: {location.coords.longitude}</Text>
+          <Text>Precisión: {location.coords.accuracy} m</Text>
           <Text>
-            Latitud: {location.coords.latitude}
-          </Text>
-
-          <Text>
-            Longitud: {location.coords.longitude}
-          </Text>
-
-          <Text>
-            Precisión: {location.coords.accuracy ?? "N/D"} m
-          </Text>
-
-          <Text>
-            Altitud: {location.coords.altitude ?? "N/D"} m
-          </Text>
-
-          <Text>
-            Velocidad: {location.coords.speed ?? "N/D"} m/s
-          </Text>
-
-          <Text>
-            Timestamp:{" "}
-            {new Date(location.timestamp).toLocaleTimeString()}
+            Timestamp: {new Date(location.timestamp).toLocaleTimeString()}
           </Text>
         </View>
       )}
 
-      {error && (
-        <Text style={styles.error}>
-          {error}
-        </Text>
-      )}
-
-      <View style={styles.button}>
-        <Button
-          title="Iniciar tracking"
-          onPress={startTracking}
-          disabled={status === "starting" || status === "tracking"}
-        />
-      </View>
-
-      <View style={styles.button}>
-        <Button
-          title="Detener tracking"
-          onPress={stopTracking}
-          disabled={status !== "tracking"}
-        />
+      <View style={styles.buttonContainer}>
+        {status === "tracking" ? (
+          <Button title="Detener tracking" onPress={stopTracking} color="red" />
+        ) : (
+          <Button
+            title="Iniciar tracking"
+            onPress={startTracking}
+            disabled={status === "starting"}
+          />
+        )}
       </View>
     </View>
   );
@@ -88,18 +57,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
-    marginBottom: 12,
   },
-  location: {
+  label: {
+    fontSize: 16,
+  },
+  locationContainer: {
+    marginVertical: 12,
     gap: 4,
-    marginVertical: 16,
   },
   error: {
-    marginVertical: 12,
-  },
-  button: {
+    color: "red",
     marginVertical: 4,
+  },
+  buttonContainer: {
+    marginTop: 16,
   },
 });
