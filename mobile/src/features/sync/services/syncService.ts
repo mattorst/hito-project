@@ -29,7 +29,7 @@ export async function synchronize(
 export async function syncTrackingPoints(
   limit = 100,
 ): Promise<SyncTrackingResult> {
-  // 1. Obtener puntos pendientes desde SQLite utilizando tu función real
+  // 1. Obtener puntos pendientes desde SQLite
   const pendingPoints: TrackingPoint[] = await getPendingTrackingPoints(limit);
 
   if (pendingPoints.length === 0) {
@@ -41,18 +41,26 @@ export async function syncTrackingPoints(
     };
   }
 
-  // 2. Mapear del modelo SQLite local al contrato OpenAPI
+  // 2. Mapear del modelo SQLite local al contrato validado por Django
   const trackingPointsPayload: BackendTrackingPointPayload[] =
-    pendingPoints.map((point) => ({
-      local_id: point.localId,
-      trekking: point.trekkingId,
-      latitude: point.latitude,
-      longitude: point.longitude,
-      accuracy: point.accuracy ?? null,
-      altitude: point.altitude ?? null,
-      speed: point.speed ?? null,
-      recorded_at: new Date(point.recordedAt).toISOString(),
-    }));
+    pendingPoints.map((point) => {
+      // Normalización estricta de fecha a ISO String válido
+      const dateObj = new Date(point.recordedAt);
+      const recordedAtIso = isNaN(dateObj.getTime())
+        ? new Date().toISOString()
+        : dateObj.toISOString();
+
+      return {
+        local_id: String(point.localId),
+        trekking: Number(point.trekkingId),
+        latitude: Number(point.latitude),
+        longitude: Number(point.longitude),
+        accuracy: point.accuracy != null ? Number(point.accuracy) : null,
+        altitude: point.altitude != null ? Number(point.altitude) : null,
+        speed: point.speed != null ? Number(point.speed) : null,
+        recorded_at: recordedAtIso,
+      };
+    });
 
   const payload: SyncRequest = {
     tracking_points: trackingPointsPayload,

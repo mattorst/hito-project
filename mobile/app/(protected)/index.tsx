@@ -88,7 +88,7 @@ export default function ParksScreen() {
         <Ionicons name="navigate-outline" size={19} color={COLORS.ink} />
         </TouchableOpacity>
 
-        {/* Botón temporal de prueba de red (M10.7.8)
+        
         <TouchableOpacity
         style={styles.iconButton}
         onPress={() => router.push("/(protected)/network-test")}
@@ -96,7 +96,7 @@ export default function ParksScreen() {
         >
         <Ionicons name="wifi-outline" size={19} color={COLORS.ink} />
         </TouchableOpacity>
-        */}
+        
 
         <TouchableOpacity
         style={styles.iconButton}
