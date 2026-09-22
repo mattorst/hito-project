@@ -160,11 +160,92 @@ paths:
               schema:
                 $ref: '#/components/schemas/Rescue'
           description: ''
+  /api/rescues/{id}/cancel/:
+    post:
+      operationId: rescues_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - rescues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rescue'
+          description: ''
+  /api/rescues/{id}/complete/:
+    post:
+      operationId: rescues_complete_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - rescues
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rescue'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rescue'
+          description: ''
+  /api/rescues/active/:
+    get:
+      operationId: rescues_active_retrieve
+      tags:
+      - rescues
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rescue'
+          description: ''
   /api/sync/:
     post:
       operationId: sync_create
-      description: Recibe lotes de registros de checkpoints e incidentes creados offline
-        para persistirlos en la base de datos.
+      description: Recibe lotes de registros de checkpoints, incidentes y puntos de
+        tracking creados offline para persistirlos en la base de datos.
       summary: Sincronizar eventos fuera de línea
       tags:
       - sync
@@ -673,6 +754,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SyncIncident'
+        tracking_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncTrackingPoint'
     SyncCheckpointRecord:
       type: object
       properties:
@@ -738,6 +823,51 @@ components:
       - longitude
       - registered_at
       - trekking
+    SyncTrackingPoint:
+      type: object
+      properties:
+        local_id:
+          type: string
+          format: uuid
+          title: ID local
+        trekking:
+          type: integer
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        accuracy:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          title: Precisión GPS
+        altitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          title: Altitud
+        speed:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          title: Velocidad
+        recorded_at:
+          type: string
+          format: date-time
+          title: Fecha y hora del registro GPS
+      required:
+      - latitude
+      - local_id
+      - longitude
+      - recorded_at
+      - trekking
     TokenObtainPair:
       type: object
       properties:
@@ -802,10 +932,20 @@ components:
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           title: Distancia (km)
+        max_altitude:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+          title: Altitud máxima (msnm)
+        route_geojson:
+          nullable: true
+          title: Geometría de la ruta
       required:
       - distance_km
       - estimated_duration
       - id
+      - max_altitude
       - name
       - park
     TrailStatusEnum:
