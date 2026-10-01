@@ -12,6 +12,19 @@ import type {
 } from "../types";
 
 /**
+ * Función auxiliar para formatear y limitar decimales antes de enviar a Django
+ */
+function formatNumber(
+  val: number | string | null | undefined,
+  maxDecimals = 6,
+): number | null {
+  if (val === null || val === undefined) return null;
+  const num = Number(val);
+  if (isNaN(num)) return null;
+  return Number(num.toFixed(maxDecimals));
+}
+
+/**
  * Función base para enviar el payload al endpoint /sync/
  */
 export async function synchronize(
@@ -53,11 +66,11 @@ export async function syncTrackingPoints(
       return {
         local_id: String(point.localId),
         trekking: Number(point.trekkingId),
-        latitude: Number(point.latitude),
-        longitude: Number(point.longitude),
-        accuracy: point.accuracy != null ? Number(point.accuracy) : null,
-        altitude: point.altitude != null ? Number(point.altitude) : null,
-        speed: point.speed != null ? Number(point.speed) : null,
+        latitude: formatNumber(point.latitude, 6)!,
+        longitude: formatNumber(point.longitude, 6)!,
+        accuracy: formatNumber(point.accuracy, 2),
+        altitude: formatNumber(point.altitude, 2),
+        speed: formatNumber(point.speed, 2),
         recorded_at: recordedAtIso,
       };
     });

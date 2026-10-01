@@ -220,7 +220,7 @@ export async function getTrackingPointCountByStatus(
       FROM tracking_points
       WHERE sync_status = ?;
     `,
-    status,
+    [status],
   );
 
   return row?.count ?? 0;
