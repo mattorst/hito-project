@@ -11,11 +11,17 @@ import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
 import { registerCheckpoint } from "@/features/checkpoints/services/checkpointService";
 import { enqueueCheckpoint } from "@/features/checkpoints/services/offlineQueue";
 import { useRescue } from "@/features/rescues/hooks/useRescue";
+import { getTrails } from "@/features/parks/services/parksService";
+import type { Trail } from "@/features/parks/types";
+
+// Tracking GPS y Recorrido Local
+import { useTracking } from "@/features/trekking/hooks/useTracking";
+import { useTrackingTrack } from "@/features/trekking/hooks/useTrackingTrack";
+
+// Mapa de Sendero
+import TrailMap from "@/features/parks/components/TrailMap";
 
 // --- Paleta -----------------------------------------------------------------
-// La misma que en Parques: negro como lienzo, blanco/gris para jerarquía de
-// texto, y un único verde lima como acento. Sin rojo: la urgencia se comunica
-// con contraste, borde y tipografía, no con otro color.
 const COLORS = {
   bg: "#0B0C0D",
   surface: "#17181B",
@@ -49,6 +55,7 @@ export default function ActiveTrekkingScreen() {
   const { scannedQr, setScannedQr } = useScan();
 
   const [isFinishing, setIsFinishing] = useState(false);
+  const [trail, setTrail] = useState<Trail | null>(null);
 
   const {
     activeRescue,
@@ -64,6 +71,37 @@ export default function ActiveTrekkingScreen() {
 
   const { checkpoints } = useCheckpoints(activeTrekking?.trail ?? 0);
 
+  // Hooks de Tracking GPS y SQLite (Limpios de flags de debug sin uso)
+  const {
+    location: currentLocation,
+    startTracking,
+    stopTracking,
+  } = useTracking(activeTrekking?.id ?? 0);
+
+  const {
+    coordinates: trackingCoordinates,
+    refresh: refreshTrackingTrack,
+  } = useTrackingTrack(activeTrekking?.id ?? 0);
+
+  // Iniciar automáticamente el tracking
+  useEffect(() => {
+    if (!activeTrekking?.id) {
+      return;
+    }
+
+    startTracking();
+  }, [activeTrekking?.id, startTracking]);
+
+  // Actualizar el track local cuando llega una nueva ubicación GPS
+  useEffect(() => {
+    if (!currentLocation) {
+      return;
+    }
+
+    refreshTrackingTrack();
+  }, [currentLocation, refreshTrackingTrack]);
+
+  // Carga de rescates activos
   useEffect(() => {
     if (!activeTrekking) {
       return;
@@ -72,6 +110,46 @@ export default function ActiveTrekkingScreen() {
     loadActiveRescue(activeTrekking.id);
   }, [activeTrekking?.id]);
 
+  // Carga del Sendero (Trail) activo
+  useEffect(() => {
+    if (!activeTrekking?.trail) {
+      setTrail(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadTrail = async () => {
+      try {
+        const trails = await getTrails();
+
+        const foundTrail = trails.find(
+          (item) => item.id === activeTrekking.trail,
+        );
+
+        if (isMounted) {
+          setTrail(foundTrail ?? null);
+        }
+      } catch (error) {
+        console.error(
+          "Error al cargar el sendero del trekking activo:",
+          error,
+        );
+
+        if (isMounted) {
+          setTrail(null);
+        }
+      }
+    };
+
+    loadTrail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTrekking?.trail]);
+
+  // Escaneo de checkpoints QR
   useEffect(() => {
     if (!scannedQr) {
       return;
@@ -139,6 +217,8 @@ export default function ActiveTrekkingScreen() {
     }
 
     setIsFinishing(true);
+
+    stopTracking();
 
     try {
       const completedTrekking = await finishTrekking(activeTrekking.id);
@@ -252,7 +332,6 @@ export default function ActiveTrekkingScreen() {
     );
   };
 
-  // Función para dar formato amigable a la fecha (Ej: "Jueves 28 ago, 14:30")
   const formatFriendlyDate = (dateString: string) => {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return dateString;
@@ -271,7 +350,6 @@ export default function ActiveTrekkingScreen() {
     const formattedDate = date.toLocaleDateString("es-CL", optionsDate);
     const formattedTime = date.toLocaleTimeString("es-CL", optionsTime);
 
-    // Capitaliza la primera letra del día
     const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
     return `${capitalizedDate}, ${formattedTime}`;
   };
@@ -319,6 +397,16 @@ export default function ActiveTrekkingScreen() {
           <Text style={styles.subtitle}>Monitoreo de ruta en tiempo real</Text>
         </View>
 
+        {/* Mapa Activo del Trekking */}
+        <View style={styles.mapCard}>
+          <TrailMap
+            routeGeoJSON={trail?.route_geojson ?? null}
+            checkpoints={checkpoints}
+            location={currentLocation}
+            trackingCoordinates={trackingCoordinates}
+          />
+        </View>
+
         {/* Tarjeta Principal de Datos */}
         <View style={styles.card}>
           <View style={styles.row}>
@@ -336,7 +424,9 @@ export default function ActiveTrekkingScreen() {
               <Ionicons name="map-outline" size={16} color={COLORS.inkSecondary} style={{ marginRight: 6 }} />
               <Text style={styles.label}>Sendero</Text>
             </View>
-            <Text style={styles.value}>Sendero #{activeTrekking.trail}</Text>
+            <Text style={styles.value}>
+              {trail?.name ? trail.name : `Sendero #${activeTrekking.trail}`}
+            </Text>
           </View>
 
           <View style={styles.divider} />
@@ -566,6 +656,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: "500",
   },
+  mapCard: {
+    height: 280,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    backgroundColor: COLORS.surface,
+  },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 20,
@@ -626,7 +725,6 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
   },
-  // CTA principal: única superficie 100% lima, igual criterio que "Ver parque".
   primaryButton: {
     flexDirection: "row",
     backgroundColor: COLORS.lime,
@@ -640,7 +738,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
-  // Secundario: vidrio sobre negro, mismo lenguaje que los íconos del header.
   secondaryButton: {
     flexDirection: "row",
     backgroundColor: COLORS.glass,
@@ -656,8 +753,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  // Rescate: no hay rojo disponible, así que la urgencia se marca con un
-  // borde lima grueso sobre fondo negro en vez de un color de alarma.
   rescueButton: {
     flexDirection: "row",
     backgroundColor: COLORS.black,
@@ -730,8 +825,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // Finalizar trekking: acción decisiva y definitiva -> blanco sólido,
-  // el mayor contraste posible sobre el lienzo negro.
   dangerButton: {
     flexDirection: "row",
     backgroundColor: COLORS.ink,

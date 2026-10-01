@@ -18,6 +18,9 @@ import type {
   Checkpoint,
   GeoJSONLineString,
 } from "../types";
+import type {
+  TrackingCoordinate,
+} from "@/features/trekking/hooks/useTrackingTrack";
 
 // Paleta oscura consistente con el resto de la app
 const COLORS = {
@@ -31,12 +34,14 @@ interface TrailMapProps {
   routeGeoJSON: GeoJSONLineString | null;
   checkpoints: Checkpoint[];
   location?: LocationObject | null;
+  trackingCoordinates?: TrackingCoordinate[];
 }
 
 export default function TrailMap({
   routeGeoJSON,
   checkpoints,
   location,
+  trackingCoordinates = [],
 }: TrailMapProps) {
   const mapRef = useRef<MapView | null>(null);
 
@@ -92,6 +97,18 @@ export default function TrailMap({
       );
   }, [checkpoints]);
 
+  const validTrackingCoordinates = useMemo(() => {
+    return trackingCoordinates.filter(
+      ({ latitude, longitude }) =>
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180,
+    );
+  }, [trackingCoordinates]);
+
   // Validar y calcular la coordenada actual del usuario
   const userCoordinate = useMemo(() => {
     if (!location) {
@@ -117,7 +134,8 @@ export default function TrailMap({
     };
   }, [location]);
 
-  // Excluimos deliberadamente userCoordinate de fitToCoordinates para no deformar el zoom del sendero
+  // Excluimos deliberadamente userCoordinate y trackingCoordinates
+  // de fitToCoordinates para mantener el encuadre de la ruta planificada.
   const mapCoordinates = useMemo(() => {
     return [
       ...routeCoordinates,
@@ -160,9 +178,17 @@ export default function TrailMap({
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconWrap}>
-          <Ionicons name="map-outline" size={28} color={COLORS.inkTertiary} />
+          <Ionicons
+            name="map-outline"
+            size={28}
+            color={COLORS.inkTertiary}
+          />
         </View>
-        <Text style={styles.emptyTitle}>Mapa no disponible</Text>
+
+        <Text style={styles.emptyTitle}>
+          Mapa no disponible
+        </Text>
+
         <Text style={styles.emptySubtitle}>
           Este sendero aún no tiene una ruta o checkpoints configurados.
         </Text>
@@ -175,6 +201,7 @@ export default function TrailMap({
       ref={mapRef}
       style={{ flex: 1 }}
     >
+      {/* Ruta planificada del sendero */}
       {routeCoordinates.length >= 2 && (
         <Polyline
           coordinates={routeCoordinates}
@@ -182,6 +209,15 @@ export default function TrailMap({
         />
       )}
 
+      {/* Recorrido GPS registrado durante el trekking */}
+      {validTrackingCoordinates.length >= 2 && (
+        <Polyline
+          coordinates={validTrackingCoordinates}
+          strokeWidth={5}
+        />
+      )}
+
+      {/* Checkpoints del sendero */}
       {validCheckpoints.map(
         ({
           checkpoint,
