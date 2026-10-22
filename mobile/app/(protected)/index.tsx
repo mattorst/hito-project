@@ -7,6 +7,7 @@ import {
   Text,
   View,
   Image,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -14,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useParks } from "@/features/parks/hooks/useParks";
 
-// --- Paleta ----------------------------------------------------------------
+// --- Paleta Original --------------------------------------------------------
 const COLORS = {
   bg: "#0B0C0D",
   surface: "#17181B",
@@ -25,7 +26,6 @@ const COLORS = {
   inkSecondary: "#9BA1A6",
   inkTertiary: "#6E7378",
   lime: "#C6FF4D",
-  limeDim: "rgba(198,255,77,0.14)",
   black: "#0B0C0D",
 };
 
@@ -46,7 +46,6 @@ const PARK_ASSETS: Record<
   },
 };
 
-// Configuración por defecto si entra un parque no mapeado
 const DEFAULT_ASSET = {
   image: require("../../assets/torres.jpg"),
   region: "Chile",
@@ -67,54 +66,13 @@ export default function ParksScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <StatusBar barStyle="light-content" />
+
       {/* Header Principal */}
       <View style={styles.header}>
         <Text style={styles.title}>Parques</Text>
 
-
-         <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => router.push("/location-test")}
-        activeOpacity={0.7}
-        >
-        <Ionicons name="location-outline" size={19} color={COLORS.ink} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => router.push("/tracking-test")}
-        activeOpacity={0.7}
-        >
-        <Ionicons name="navigate-outline" size={19} color={COLORS.ink} />
-        </TouchableOpacity>
-
-        
-        <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => router.push("/(protected)/network-test")}
-        activeOpacity={0.7}
-        >
-        <Ionicons name="wifi-outline" size={19} color={COLORS.ink} />
-        </TouchableOpacity>
-        
-
-        <TouchableOpacity
-        style={styles.iconButton}
-        onPress={() => router.push("/storage-test")}
-        activeOpacity={0.7}
-        >
-        <Ionicons name="server-outline" size={19} color={COLORS.ink} />
-        </TouchableOpacity>
-
         <View style={styles.headerButtons}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push("/scan")}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="scan-outline" size={19} color={COLORS.ink} />
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.iconButton}
             onPress={logout}
@@ -124,9 +82,6 @@ export default function ParksScreen() {
           </TouchableOpacity>
         </View>
       </View>
-
-
-     
 
       {/* Botón condicional de Trekking Activo */}
       {activeTrekking && (
@@ -147,19 +102,6 @@ export default function ParksScreen() {
           </View>
         </TouchableOpacity>
       )}
-
-      {/* Botón para acceder al historial de trekkings */}
-      <TouchableOpacity
-        style={styles.historyButton}
-        onPress={() => router.push("/trekking/history")}
-        activeOpacity={0.8}
-      >
-        <View style={styles.historyIconWrap}>
-          <Ionicons name="time-outline" size={17} color={COLORS.lime} />
-        </View>
-        <Text style={styles.historyButtonText}>Mis trekkings</Text>
-        <Ionicons name="chevron-forward" size={16} color={COLORS.inkTertiary} />
-      </TouchableOpacity>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -184,7 +126,6 @@ export default function ParksScreen() {
             const parkIdStr = item.id.toString();
             const parkNameLower = item.name.toLowerCase();
 
-            // Determinar asset según ID o nombre
             let parkData = PARK_ASSETS[parkIdStr];
 
             if (!parkData) {
@@ -205,7 +146,7 @@ export default function ParksScreen() {
                   router.push(`/(protected)/parks/${item.id}`);
                 }}
               >
-                {/* Imagen dinámica por Parque */}
+                {/* Imagen del Parque */}
                 <Image
                   source={parkData.image}
                   style={styles.cardImage}
@@ -311,7 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 20,
-    marginBottom: 12,
+    marginBottom: 16,
   },
 
   activeBannerIconWrap: {
@@ -351,37 +292,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  historyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.surface,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginBottom: 22,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceBorder,
-  },
-
-  historyIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.limeDim,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-
-  historyButtonText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.ink,
-  },
-
   listContainer: {
-    paddingBottom: 24,
+    paddingBottom: 110,
   },
 
   card: {
