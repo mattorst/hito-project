@@ -4,6 +4,7 @@ import React, {
   useRef,
 } from "react";
 import {
+  Image,
   StyleSheet,
   Text,
   View,
@@ -22,10 +23,26 @@ import type {
   TrackingCoordinate,
 } from "@/features/trekking/hooks/useTrackingTrack";
 
-// Paleta oscura consistente con el resto de la app
-const COLORS = {
+// Referencia a la imagen checkpointIcon.jpg dentro de src/assets/images/
+const checkpointImage = require("@/assets/images/iconqr.png");
+
+// --- Paleta de diseño Senior (High Contrast Dark Mode iOS Style) -------------
+const MAP_THEME = {
+  background: "#0B0C0D",
   surface: "#17181B",
-  surfaceBorder: "rgba(255,255,255,0.08)",
+  surfaceBorder: "rgba(255, 255, 255, 0.12)",
+
+  // Colores de Recorrido y Guiado
+  plannedRoute: "#4A4D55", // Gris Grafito visible sobre terreno oscuro
+  activeTrack: "#000000",   // Recorrido real en Negro Sólido
+  accentLime: "#C8FF00",    // Verde Lima de acento Hito
+
+  // Indicador de Ubicación iOS Puck
+  userPuckBlue: "#007AFF",
+  userPuckHalo: "rgba(0, 122, 255, 0.22)",
+
+  // Textos y Estados
+  inkPrimary: "#FFFFFF",
   inkSecondary: "#9BA1A6",
   inkTertiary: "#6E7378",
 };
@@ -45,19 +62,29 @@ export default function TrailMap({
 }: TrailMapProps) {
   const mapRef = useRef<MapView | null>(null);
 
+  // Sanitización y parseo de coordenadas de la ruta planificada
   const routeCoordinates = useMemo(() => {
-    if (!routeGeoJSON) {
+    if (!routeGeoJSON?.coordinates) {
       return [];
     }
 
-    return routeGeoJSON.coordinates.map(
-      ([longitude, latitude]) => ({
-        latitude,
-        longitude,
-      }),
-    );
+    return routeGeoJSON.coordinates
+      .map(([longitude, latitude]) => ({
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+      }))
+      .filter(
+        (coord) =>
+          Number.isFinite(coord.latitude) &&
+          Number.isFinite(coord.longitude) &&
+          coord.latitude >= -90 &&
+          coord.latitude <= 90 &&
+          coord.longitude >= -180 &&
+          coord.longitude <= 180,
+      );
   }, [routeGeoJSON]);
 
+  // Sanitización de Checkpoints
   const validCheckpoints = useMemo(() => {
     return checkpoints
       .map((checkpoint) => {
@@ -66,12 +93,7 @@ export default function TrailMap({
 
         if (
           !Number.isFinite(latitude) ||
-          !Number.isFinite(longitude)
-        ) {
-          return null;
-        }
-
-        if (
+          !Number.isFinite(longitude) ||
           latitude < -90 ||
           latitude > 90 ||
           longitude < -180 ||
@@ -97,6 +119,7 @@ export default function TrailMap({
       );
   }, [checkpoints]);
 
+  // Sanitización de Coordenadas de Tracking GPS
   const validTrackingCoordinates = useMemo(() => {
     return trackingCoordinates.filter(
       ({ latitude, longitude }) =>
@@ -109,7 +132,7 @@ export default function TrailMap({
     );
   }, [trackingCoordinates]);
 
-  // Validar y calcular la coordenada actual del usuario
+  // Coordenada actual del usuario
   const userCoordinate = useMemo(() => {
     if (!location) {
       return null;
@@ -134,17 +157,14 @@ export default function TrailMap({
     };
   }, [location]);
 
-  // Excluimos deliberadamente userCoordinate y trackingCoordinates
-  // de fitToCoordinates para mantener el encuadre de la ruta planificada.
+  // Encuadre automático basado en ruta y checkpoints
   const mapCoordinates = useMemo(() => {
     return [
       ...routeCoordinates,
-      ...validCheckpoints.map(
-        ({ latitude, longitude }) => ({
-          latitude,
-          longitude,
-        }),
-      ),
+      ...validCheckpoints.map(({ latitude, longitude }) => ({
+        latitude,
+        longitude,
+      })),
     ];
   }, [routeCoordinates, validCheckpoints]);
 
@@ -154,24 +174,20 @@ export default function TrailMap({
     }
 
     const timer = setTimeout(() => {
-      mapRef.current?.fitToCoordinates(
-        mapCoordinates,
-        {
-          edgePadding: {
-            top: 40,
-            right: 40,
-            bottom: 70,
-            left: 40,
-          },
-          animated: false,
+      mapRef.current?.fitToCoordinates(mapCoordinates, {
+        edgePadding: {
+          top: 48,
+          right: 48,
+          bottom: 72,
+          left: 48,
         },
-      );
-    }, 100);
+        animated: false,
+      });
+    }, 120);
 
     return () => clearTimeout(timer);
   }, [mapCoordinates]);
 
-  // Si no hay puntos de ruta ni checkpoints válidos, mostrar estado vacío
   const hasData = mapCoordinates.length > 0;
 
   if (!hasData) {
@@ -181,13 +197,11 @@ export default function TrailMap({
           <Ionicons
             name="map-outline"
             size={28}
-            color={COLORS.inkTertiary}
+            color={MAP_THEME.inkTertiary}
           />
         </View>
 
-        <Text style={styles.emptyTitle}>
-          Mapa no disponible
-        </Text>
+        <Text style={styles.emptyTitle}>Mapa no disponible</Text>
 
         <Text style={styles.emptySubtitle}>
           Este sendero aún no tiene una ruta o checkpoints configurados.
@@ -197,83 +211,160 @@ export default function TrailMap({
   }
 
   return (
-    <MapView
-      ref={mapRef}
-      style={{ flex: 1 }}
-    >
-      {/* Ruta planificada del sendero */}
+    <MapView ref={mapRef} style={styles.map}>
+      {/* 1. RUTA PLANIFICADA (Línea de base - Gris Grafito) */}
       {routeCoordinates.length >= 2 && (
         <Polyline
           coordinates={routeCoordinates}
-          strokeWidth={4}
+          strokeWidth={5}
+          strokeColor={MAP_THEME.plannedRoute}
+          lineCap="round"
+          lineJoin="round"
         />
       )}
 
-      {/* Recorrido GPS registrado durante el trekking */}
+      {/* 2. RECORRIDO GPS REAL (Track activo - Negro Sólido) */}
       {validTrackingCoordinates.length >= 2 && (
         <Polyline
           coordinates={validTrackingCoordinates}
-          strokeWidth={5}
+          strokeWidth={6}
+          strokeColor={MAP_THEME.activeTrack}
+          lineCap="round"
+          lineJoin="round"
         />
       )}
 
-      {/* Checkpoints del sendero */}
-      {validCheckpoints.map(
-        ({
-          checkpoint,
-          latitude,
-          longitude,
-        }) => (
-          <Marker
-            key={checkpoint.id}
-            coordinate={{
-              latitude,
-              longitude,
-            }}
-            title={checkpoint.name}
-          />
-        ),
-      )}
+      {/* 3. CHECKPOINTS (Con tamaño delimitado mediante Image) */}
+      {validCheckpoints.map(({ checkpoint, latitude, longitude }) => (
+        <Marker
+          key={checkpoint.id}
+          coordinate={{
+            latitude,
+            longitude,
+          }}
+          title={checkpoint.name}
+          anchor={{
+            x: 0.5,
+            y: 1.0,
+          }}
+        >
+          <View style={styles.checkpointImageContainer}>
+            <Image
+              source={checkpointImage}
+              style={styles.checkpointImage}
+              resizeMode="contain"
+            />
+          </View>
+        </Marker>
+      ))}
 
-      {/* Marcador de la posición actual del usuario */}
+      {/* 4. POSICIÓN ACTUAL (Puck de Navegación estilo iOS) */}
       {userCoordinate && (
         <Marker
           coordinate={userCoordinate}
           title="Mi ubicación"
-        />
+          anchor={{
+            x: 0.5,
+            y: 0.5,
+          }}
+        >
+          <View style={styles.userPuckHalo}>
+            <View style={styles.userPuckOuter}>
+              <View style={styles.userPuckInner} />
+            </View>
+          </View>
+        </Marker>
       )}
     </MapView>
   );
 }
 
 const styles = StyleSheet.create({
+  map: {
+    flex: 1,
+  },
+
+  /* --- Checkpoint Image Marker --- */
+  checkpointImageContainer: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  checkpointImage: {
+    width: 38,
+    height: 38,
+  },
+
+  /* --- Marcador Ubicación Actual (iOS Navigation Puck) --- */
+  userPuckHalo: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MAP_THEME.userPuckHalo,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  userPuckOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: MAP_THEME.userPuckBlue,
+    borderWidth: 2.5,
+    borderColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+
+  userPuckInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#FFFFFF",
+  },
+
+  /* --- Estado Vacío --- */
   emptyContainer: {
     flex: 1,
-    backgroundColor: "#111214",
+    backgroundColor: MAP_THEME.background,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
+
   emptyIconWrap: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.surface,
+    backgroundColor: MAP_THEME.surface,
     borderWidth: 1,
-    borderColor: COLORS.surfaceBorder,
+    borderColor: MAP_THEME.surfaceBorder,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
+
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: MAP_THEME.inkPrimary,
     marginBottom: 4,
   },
+
   emptySubtitle: {
     fontSize: 13,
-    color: COLORS.inkSecondary,
+    color: MAP_THEME.inkSecondary,
     textAlign: "center",
     maxWidth: 240,
     lineHeight: 18,
