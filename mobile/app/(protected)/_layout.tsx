@@ -1,297 +1,268 @@
-import React, { memo } from "react";
+import React from "react";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Redirect, Tabs } from "expo-router";
-import { View, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, {
-  useAnimatedStyle,
-  useDerivedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useSync } from "@/features/sync/hooks/useSync";
 
-// --- Paleta iOS Dark Theme Premium Hito ---
-const COLORS = {
+const C = {
   bg: "#0B0C0D",
-  barGlassBg: Platform.OS === "ios" ? "rgba(23, 24, 27, 0.65)" : "rgba(18, 19, 22, 0.92)",
-  borderGlow: "rgba(255, 255, 255, 0.14)",
+  surface: "#1C1C1E",
+  white: "#FFFFFF",
+  muted: "#8E8E93",
   lime: "#C6FF4D",
-  limeGlow: "rgba(198, 255, 77, 0.20)",
-  limeBorder: "rgba(198, 255, 77, 0.40)",
-  inkDark: "#0B0C0D",
-  inkSecondary: "#8E8E93",
+  border: "rgba(255,255,255,0.12)",
 };
 
-// Configuración de muelles nativos iOS (Respuesta táctil instantánea)
-const SPRING_IOS = {
-  damping: 18,
-  stiffness: 280,
-  mass: 0.6,
-};
+type IconName = keyof typeof Ionicons.glyphMap;
 
-// --- Botón Estándar Memoizado con Animación en GPU ---
-const AnimatedTabItem = memo(function AnimatedTabItem({
-  isFocused,
-  onPress,
-  iconActive,
-  iconInactive,
-}: {
-  isFocused: boolean;
-  onPress: () => void;
-  iconActive: keyof typeof Ionicons.glyphMap;
-  iconInactive: keyof typeof Ionicons.glyphMap;
-}) {
-  const activeValue = useDerivedValue(() => {
-    return isFocused ? withSpring(1, SPRING_IOS) : withSpring(0, SPRING_IOS);
-  }, [isFocused]);
+const NAV_ITEMS: {
+  route: string;
+  label: string;
+  active: IconName;
+  inactive: IconName;
+  center?: boolean;
+}[] = [
+  {
+    route: "index",
+    label: "Explorar",
+    active: "compass",
+    inactive: "compass-outline",
+  },
+  {
+    route: "scan/index",
+    label: "Escanear",
+    active: "scan",
+    inactive: "scan-outline",
+    center: true,
+  },
+  {
+    route: "trekking/history",
+    label: "Historial",
+    active: "footsteps",
+    inactive: "footsteps-outline",
+  },
+];
 
-  const activeCapsuleStyle = useAnimatedStyle(() => {
-    return {
-      opacity: activeValue.value,
-      transform: [{ scale: 0.85 + activeValue.value * 0.15 }],
-    };
-  });
-
-  const iconStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: 0.95 + activeValue.value * 0.1 }],
-    };
-  });
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={styles.tabItemTouchable}
-    >
-      <View style={styles.tabItemContainer}>
-        {/* Fondo activo (Cápsula Lima) */}
-        <Animated.View style={[styles.activeCapsule, activeCapsuleStyle]} />
-        
-        {/* Ícono animado en GPU */}
-        <Animated.View style={[styles.iconWrapper, iconStyle]}>
-          <Ionicons
-            name={isFocused ? iconActive : iconInactive}
-            size={22}
-            color={isFocused ? COLORS.inkDark : COLORS.inkSecondary}
-          />
-        </Animated.View>
-      </View>
-    </TouchableOpacity>
-  );
-});
-
-// --- Botón Central QR Memoizado ---
-const AnimatedCenterTabItem = memo(function AnimatedCenterTabItem({
-  isFocused,
-  onPress,
-  iconActive,
-  iconInactive,
-}: {
-  isFocused: boolean;
-  onPress: () => void;
-  iconActive: keyof typeof Ionicons.glyphMap;
-  iconInactive: keyof typeof Ionicons.glyphMap;
-}) {
-  const activeValue = useDerivedValue(() => {
-    return isFocused ? withSpring(1, SPRING_IOS) : withSpring(0, SPRING_IOS);
-  }, [isFocused]);
-
-  const centerStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: 0.92 + activeValue.value * 0.14 }],
-      backgroundColor: isFocused ? COLORS.lime : COLORS.limeGlow,
-      borderColor: isFocused ? COLORS.lime : COLORS.limeBorder,
-    };
-  });
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={styles.centerTouchable}
-    >
-      <Animated.View style={[styles.centerTabItem, centerStyle]}>
-        <Ionicons
-          name={isFocused ? iconActive : iconInactive}
-          size={22}
-          color={isFocused ? COLORS.inkDark : COLORS.lime}
-        />
-      </Animated.View>
-    </TouchableOpacity>
-  );
-});
-
-export default function ProtectedLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+function FloatingTabBar({
+  state,
+  navigation,
+}: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
-  useSync(isAuthenticated);
+  // La guía tiene su propia navegación.
+  // No mostramos la barra flotante mientras esté abierta.
+  const currentRoute = state.routes[state.index];
 
-  if (isLoading) return null;
-  if (!isAuthenticated) return <Redirect href="/login" />;
+  if (currentRoute?.name === "guide/index") {
+    return null;
+  }
 
   return (
-    <View style={styles.rootWrapper}>
-      <View style={styles.screenArea}>
-        <Tabs
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: { display: "none" },
-          }}
-          tabBar={({ state, navigation }) => {
-            const TAB_CONFIG = [
-              {
-                routeName: "index",
-                iconActive: "compass" as const,
-                iconInactive: "compass-outline" as const,
-              },
-              {
-                routeName: "scan/index",
-                iconActive: "qr-code" as const,
-                iconInactive: "qr-code-outline" as const,
-                isCenterAction: true,
-              },
-              {
-                routeName: "trekking/history",
-                iconActive: "footsteps" as const,
-                iconInactive: "footsteps-outline" as const,
-              },
-            ];
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.tabPosition,
+        { bottom: Math.max(insets.bottom, 12) + 4 },
+      ]}
+    >
+      <View style={styles.tabBar}>
+        {NAV_ITEMS.map((item) => {
+          const route = state.routes.find(
+            (r) => r.name === item.route
+          );
 
+          if (!route) return null;
+
+          const routeIndex = state.routes.indexOf(route);
+          const focused = state.index === routeIndex;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          if (item.center) {
             return (
-              <View style={styles.bottomBarOuterContainer}>
-                <BlurView
-                  intensity={Platform.OS === "ios" ? 60 : 95}
-                  tint="dark"
-                  style={[
-                    styles.fullWidthBlurBar,
-                    { paddingBottom: Math.max(insets.bottom, 12) },
-                  ]}
-                >
-                  <View style={styles.tabItemsRow}>
-                    {TAB_CONFIG.map((tab) => {
-                      const route = state.routes.find((r) => r.name === tab.routeName);
-                      if (!route) return null;
-
-                      const index = state.routes.indexOf(route);
-                      const isFocused = state.index === index;
-
-                      const onPress = () => {
-                        const event = navigation.emit({
-                          type: "tabPress",
-                          target: route.key,
-                          canPreventDefault: true,
-                        });
-
-                        if (!isFocused && !event.defaultPrevented) {
-                          navigation.navigate(route.name);
-                        }
-                      };
-
-                      if (tab.isCenterAction) {
-                        return (
-                          <AnimatedCenterTabItem
-                            key={route.key}
-                            isFocused={isFocused}
-                            onPress={onPress}
-                            iconActive={tab.iconActive}
-                            iconInactive={tab.iconInactive}
-                          />
-                        );
-                      }
-
-                      return (
-                        <AnimatedTabItem
-                          key={route.key}
-                          isFocused={isFocused}
-                          onPress={onPress}
-                          iconActive={tab.iconActive}
-                          iconInactive={tab.iconInactive}
-                        />
-                      );
-                    })}
-                  </View>
-                </BlurView>
-              </View>
+              <Pressable
+                key={route.key}
+                onPress={onPress}
+                style={styles.navItem}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: focused }}
+                accessibilityLabel="Escanear checkpoint"
+              >
+                <View style={styles.scanButton}>
+                  <Ionicons
+                    name="scan-outline"
+                    size={22}
+                    color={C.bg}
+                  />
+                </View>
+              </Pressable>
             );
-          }}
-        >
-          <Tabs.Screen name="index" options={{ title: "Home" }} />
-          <Tabs.Screen name="scan/index" options={{ title: "Escanear" }} />
-          <Tabs.Screen name="trekking/history" options={{ title: "Historial" }} />
-        </Tabs>
+          }
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              style={styles.navItem}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={item.label}
+            >
+              <Ionicons
+                name={
+                  focused
+                    ? item.active
+                    : item.inactive
+                }
+                size={21}
+                color={focused ? C.lime : C.muted}
+              />
+
+              <Text
+                style={[
+                  styles.navLabel,
+                  focused && styles.navLabelActive,
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
 }
 
+export default function ProtectedLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useSync(isAuthenticated);
+
+  if (isLoading) return null;
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
+  return (
+    <View style={styles.root}>
+      <Tabs
+        tabBar={(props) => <FloatingTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            position: "absolute",
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
+            elevation: 0,
+          },
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{ title: "Explorar" }}
+        />
+
+        <Tabs.Screen
+          name="scan/index"
+          options={{ title: "Escanear" }}
+        />
+
+        <Tabs.Screen
+          name="trekking/history"
+          options={{ title: "Historial" }}
+        />
+
+        {/* Nueva pantalla informativa */}
+        <Tabs.Screen
+          name="guide/index"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+      </Tabs>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  rootWrapper: {
+  root: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: C.bg,
   },
-  screenArea: {
-    flex: 1,
+
+  tabPosition: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    alignItems: "center",
+    zIndex: 20,
   },
-  bottomBarOuterContainer: {
-    backgroundColor: COLORS.bg,
-  },
-  fullWidthBlurBar: {
-    paddingTop: 10,
-    paddingHorizontal: 36,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderTopWidth: 1,
-    borderLeftWidth: 0.5,
-    borderRightWidth: 0.5,
-    borderColor: COLORS.borderGlow,
-    backgroundColor: COLORS.barGlassBg,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    elevation: 16,
-  },
-  tabItemsRow: {
+
+  tabBar: {
+    width: "100%",
+    maxWidth: 350,
+    height: 64,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  tabItemTouchable: {
-    width: 60,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabItemContainer: {
-    width: 58,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  activeCapsule: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.lime,
-    borderRadius: 21,
-  },
-  iconWrapper: {
-    zIndex: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  centerTouchable: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  centerTabItem: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    justifyContent: "space-around",
+    backgroundColor: C.surface,
+    borderRadius: 32,
     borderWidth: 1,
+    borderColor: C.border,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  navItem: {
+    flex: 1,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+
+  navLabel: {
+    color: C.muted,
+    fontSize: 10,
+    fontWeight: "500",
+  },
+
+  navLabelActive: {
+    color: C.lime,
+    fontWeight: "600",
+  },
+
+  scanButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: C.lime,
     alignItems: "center",
     justifyContent: "center",
   },

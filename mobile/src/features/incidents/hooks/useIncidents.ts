@@ -102,67 +102,61 @@ export function useIncidents(): UseIncidentsReturn {
   const takePhoto = async () => {
     setError(null);
 
-    const permission =
-      await ImagePicker.requestCameraPermissionsAsync();
+    try {
+      const permission =
+        await ImagePicker.requestCameraPermissionsAsync();
 
-    if (!permission.granted) {
-      setError("Se necesita permiso para utilizar la cámara.");
-      return;
-    }
+      if (!permission.granted) {
+        setError("Se necesita permiso para utilizar la cámara.");
+        return;
+      }
 
-    const result =
-      await ImagePicker.launchCameraAsync({
+      const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
+        allowsEditing: false,
+        quality: 0.4,
       });
 
-    if (result.canceled) {
-      return;
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setField("photo", result.assets[0].uri);
+    } catch (err) {
+      console.error("Error al capturar fotografía:", err);
+      setError("Ocurrió un problema al abrir la cámara.");
     }
-
-    const asset = result.assets[0];
-
-    if (!asset?.uri) {
-      setError("No se pudo obtener la fotografía.");
-      return;
-    }
-
-    setField("photo", asset.uri);
   };
 
   const pickPhoto = async () => {
     setError(null);
 
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permission.granted) {
-      setError(
-        "Se necesita permiso para acceder a las fotografías.",
-      );
-      return;
-    }
+      if (!permission.granted) {
+        setError(
+          "Se necesita permiso para acceder a las fotografías.",
+        );
+        return;
+      }
 
-    const result =
-      await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
+        allowsEditing: false,
+        quality: 0.5,
       });
 
-    if (result.canceled) {
-      return;
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setField("photo", result.assets[0].uri);
+    } catch (err) {
+      console.error("Error al seleccionar fotografía:", err);
+      setError("Ocurrió un problema al acceder a la galería.");
     }
-
-    const asset = result.assets[0];
-
-    if (!asset?.uri) {
-      setError("No se pudo obtener la fotografía.");
-      return;
-    }
-
-    setField("photo", asset.uri);
   };
 
   const removePhoto = () => {

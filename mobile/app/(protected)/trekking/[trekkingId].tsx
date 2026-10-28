@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,46 +9,172 @@ import {
   View,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import {
+  router,
+  useLocalSearchParams,
+} from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
 import { getTrekkingById } from "@/features/trekking/services/trekkingService";
 import type { Trekking } from "@/features/trekking/types";
 
-// --- Paleta -----------------------------------------------------------------
-// Misma línea que Parques, Trekking activo, Incidente e Historial: negro
-// como lienzo, blanco/gris para jerarquía de texto, un único verde lima
-// como acento y como color de "logro" para lo completado.
 const COLORS = {
   bg: "#0B0C0D",
   surface: "#17181B",
   surfaceBorder: "rgba(255,255,255,0.08)",
   divider: "rgba(255,255,255,0.08)",
-  glass: "rgba(255,255,255,0.06)",
-  glassBorder: "rgba(255,255,255,0.10)",
   ink: "#FFFFFF",
   inkSecondary: "#9BA1A6",
   inkTertiary: "#6E7378",
   lime: "#C6FF4D",
-  limeDim: "rgba(198,255,77,0.14)",
-  limeBorder: "rgba(198,255,77,0.35)",
+  limeDim: "rgba(198,255,77,0.12)",
+  limeBorder: "rgba(198,255,77,0.28)",
   black: "#0B0C0D",
 };
 
 function BackButton() {
   return (
-    <Pressable style={styles.roundButton} onPress={() => router.back()} hitSlop={8}>
-      <Ionicons name="chevron-back" size={20} color={COLORS.ink} />
+    <Pressable
+      style={({ pressed }) => [
+        styles.roundButton,
+        pressed && styles.pressed,
+      ]}
+      onPress={() => router.back()}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Volver"
+    >
+      <Ionicons
+        name="chevron-back"
+        size={20}
+        color={COLORS.ink}
+      />
     </Pressable>
   );
 }
 
-export default function TrekkingDetailScreen() {
-  const { trekkingId } = useLocalSearchParams<{ trekkingId: string }>();
+function formatDate(value: string): string {
+  const date = new Date(value);
 
-  const [trekking, setTrekking] = useState<Trekking | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("es-CL", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString("es-CL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function MountainPosterArtwork() {
+  return (
+    <View style={styles.posterArtwork}>
+      <Ionicons
+        name="triangle"
+        size={230}
+        color="rgba(198,255,77,0.065)"
+        style={styles.posterMountainBack}
+      />
+
+      <Ionicons
+        name="triangle"
+        size={175}
+        color="rgba(198,255,77,0.13)"
+        style={styles.posterMountainFront}
+      />
+
+      <Ionicons
+        name="triangle-outline"
+        size={133}
+        color="rgba(198,255,77,0.30)"
+        style={styles.posterMountainLine}
+      />
+    </View>
+  );
+}
+
+function TimelineCard({
+  icon,
+  label,
+  date,
+  value,
+  highlighted = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  date?: string;
+  value: string;
+  highlighted?: boolean;
+}) {
+  return (
+    <View style={styles.timelineCard}>
+      <View style={styles.timelineIconContainer}>
+        <Ionicons
+          name={icon}
+          size={19}
+          color={
+            highlighted
+              ? COLORS.lime
+              : COLORS.inkSecondary
+          }
+        />
+      </View>
+
+      <Text style={styles.timelineLabel}>
+        {label}
+      </Text>
+
+      <Text
+        style={[
+          styles.timelineValue,
+          highlighted && styles.timelineValueHighlight,
+        ]}
+      >
+        {value}
+      </Text>
+
+      {date ? (
+        <Text style={styles.timelineDate}>
+          {date}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export default function TrekkingDetailScreen() {
+  const { trekkingId } =
+    useLocalSearchParams<{ trekkingId: string }>();
+
+  const insets = useSafeAreaInsets();
+
+  const [trekking, setTrekking] =
+    useState<Trekking | null>(null);
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     async function fetchTrekkingDetail() {
@@ -56,11 +183,21 @@ export default function TrekkingDetailScreen() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await getTrekkingById(Number(trekkingId));
+
+        const data = await getTrekkingById(
+          Number(trekkingId)
+        );
+
         setTrekking(data);
       } catch (err) {
-        console.error("Error al cargar detalle del trekking:", err);
-        setError("No fue posible cargar el detalle del trekking.");
+        console.error(
+          "Error al cargar detalle del trekking:",
+          err
+        );
+
+        setError(
+          "No fue posible cargar el detalle del trekking."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -72,7 +209,8 @@ export default function TrekkingDetailScreen() {
   const handleShare = async () => {
     if (!trekking) return;
 
-    const isCompletedShare = trekking.status?.toUpperCase() === "COMPLETED";
+    const isCompletedShare =
+      trekking.status?.toUpperCase() === "COMPLETED";
 
     try {
       await Share.share({
@@ -81,158 +219,380 @@ export default function TrekkingDetailScreen() {
           : `Estoy en ruta: trekking #${trekking.id} en el Sendero #${trekking.trail}. 🥾`,
       });
     } catch (err) {
-      console.error("Error al compartir el trekking:", err);
+      console.error(
+        "Error al compartir el trekking:",
+        err
+      );
     }
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.center} edges={["top", "left", "right", "bottom"]}>
-        <ActivityIndicator size="large" color={COLORS.lime} />
-        <Text style={styles.message}>Cargando detalle del recorrido...</Text>
+      <SafeAreaView
+        style={styles.center}
+        edges={["top", "left", "right", "bottom"]}
+      >
+        <View style={styles.loadingIcon}>
+          <Ionicons
+            name="trail-sign-outline"
+            size={35}
+            color={COLORS.lime}
+          />
+        </View>
+
+        <ActivityIndicator
+          size="small"
+          color={COLORS.lime}
+        />
+
+        <Text style={styles.message}>
+          Preparando tu expedición...
+        </Text>
       </SafeAreaView>
     );
   }
 
   if (error || !trekking) {
     return (
-      <SafeAreaView style={styles.center} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.center}
+        edges={["top", "left", "right", "bottom"]}
+      >
         <View style={styles.topRowFixed}>
           <BackButton />
         </View>
+
         <View style={styles.errorContainer}>
           <View style={styles.emptyIconContainer}>
-            <Ionicons name="alert-circle-outline" size={34} color={COLORS.inkTertiary} />
+            <Ionicons
+              name="alert-circle-outline"
+              size={34}
+              color={COLORS.inkTertiary}
+            />
           </View>
-          <Text style={styles.errorTitle}>¡Ups!</Text>
-          <Text style={styles.error}>{error || "Trekking no encontrado."}</Text>
+
+          <Text style={styles.errorTitle}>
+            No encontramos tu expedición.
+          </Text>
+
+          <Text style={styles.error}>
+            {error || "Trekking no encontrado."}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const isCompleted = trekking.status?.toUpperCase() === "COMPLETED";
+  const isCompleted =
+    trekking.status?.toUpperCase() === "COMPLETED";
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView
+      style={styles.safeContainer}
+      edges={["top", "left", "right"]}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: 130 + insets.bottom },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* HEADER */}
 
-        {/* Cabecera */}
         <View style={styles.topRow}>
           <BackButton />
-          <Pressable style={styles.roundButton} onPress={handleShare} hitSlop={8}>
-            <Ionicons name="share-outline" size={19} color={COLORS.ink} />
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.roundButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={handleShare}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Compartir expedición"
+          >
+            <Ionicons
+              name="share-outline"
+              size={19}
+              color={COLORS.ink}
+            />
           </Pressable>
         </View>
 
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Resumen de expedición</Text>
-          <Text style={styles.subtitle}>Detalle completo del recorrido registrado</Text>
+          <Text style={styles.eyebrow}>
+            HITO / EXPEDICIÓN #{trekking.id}
+          </Text>
+
+          <Text style={styles.title}>
+            Tu recorrido.
+          </Text>
+
+          <Text style={styles.subtitle}>
+            Una aventura que merece ser recordada.
+          </Text>
         </View>
 
-        {/* Tarjeta "poster" — pensada para lucir bien al compartirse */}
-        <View style={styles.heroCard}>
+        {/* POSTER PRINCIPAL */}
+
+        <View style={styles.posterCard}>
+          <MountainPosterArtwork />
+
+          <View style={styles.posterContent}>
+            <View style={styles.posterTopRow}>
+              <View style={styles.posterBrand}>
+                <Ionicons
+                  name="trail-sign-outline"
+                  size={18}
+                  color={COLORS.lime}
+                />
+
+                <Text style={styles.posterBrandText}>
+                  HITO
+                </Text>
+              </View>
+
+              <Text style={styles.posterEdition}>
+                EXPEDITION SERIES
+              </Text>
+            </View>
+
+            <View style={styles.posterMainContent}>
+              <Text style={styles.posterEyebrow}>
+                TU AVENTURA
+              </Text>
+
+              <Text style={styles.posterTitle}>
+                Sendero #{trekking.trail}
+              </Text>
+
+              <View style={styles.posterIdRow}>
+                <Ionicons
+                  name="navigate-outline"
+                  size={15}
+                  color={COLORS.lime}
+                />
+
+                <Text style={styles.posterId}>
+                  Expedición #{trekking.id}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.posterStatusRow}>
+              <View
+                style={[
+                  styles.posterStatusBadge,
+                  isCompleted
+                    ? styles.posterStatusCompleted
+                    : styles.posterStatusProgress,
+                ]}
+              >
+                <Ionicons
+                  name={
+                    isCompleted
+                      ? "checkmark-circle"
+                      : "compass-outline"
+                  }
+                  size={14}
+                  color={
+                    isCompleted
+                      ? COLORS.black
+                      : COLORS.lime
+                  }
+                />
+
+                <Text
+                  style={[
+                    styles.posterStatusText,
+                    {
+                      color: isCompleted
+                        ? COLORS.black
+                        : COLORS.lime,
+                    },
+                  ]}
+                >
+                  {trekking.status}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.posterBottomDivider} />
+
+            <View style={styles.posterBottomRow}>
+              <View>
+                <Text style={styles.posterBottomLabel}>
+                  INICIO DE EXPEDICIÓN
+                </Text>
+
+                <Text style={styles.posterBottomValue}>
+                  {formatDate(trekking.started_at)}
+                </Text>
+              </View>
+
+              <Ionicons
+                name="trail-sign-outline"
+                size={25}
+                color={COLORS.lime}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* MENSAJE DE EXPEDICIÓN */}
+
+        <View style={styles.achievementCard}>
+          <View style={styles.achievementIcon}>
+            <Ionicons
+              name={
+                isCompleted
+                  ? "trophy-outline"
+                  : "compass-outline"
+              }
+              size={23}
+              color={COLORS.lime}
+            />
+          </View>
+
+          <View style={styles.achievementText}>
+            <Text style={styles.achievementTitle}>
+              {isCompleted
+                ? "¡Aventura completada!"
+                : "Tu aventura continúa"}
+            </Text>
+
+            <Text style={styles.achievementSubtitle}>
+              {isCompleted
+                ? "Otra expedición en tu historia. Cada paso cuenta."
+                : "Sigue avanzando con calma. El camino continúa."}
+            </Text>
+          </View>
+        </View>
+
+        {/* CRONOLOGÍA */}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            Cronología
+          </Text>
+
           <Ionicons
-            name="trail-sign-outline"
-            size={150}
-            color="rgba(255,255,255,0.04)"
-            style={styles.heroWatermark}
+            name="time-outline"
+            size={18}
+            color={COLORS.inkSecondary}
+          />
+        </View>
+
+        <View style={styles.timelineGrid}>
+          <TimelineCard
+            icon="calendar-outline"
+            label="Hora de inicio"
+            value={formatTime(trekking.started_at)}
+            date={formatDate(trekking.started_at)}
           />
 
-          <View style={styles.heroTopRow}>
-            <View>
-              <Text style={styles.cardSublabel}>ID DE RECORRIDO</Text>
-              <Text style={styles.cardIdText}>#{trekking.id}</Text>
-            </View>
-            <View style={[styles.badge, isCompleted ? styles.badgeCompleted : styles.badgeProgress]}>
-              <Ionicons
-                name={isCompleted ? "checkmark-done" : "navigate"}
-                size={12}
-                color={isCompleted ? COLORS.black : COLORS.lime}
-                style={{ marginRight: 4 }}
-              />
-              <Text style={[styles.badgeText, isCompleted ? styles.badgeTextCompleted : styles.badgeTextProgress]}>
-                {trekking.status}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.heroTrailRow}>
-            <Ionicons name="map-outline" size={18} color={COLORS.lime} style={{ marginRight: 6 }} />
-            <Text style={styles.valueHighlight}>Sendero #{trekking.trail}</Text>
-          </View>
-
-          <View style={styles.heroDivider} />
-
-          <View style={styles.heroMessageRow}>
-            <Ionicons
-              name={isCompleted ? "trophy-outline" : "compass-outline"}
-              size={20}
-              color={COLORS.lime}
-              style={{ marginRight: 10 }}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroMessageTitle}>
-                {isCompleted ? "¡Aventura completada!" : "Aventura en curso"}
-              </Text>
-              <Text style={styles.heroMessageSubtitle}>
-                {isCompleted
-                  ? "Otra cumbre en tu historial. Buen trabajo allá afuera."
-                  : "Sigue avanzando con calma, la ruta sigue abierta."}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Cuadrícula de datos del recorrido */}
-        <Text style={styles.sectionTitle}>Cronología</Text>
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={styles.statIconWrap}>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.lime} />
-            </View>
-            <Text style={styles.statLabel}>Hora de inicio</Text>
-            <Text style={styles.statValue}>
-              {new Date(trekking.started_at).toLocaleString("es-CL")}
-            </Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={styles.statIconWrap}>
-              <Ionicons name="time-outline" size={16} color={COLORS.lime} />
-            </View>
-            <Text style={styles.statLabel}>Retorno estimado</Text>
-            <Text style={styles.statValue}>
-              {new Date(trekking.estimated_return_time).toLocaleString("es-CL")}
-            </Text>
-          </View>
+          <TimelineCard
+            icon="flag-outline"
+            label="Retorno estimado"
+            value={formatTime(
+              trekking.estimated_return_time
+            )}
+            date={formatDate(
+              trekking.estimated_return_time
+            )}
+          />
 
           {trekking.finished_at && (
-            <View style={styles.statCard}>
-              <View style={styles.statIconWrap}>
-                <Ionicons name="checkmark-done-outline" size={16} color={COLORS.lime} />
-              </View>
-              <Text style={styles.statLabel}>Finalizado el</Text>
-              <Text style={styles.statValue}>
-                {new Date(trekking.finished_at).toLocaleString("es-CL")}
-              </Text>
-            </View>
+            <TimelineCard
+              icon="checkmark-done-outline"
+              label="Finalizado el"
+              value={formatTime(trekking.finished_at)}
+              date={formatDate(trekking.finished_at)}
+              highlighted
+            />
           )}
 
-          <View style={styles.statCard}>
-            <View style={styles.statIconWrap}>
+          <TimelineCard
+            icon={
+              trekking.tracking_enabled
+                ? "radio-button-on"
+                : "radio-button-off"
+            }
+            label="Rastreo GPS"
+            value={
+              trekking.tracking_enabled
+                ? "Habilitado"
+                : "Inactivo"
+            }
+            highlighted={
+              trekking.tracking_enabled
+            }
+          />
+        </View>
+
+        {/* COMPARTIR */}
+
+        <View style={styles.shareSection}>
+          <View style={styles.shareSectionHeader}>
+            <View style={styles.shareIcon}>
               <Ionicons
-                name={trekking.tracking_enabled ? "radio-button-on" : "radio-button-off"}
-                size={16}
-                color={trekking.tracking_enabled ? COLORS.lime : COLORS.inkTertiary}
+                name="share-social-outline"
+                size={21}
+                color={COLORS.lime}
               />
             </View>
-            <Text style={styles.statLabel}>Rastreo GPS</Text>
-            <Text style={styles.statValue}>
-              {trekking.tracking_enabled ? "Habilitado" : "Inactivo"}
-            </Text>
+
+            <View style={styles.shareTextContainer}>
+              <Text style={styles.shareTitle}>
+                Comparte tu aventura
+              </Text>
+
+              <Text style={styles.shareSubtitle}>
+                Cada expedición tiene una historia
+                que contar.
+              </Text>
+            </View>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.shareButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={handleShare}
+          >
+            <Ionicons
+              name="share-outline"
+              size={19}
+              color={COLORS.black}
+            />
+
+            <Text style={styles.shareButtonText}>
+              Compartir expedición
+            </Text>
+
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color={COLORS.black}
+            />
+          </Pressable>
+        </View>
+
+        {/* FOOTER */}
+
+        <View style={styles.footer}>
+          <Ionicons
+            name="trail-sign-outline"
+            size={16}
+            color={COLORS.inkTertiary}
+          />
+
+          <Text style={styles.footerText}>
+            HITO · CADA PASO CUENTA
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -244,11 +604,399 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 36,
   },
+
+  pressed: {
+    opacity: 0.78,
+  },
+
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 27,
+  },
+
+  roundButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+  },
+
+  headerContainer: {
+    marginBottom: 23,
+  },
+
+  eyebrow: {
+    color: COLORS.lime,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.6,
+    marginBottom: 9,
+  },
+
+  title: {
+    color: COLORS.ink,
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -1,
+  },
+
+  subtitle: {
+    color: COLORS.inkSecondary,
+    fontSize: 13,
+    marginTop: 7,
+    lineHeight: 19,
+  },
+
+  posterCard: {
+    minHeight: 345,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.limeBorder,
+    overflow: "hidden",
+    marginBottom: 13,
+  },
+
+  posterArtwork: {
+    position: "absolute",
+    right: -25,
+    bottom: 25,
+    width: 280,
+    height: 245,
+    overflow: "hidden",
+  },
+
+  posterMountainBack: {
+    position: "absolute",
+    right: -24,
+    bottom: -50,
+    transform: [{ rotate: "-12deg" }],
+  },
+
+  posterMountainFront: {
+    position: "absolute",
+    right: 83,
+    bottom: -20,
+    transform: [{ rotate: "8deg" }],
+  },
+
+  posterMountainLine: {
+    position: "absolute",
+    right: 12,
+    bottom: 34,
+  },
+
+  posterContent: {
+    flex: 1,
+    padding: 20,
+    justifyContent: "space-between",
+    minHeight: 345,
+  },
+
+  posterTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  posterBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  posterBrandText: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+
+  posterEdition: {
+    color: COLORS.inkTertiary,
+    fontSize: 9,
+    fontWeight: "600",
+    letterSpacing: 1.1,
+  },
+
+  posterMainContent: {
+    marginTop: 34,
+    marginBottom: 22,
+  },
+
+  posterEyebrow: {
+    color: COLORS.lime,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.6,
+    marginBottom: 10,
+  },
+
+  posterTitle: {
+    color: COLORS.ink,
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -1,
+    lineHeight: 39,
+    maxWidth: "90%",
+  },
+
+  posterIdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 12,
+  },
+
+  posterId: {
+    color: COLORS.inkSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  posterStatusRow: {
+    flexDirection: "row",
+    marginBottom: 20,
+  },
+
+  posterStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+
+  posterStatusCompleted: {
+    backgroundColor: COLORS.lime,
+  },
+
+  posterStatusProgress: {
+    backgroundColor: COLORS.limeDim,
+    borderWidth: 1,
+    borderColor: COLORS.limeBorder,
+  },
+
+  posterStatusText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  posterBottomDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    marginBottom: 16,
+  },
+
+  posterBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  posterBottomLabel: {
+    color: COLORS.inkTertiary,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+
+  posterBottomValue: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  achievementCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+    padding: 15,
+    backgroundColor: COLORS.surface,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    marginBottom: 29,
+  },
+
+  achievementIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.limeDim,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  achievementText: {
+    flex: 1,
+    gap: 5,
+  },
+
+  achievementTitle: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  achievementSubtitle: {
+    color: COLORS.inkSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    color: COLORS.ink,
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+  },
+
+  timelineGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 28,
+  },
+
+  timelineCard: {
+    width: "48%",
+    backgroundColor: COLORS.surface,
+    borderRadius: 17,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    minHeight: 147,
+  },
+
+  timelineIconContainer: {
+    width: 33,
+    height: 33,
+    borderRadius: 11,
+    backgroundColor: COLORS.limeDim,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 13,
+  },
+
+  timelineLabel: {
+    color: COLORS.inkSecondary,
+    fontSize: 11,
+    fontWeight: "500",
+    marginBottom: 7,
+  },
+
+  timelineValue: {
+    color: COLORS.ink,
+    fontSize: 19,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    fontVariant: ["tabular-nums"],
+  },
+
+  timelineValueHighlight: {
+    color: COLORS.lime,
+  },
+
+  timelineDate: {
+    color: COLORS.inkSecondary,
+    fontSize: 10,
+    marginTop: 5,
+  },
+
+  shareSection: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 19,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    gap: 17,
+    marginBottom: 24,
+  },
+
+  shareSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  shareIcon: {
+    width: 43,
+    height: 43,
+    borderRadius: 13,
+    backgroundColor: COLORS.limeDim,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  shareTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+
+  shareTitle: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  shareSubtitle: {
+    color: COLORS.inkSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.lime,
+    borderRadius: 13,
+    minHeight: 51,
+    paddingHorizontal: 15,
+    gap: 10,
+  },
+
+  shareButtonText: {
+    color: COLORS.black,
+    fontSize: 14,
+    fontWeight: "700",
+    flex: 1,
+  },
+
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+  },
+
+  footerText: {
+    color: COLORS.inkTertiary,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.3,
+  },
+
   center: {
     flex: 1,
     justifyContent: "center",
@@ -256,203 +1004,57 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
     padding: 24,
   },
+
+  loadingIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 23,
+    backgroundColor: COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  message: {
+    marginTop: 14,
+    fontSize: 13,
+    color: COLORS.inkSecondary,
+    fontWeight: "500",
+  },
+
   topRowFixed: {
     position: "absolute",
     top: 8,
     left: 20,
   },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  roundButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.glass,
+
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 23,
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.glassBorder,
-  },
-  headerContainer: {
     marginBottom: 18,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: COLORS.ink,
-    letterSpacing: -0.6,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.inkSecondary,
-    marginTop: 4,
-  },
 
-  // --- Tarjeta hero / poster compartible ---
-  heroCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceBorder,
-    marginBottom: 24,
-    overflow: "hidden",
-  },
-  heroWatermark: {
-    position: "absolute",
-    bottom: -30,
-    right: -30,
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 14,
-  },
-  cardSublabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.inkTertiary,
-    letterSpacing: 0.5,
-  },
-  cardIdText: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: COLORS.ink,
-    marginTop: 2,
-    letterSpacing: -0.5,
-  },
-  heroTrailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  valueHighlight: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.lime,
-  },
-  heroDivider: {
-    height: 1,
-    backgroundColor: COLORS.divider,
-    marginBottom: 16,
-  },
-  heroMessageRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  heroMessageTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: COLORS.ink,
-    marginBottom: 2,
-  },
-  heroMessageSubtitle: {
-    fontSize: 13,
-    color: COLORS.inkSecondary,
-    lineHeight: 18,
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  badgeCompleted: {
-    backgroundColor: COLORS.lime,
-  },
-  badgeProgress: {
-    backgroundColor: COLORS.limeDim,
-    borderWidth: 1,
-    borderColor: COLORS.limeBorder,
-  },
-  badgeText: {
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  badgeTextCompleted: {
-    color: COLORS.black,
-  },
-  badgeTextProgress: {
-    color: COLORS.lime,
-  },
-
-  // --- Cuadrícula de estadísticas ---
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: COLORS.ink,
-    marginBottom: 12,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  statCard: {
-    width: "47%",
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceBorder,
-  },
-  statIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.limeDim,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.inkSecondary,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.ink,
-  },
-
-  message: {
-    marginTop: 12,
-    fontSize: 15,
-    color: COLORS.inkSecondary,
-    fontWeight: "500",
-  },
-  emptyIconContainer: {
-    width: 68,
-    height: 68,
-    borderRadius: 24,
-    backgroundColor: COLORS.surface,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceBorder,
-  },
   errorContainer: {
     alignItems: "center",
     padding: 24,
   },
+
   errorTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
     color: COLORS.ink,
-    marginBottom: 8,
+    textAlign: "center",
+    marginBottom: 10,
   },
+
   error: {
     color: COLORS.inkSecondary,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "center",
-    fontWeight: "500",
+    lineHeight: 20,
   },
 });
