@@ -1,7 +1,7 @@
 # Hito
 
 <p align="center">
-  <img src="docs/hito_logo" alt="Logo de Hito" width="180" />
+  <img src="docs/hito_logo.png" alt="Logo de Hito" width="180" />
 </p>
 
 > Plataforma SaaS Offline-First para la gestión de seguridad y seguimiento de excursionistas en parques y reservas naturales.
