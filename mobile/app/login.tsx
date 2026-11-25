@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect } from "expo-router";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { register } from "@/features/auth/services/authService";
 
 const COLORS = {
   paper: "#000000",
@@ -33,6 +34,7 @@ export default function LoginScreen() {
   const { login, isLoading, isAuthenticated } = useAuth();
 
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,9 +65,33 @@ export default function LoginScreen() {
           password,
         });
         Alert.alert("Éxito", "Inicio de sesión correcto.");
-      } else {
-        Alert.alert("Información", "El registro de cuentas estará disponible próximamente.");
-      }
+      
+} else {
+  if (!email.trim()) {
+    Alert.alert(
+      "Atención",
+      "Por favor ingresa tu correo electrónico."
+    );
+    return;
+  }
+
+  await register({
+    username: username.trim().toLowerCase(),
+    email: email.trim().toLowerCase(),
+    password,
+    password_confirm: repeatPassword,
+  });
+
+  setIsSignIn(true);
+  setPassword("");
+  setRepeatPassword("");
+
+  Alert.alert(
+    "Cuenta creada",
+    "Tu cuenta se creó correctamente. Ahora puedes iniciar sesión."
+  );
+}
+
     } catch (error) {
       console.error("Error en login catch:", error);
       Alert.alert(
@@ -177,6 +203,39 @@ export default function LoginScreen() {
                   style={styles.input}
                 />
               </View>
+
+
+{!isSignIn && (
+  <View
+    style={[
+      styles.inputContainer,
+      focusedField === "email" && styles.inputContainerFocused,
+    ]}
+  >
+    <Ionicons
+      name="mail-outline"
+      size={20}
+      color={focusedField === "email" ? COLORS.ink : COLORS.slate}
+      style={styles.inputIcon}
+    />
+
+    <TextInput
+      placeholder="Correo electrónico"
+      placeholderTextColor={COLORS.slate}
+      keyboardType="email-address"
+      autoCapitalize="none"
+      autoCorrect={false}
+      autoComplete="email"
+      textContentType="emailAddress"
+      value={email}
+      onChangeText={setEmail}
+      onFocus={() => setFocusedField("email")}
+      onBlur={() => setFocusedField(null)}
+      style={styles.input}
+    />
+  </View>
+)}
+
 
               <View
                 style={[

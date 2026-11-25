@@ -1,7 +1,16 @@
+
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.trekkings.models import Trekking
+
+from .models_followup import (
+    IncidentFollowUp,
+    IncidentReviewStatus,
+    IncidentAuditLog,
+)
 
 
 class IncidentType(models.TextChoices):
@@ -17,8 +26,22 @@ class IncidentType(models.TextChoices):
 
 class Incident(models.Model):
     """
-    Representa un incidente reportado durante un trekking.
+    Incidente reportado durante un trekking.
+
+    Admite registros online originales y registros
+    creados offline en SQLite mediante UUID.
+
+    El UUID no cambia durante los reintentos de
+    sincronización.
     """
+
+    local_id = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+        verbose_name="Identificador local de sincronización",
+    )
 
     trekking = models.ForeignKey(
         Trekking,
@@ -40,12 +63,16 @@ class Incident(models.Model):
     latitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
+        null=True,
+        blank=True,
         verbose_name="Latitud",
     )
 
     longitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
+        null=True,
+        blank=True,
         verbose_name="Longitud",
     )
 
@@ -80,15 +107,26 @@ class Incident(models.Model):
     def clean(self):
         errors = {}
 
-        if self.latitude < -90 or self.latitude > 90:
+        if (
+            (self.latitude is None)
+            != (self.longitude is None)
+        ):
             errors["latitude"] = (
-                "La latitud debe estar entre -90 y 90 grados."
+                "Las coordenadas deben estar completas "
+                "o ambas ausentes."
             )
 
-        if self.longitude < -180 or self.longitude > 180:
-            errors["longitude"] = (
-                "La longitud debe estar entre -180 y 180 grados."
-            )
+        if self.latitude is not None:
+            if not -90 <= self.latitude <= 90:
+                errors["latitude"] = (
+                    "La latitud debe estar entre -90 y 90 grados."
+                )
+
+        if self.longitude is not None:
+            if not -180 <= self.longitude <= 180:
+                errors["longitude"] = (
+                    "La longitud debe estar entre -180 y 180 grados."
+                )
 
         if not (self.description or "").strip():
             errors["description"] = (

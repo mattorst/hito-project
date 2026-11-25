@@ -1,0 +1,883 @@
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}Panel general | Hito{% endblock %}
+
+{% block content %}
+
+<style>
+    /* HOME — HITO, dashboard premium iOS-style */
+
+    .hito-home {
+        --home-surface: #1B2320;
+        --home-surface-strong: #212A26;
+        --home-border: rgba(255, 255, 255, 0.09);
+        --home-border-strong: rgba(255, 255, 255, 0.18);
+        --home-amber: #F3C16E;
+        --home-amber-dim: rgba(243, 193, 110, 0.14);
+        --home-amber-border: rgba(243, 193, 110, 0.30);
+
+        color: var(--hito-ink);
+        padding: 28px 28px 48px;
+        max-width: 1280px;
+        margin: 0 auto;
+    }
+
+    .hito-home * {
+        box-sizing: border-box;
+    }
+
+    .hito-home svg {
+        display: block;
+    }
+
+    /* ENCABEZADO — con patrón topográfico sutil, aura de mapa de ruta */
+
+    .home-hero {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 26px;
+        padding: 24px 26px;
+        border-radius: 22px;
+        border: 1px solid var(--home-border);
+        background: var(--home-surface);
+    }
+
+    .home-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        pointer-events: none;
+        background-image:
+            radial-gradient(circle at 85% -10%, rgba(198,255,77,0.14), transparent 45%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M-20 170 Q 60 120 110 150 T 240 110'/%3E%3Cpath d='M-20 200 Q 70 150 120 180 T 240 140'/%3E%3Cpath d='M-20 230 Q 80 180 130 210 T 240 170'/%3E%3C/g%3E%3C/svg%3E");
+        background-repeat: no-repeat, no-repeat;
+        background-position: 0 0, right bottom;
+        background-size: cover, 420px;
+    }
+
+    .home-hero-text {
+        position: relative;
+        z-index: 1;
+    }
+
+    .hito-home .home-title {
+        color: var(--hito-ink);
+        font-size: 23px;
+        font-weight: 750;
+        letter-spacing: -0.5px;
+        margin: 0 0 4px;
+    }
+
+    .home-description {
+        color: var(--hito-ink-secondary);
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin: 0;
+        max-width: 460px;
+    }
+
+    .home-button-primary {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--hito-lime);
+        color: #10150F;
+        border-radius: 11px;
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: opacity .15s ease, transform .15s ease;
+    }
+
+    .home-button-primary svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .home-button-primary:hover {
+        opacity: .85;
+        color: #10150F;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    /* ENCABEZADOS DE SECCIÓN */
+
+    .home-section-heading {
+        margin-bottom: 14px;
+    }
+
+    .hito-home .home-section-heading h2 {
+        color: var(--hito-ink);
+        font-size: 15px;
+        font-weight: 750;
+        margin: 0 0 3px;
+        letter-spacing: -0.1px;
+    }
+
+    .home-section-heading p {
+        color: var(--hito-ink-secondary);
+        font-size: 11.5px;
+        margin: 0;
+    }
+
+    /* ESTADÍSTICAS — tarjetas con acento de color real */
+
+    .home-stats {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 26px;
+    }
+
+    .home-stat {
+        position: relative;
+        min-width: 0;
+        padding: 16px;
+        border-radius: 17px;
+        border: 1px solid var(--home-border);
+        background: var(--home-surface);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+
+    .home-stat:hover {
+        border-color: var(--home-border-strong);
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .home-stat-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--hito-lime-dim);
+        border-radius: 10px;
+        color: var(--hito-lime);
+    }
+
+    .home-stat-icon svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .home-stat-warning .home-stat-icon {
+        color: var(--home-amber);
+        background: var(--home-amber-dim);
+    }
+
+    .home-stat-danger .home-stat-icon {
+        color: var(--hito-danger);
+        background: rgba(255, 107, 94, 0.16);
+    }
+
+    .home-stat-label {
+        font-size: 11px;
+        color: var(--hito-ink-secondary);
+        line-height: 1.35;
+    }
+
+    .hito-home strong.home-stat-number {
+        color: var(--hito-ink) !important;
+        font-size: 26px;
+        font-weight: 750;
+        letter-spacing: -0.6px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Pulso de alerta real — solo aparece cuando el dato lo amerita */
+
+    .home-stat.is-alert {
+        border-color: rgba(255, 107, 94, 0.45);
+        animation: home-alert-pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes home-alert-pulse {
+        0%, 100% {
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22), 0 0 0 0 rgba(255, 107, 94, 0.28);
+        }
+        50% {
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22), 0 0 0 7px rgba(255, 107, 94, 0);
+        }
+    }
+
+    /* MONITOREO */
+
+    .home-monitor {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 28px;
+        padding: 17px 19px;
+        border-radius: 17px;
+        border: 1px solid var(--hito-lime-border);
+        background: linear-gradient(135deg, rgba(198,255,77,0.11), rgba(198,255,77,0.03));
+    }
+
+    .home-monitor-content {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+        flex: 1 1 320px;
+    }
+
+    .home-monitor-icon {
+        width: 37px;
+        height: 37px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: rgba(198, 255, 77, 0.22);
+        color: var(--hito-lime);
+    }
+
+    .home-monitor-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .home-monitor-text {
+        min-width: 0;
+    }
+
+    .hito-home .home-monitor h2 {
+        color: var(--hito-ink);
+        margin: 0 0 2px;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .home-monitor p {
+        max-width: 560px;
+        color: var(--hito-ink-secondary);
+        font-size: 11.5px;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .home-monitor-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        flex-shrink: 0;
+        padding: 10px 15px;
+        border-radius: 10px;
+        background: var(--hito-lime);
+        color: #10150F;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .home-monitor-link svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .home-monitor-link:hover {
+        opacity: .85;
+        color: #10150F;
+        text-decoration: none;
+    }
+
+    /* ACTIVIDAD RECIENTE — una tarjeta con pestañas, contenido en grilla */
+
+    .home-activity-card {
+        border-radius: 18px;
+        border: 1px solid var(--home-border);
+        background: var(--home-surface);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+        overflow: hidden;
+    }
+
+    .home-activity-card > input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .home-tabbar {
+        display: flex;
+        gap: 4px;
+        padding: 12px 14px 0;
+        border-bottom: 1px solid var(--hito-divider);
+        flex-wrap: wrap;
+    }
+
+    .home-tabbar label {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 14px;
+        margin-bottom: 11px;
+        border-radius: 10px;
+        font-size: 12.5px;
+        font-weight: 650;
+        color: var(--hito-ink-secondary);
+        cursor: pointer;
+        transition: background-color .15s ease, color .15s ease;
+        user-select: none;
+    }
+
+    .home-tabbar label svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .home-tabbar label:hover {
+        background: rgba(255,255,255,0.04);
+        color: var(--hito-ink);
+    }
+
+    .home-tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 17px;
+        height: 17px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        color: var(--hito-ink-secondary);
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    #home-tab-trekkings:checked ~ .home-tabbar label[for="home-tab-trekkings"],
+    #home-tab-incidents:checked ~ .home-tabbar label[for="home-tab-incidents"],
+    #home-tab-rescues:checked ~ .home-tabbar label[for="home-tab-rescues"] {
+        background: var(--hito-lime-dim);
+        color: var(--hito-lime);
+    }
+
+    #home-tab-incidents:checked ~ .home-tabbar label[for="home-tab-incidents"] {
+        background: var(--home-amber-dim);
+        color: var(--home-amber);
+    }
+
+    #home-tab-rescues:checked ~ .home-tabbar label[for="home-tab-rescues"] {
+        background: rgba(255, 107, 94, 0.14);
+        color: var(--hito-danger);
+    }
+
+    .home-tab-panel {
+        display: none;
+        padding: 16px;
+    }
+
+    #home-tab-trekkings:checked ~ .home-tab-panels .panel-trekkings,
+    #home-tab-incidents:checked ~ .home-tab-panels .panel-incidents,
+    #home-tab-rescues:checked ~ .home-tab-panels .panel-rescues {
+        display: block;
+    }
+
+    .home-tab-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .home-tab-panel-header p {
+        color: var(--hito-ink-secondary);
+        font-size: 11.5px;
+        margin: 0;
+    }
+
+    .home-panel-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--hito-lime);
+        font-size: 11.5px;
+        font-weight: 650;
+        white-space: nowrap;
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+
+    .home-panel-link svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    .home-panel-link:hover {
+        opacity: .8;
+        text-decoration: none;
+    }
+
+    /* GRILLA DE TARJETAS — reemplaza la lista apilada */
+
+    .home-tile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 10px;
+    }
+
+    .home-tile {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 15px;
+        background: var(--home-surface-strong);
+        border: 1px solid var(--home-border);
+        text-decoration: none;
+        transition: border-color .15s ease, transform .15s ease, background-color .15s ease;
+    }
+
+    .home-tile:hover {
+        border-color: var(--home-border-strong);
+        background: #26312C;
+        transform: translateY(-2px);
+    }
+
+    .home-tile-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .home-tile-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        flex-shrink: 0;
+        background: var(--hito-lime-dim);
+        color: var(--hito-lime);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .home-tile-icon svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .home-tile.is-incident .home-tile-icon {
+        background: var(--home-amber-dim);
+        color: var(--home-amber);
+    }
+
+    .home-tile.is-rescue .home-tile-icon {
+        background: rgba(255, 107, 94, 0.16);
+        color: var(--hito-danger);
+    }
+
+    .home-tile-chevron {
+        width: 15px;
+        height: 15px;
+        color: var(--hito-ink-secondary);
+        flex-shrink: 0;
+    }
+
+    .home-tile-id {
+        color: var(--hito-lime);
+        font-weight: 750;
+        font-size: 11px;
+    }
+
+    .home-tile.is-incident .home-tile-id {
+        color: var(--home-amber);
+    }
+
+    .home-tile.is-rescue .home-tile-id {
+        color: var(--hito-danger);
+    }
+
+    .home-tile-user {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--hito-ink);
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .home-tile-sub {
+        color: var(--hito-ink-secondary);
+        font-size: 11px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .home-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        align-self: flex-start;
+        padding: 5px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--home-border);
+        border-radius: 999px;
+        color: #D6DFD6;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .home-status-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--hito-ink-secondary);
+        flex-shrink: 0;
+    }
+
+    .home-empty {
+        padding: 34px 16px;
+        color: var(--hito-ink-secondary);
+        font-size: 12px;
+        text-align: center;
+    }
+
+    .home-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+        padding-top: 16px;
+        border-top: 1px solid var(--hito-divider);
+        color: var(--hito-ink-secondary);
+        font-size: 10.5px;
+    }
+
+    @media (max-width: 1100px) {
+        .home-stats {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 750px) {
+        .home-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .home-tile-grid {
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        }
+    }
+
+    @media (max-width: 480px) {
+        .hito-home {
+            padding: 20px 16px 36px;
+        }
+
+        .home-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .home-tile-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="hito-home">
+
+    <!-- ENCABEZADO -->
+
+    <section class="home-hero">
+        <div class="home-hero-text">
+            <h1 class="home-title">Panel general</h1>
+            <p class="home-description">
+                Resumen de actividad, excursiones y alertas
+                registradas en Hito.
+            </p>
+        </div>
+
+        <a
+            href="{% url 'dashboard:monitoreo' %}"
+            class="home-button-primary"
+        >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            Ir a monitoreo
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+        </a>
+    </section>
+
+    <!-- ESTADO GENERAL -->
+
+    <section>
+        <div class="home-section-heading">
+            <h2>Estado general</h2>
+            <p>Indicadores principales del sistema</p>
+        </div>
+
+        <div class="home-stats">
+
+            <article class="home-stat">
+                <div class="home-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20L9.5 8l4 7.5L16 12l5 8H3z"/></svg>
+                </div>
+                <span class="home-stat-label">Trekkings registrados</span>
+                <strong class="home-stat-number">{{ total_trekkings }}</strong>
+            </article>
+
+            <article class="home-stat">
+                <div class="home-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/></svg>
+                </div>
+                <span class="home-stat-label">Trekkings activos</span>
+                <strong class="home-stat-number">{{ active_trekkings }}</strong>
+            </article>
+
+            <article class="home-stat home-stat-warning{% if overdue_trekkings > 0 %} is-alert{% endif %}">
+                <div class="home-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+                </div>
+                <span class="home-stat-label">Regresos atrasados</span>
+                <strong class="home-stat-number">{{ overdue_trekkings }}</strong>
+            </article>
+
+            <article class="home-stat">
+                <div class="home-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2.8 17a1.8 1.8 0 0 0 1.6 2.7h15.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0z"/></svg>
+                </div>
+                <span class="home-stat-label">Incidentes registrados</span>
+                <strong class="home-stat-number">{{ total_incidents }}</strong>
+            </article>
+
+            <article class="home-stat home-stat-danger{% if active_rescues > 0 %} is-alert{% endif %}">
+                <div class="home-stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6.5 5.5 5.5 0 0 1 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                </div>
+                <span class="home-stat-label">Rescates SOS activos</span>
+                <strong class="home-stat-number">{{ active_rescues }}</strong>
+            </article>
+
+        </div>
+    </section>
+
+    <!-- MONITOREO -->
+
+    <section class="home-monitor">
+        <div class="home-monitor-content">
+            <div class="home-monitor-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </div>
+
+            <div class="home-monitor-text">
+                <h2>Centro de monitoreo</h2>
+                <p>
+                    Supervisa los trekkings en curso, las posiciones GPS
+                    sincronizadas, los checkpoints y las alertas SOS
+                    desde una sola pantalla.
+                </p>
+            </div>
+        </div>
+
+        <a
+            href="{% url 'dashboard:monitoreo' %}"
+            class="home-monitor-link"
+        >
+            Abrir monitoreo
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+        </a>
+    </section>
+
+    <!-- ACTIVIDAD RECIENTE — tarjeta con pestañas, contenido en grilla -->
+
+    <section>
+        <div class="home-section-heading">
+            <h2>Actividad reciente</h2>
+            <p>Últimos registros recibidos desde Hito</p>
+        </div>
+
+        <div class="home-activity-card">
+
+            <input type="radio" name="home-activity-tabs" id="home-tab-trekkings" checked>
+            <input type="radio" name="home-activity-tabs" id="home-tab-incidents">
+            <input type="radio" name="home-activity-tabs" id="home-tab-rescues">
+
+            <div class="home-tabbar">
+                <label for="home-tab-trekkings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20L9.5 8l4 7.5L16 12l5 8H3z"/></svg>
+                    Trekkings
+                    <span class="home-tab-count">{{ latest_trekkings|length }}</span>
+                </label>
+                <label for="home-tab-incidents">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2.8 17a1.8 1.8 0 0 0 1.6 2.7h15.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0z"/></svg>
+                    Incidentes
+                    <span class="home-tab-count">{{ latest_incidents|length }}</span>
+                </label>
+                <label for="home-tab-rescues">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6.5 5.5 5.5 0 0 1 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                    Rescates
+                    <span class="home-tab-count">{{ latest_rescues|length }}</span>
+                </label>
+            </div>
+
+            <div class="home-tab-panels">
+
+                <!-- TREKKINGS -->
+                <div class="home-tab-panel panel-trekkings">
+                    <div class="home-tab-panel-header">
+                        <p>Excursiones registradas recientemente</p>
+                        <a href="{% url 'dashboard:trekkings' %}" class="home-panel-link">
+                            Ver todos
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+                        </a>
+                    </div>
+
+                    {% if latest_trekkings %}
+                        <div class="home-tile-grid">
+                            {% for trekking in latest_trekkings %}
+                            <a href="{% url 'dashboard:trekking_detail' trekking.pk %}" class="home-tile">
+                                <div class="home-tile-top">
+                                    <div class="home-tile-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20L9.5 8l4 7.5L16 12l5 8H3z"/></svg>
+                                    </div>
+                                    <svg class="home-tile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                                </div>
+
+                                <div>
+                                    <span class="home-tile-id">#{{ trekking.pk }}</span>
+                                    <div class="home-tile-user">{{ trekking.user.username }}</div>
+                                    <div class="home-tile-sub">
+                                        {{ trekking.trail.name }}
+                                        {% if trekking.companion_count %}
+                                            · {{ trekking.companion_count }} acompañante{{ trekking.companion_count|pluralize }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <span class="home-status">
+                                    <span class="home-status-dot"></span>
+                                    {{ trekking.get_status_display }}
+                                </span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="home-empty">
+                            Todavía no existen trekkings registrados.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- INCIDENTES -->
+                <div class="home-tab-panel panel-incidents">
+                    <div class="home-tab-panel-header">
+                        <p>Reportes recibidos</p>
+                        <a href="{% url 'dashboard:incidents' %}" class="home-panel-link">
+                            Ver todos
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+                        </a>
+                    </div>
+
+                    {% if latest_incidents %}
+                        <div class="home-tile-grid">
+                            {% for incident in latest_incidents %}
+                            <a href="{% url 'dashboard:incident_detail' incident.pk %}" class="home-tile is-incident">
+                                <div class="home-tile-top">
+                                    <div class="home-tile-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2.8 17a1.8 1.8 0 0 0 1.6 2.7h15.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0z"/></svg>
+                                    </div>
+                                    <svg class="home-tile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                                </div>
+
+                                <div>
+                                    <span class="home-tile-id">#{{ incident.pk }}</span>
+                                    <div class="home-tile-user">{{ incident.trekking.user.username }}</div>
+                                </div>
+
+                                <span class="home-status">
+                                    <span class="home-status-dot"></span>
+                                    {% if incident.follow_up %}
+                                        {{ incident.follow_up.get_status_display }}
+                                    {% else %}
+                                        Pendiente
+                                    {% endif %}
+                                </span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="home-empty">
+                            No existen incidentes registrados.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- RESCATES -->
+                <div class="home-tab-panel panel-rescues">
+                    <div class="home-tab-panel-header">
+                        <p>Solicitudes de rescate registradas</p>
+                        <a href="{% url 'dashboard:rescues' %}" class="home-panel-link">
+                            Ver todos
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+                        </a>
+                    </div>
+
+                    {% if latest_rescues %}
+                        <div class="home-tile-grid">
+                            {% for rescue in latest_rescues %}
+                            <a href="{% url 'dashboard:rescue_detail' rescue.pk %}" class="home-tile is-rescue">
+                                <div class="home-tile-top">
+                                    <div class="home-tile-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6.5 5.5 5.5 0 0 1 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                                    </div>
+                                    <svg class="home-tile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                                </div>
+
+                                <div>
+                                    <span class="home-tile-id">#{{ rescue.pk }}</span>
+                                    <div class="home-tile-user">{{ rescue.trekking.user.username }}</div>
+                                </div>
+
+                                <span class="home-status">
+                                    <span class="home-status-dot"></span>
+                                    {{ rescue.get_status_display }}
+                                </span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="home-empty">
+                            No existen solicitudes SOS registradas.
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="home-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span>Panel de guardaparques</span>
+    </footer>
+
+</div>
+
+{% endblock %}

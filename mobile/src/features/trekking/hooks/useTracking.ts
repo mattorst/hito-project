@@ -1,14 +1,23 @@
+
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+
 import type {
   LocationObject,
   LocationSubscription,
 } from "expo-location";
-import { startTracking as startTrackingService } from "../services/trackingService";
+
+import {
+  startTracking as startTrackingService,
+} from "../services/trackingService";
+
+import type {
+  TrackingTrekkingId,
+} from "../types/tracking";
 
 export type TrackingStatus =
   | "idle"
@@ -27,7 +36,7 @@ interface UseTrackingResult {
 }
 
 export function useTracking(
-  trekkingId: number,
+  trekkingId: TrackingTrekkingId,
 ): UseTrackingResult {
   const [status, setStatus] =
     useState<TrackingStatus>("idle");
@@ -44,22 +53,38 @@ export function useTracking(
   const subscriptionRef =
     useRef<LocationSubscription | null>(null);
 
-  const trackingSessionRef =
-    useRef(0);
+  const sessionRef = useRef(0);
+
+  // Impide iniciar dos watchPositionAsync simultáneos.
+  const startingSessionRef =
+    useRef<number | null>(null);
 
   const startTracking = useCallback(async () => {
-    if (subscriptionRef.current) {
+    if (
+      subscriptionRef.current ||
+      startingSessionRef.current !== null
+    ) {
       return;
     }
+
+    const validId =
+      typeof trekkingId === "number"
+        ? Number.isInteger(trekkingId) &&
+          trekkingId > 0
+        : typeof trekkingId === "string" &&
+          trekkingId.trim().length > 0;
+
+    if (!validId) {
+      setStatus("idle");
+      return;
+    }
+
+    const sessionId = ++sessionRef.current;
+    startingSessionRef.current = sessionId;
 
     setStatus("starting");
     setError(null);
     setPersistenceError(null);
-
-    const sessionId =
-      trackingSessionRef.current + 1;
-
-    trackingSessionRef.current = sessionId;
 
     try {
       const subscription =
@@ -67,9 +92,7 @@ export function useTracking(
           trekkingId,
 
           onLocation: (newLocation) => {
-            if (
-              trackingSessionRef.current !== sessionId
-            ) {
+            if (sessionRef.current !== sessionId) {
               return;
             }
 
@@ -77,9 +100,7 @@ export function useTracking(
           },
 
           onPersistenceError: (persistError) => {
-            if (
-              trackingSessionRef.current !== sessionId
-            ) {
+            if (sessionRef.current !== sessionId) {
               return;
             }
 
@@ -94,20 +115,15 @@ export function useTracking(
           },
         });
 
-      if (
-        trackingSessionRef.current !== sessionId
-      ) {
+      if (sessionRef.current !== sessionId) {
         subscription.remove();
         return;
       }
 
       subscriptionRef.current = subscription;
-
       setStatus("tracking");
     } catch (err) {
-      if (
-        trackingSessionRef.current !== sessionId
-      ) {
+      if (sessionRef.current !== sessionId) {
         return;
       }
 
@@ -120,36 +136,39 @@ export function useTracking(
       setError(
         "No fue posible iniciar el seguimiento de ubicación.",
       );
+    } finally {
+      if (startingSessionRef.current === sessionId) {
+        startingSessionRef.current = null;
+      }
     }
   }, [trekkingId]);
 
   const stopTracking = useCallback(() => {
-    trackingSessionRef.current += 1;
+    // Invalida callbacks anteriores, incluso si
+    // watchPositionAsync todavía está iniciándose.
+    sessionRef.current += 1;
+    startingSessionRef.current = null;
 
-    const subscription =
-      subscriptionRef.current;
-
+    const subscription = subscriptionRef.current;
     subscriptionRef.current = null;
 
-    if (!subscription) {
-      setStatus("stopped");
-      return;
-    }
-
-    subscription.remove();
+    subscription?.remove();
 
     setStatus("stopped");
+    setLocation(null);
   }, []);
 
   useEffect(() => {
     return () => {
-      trackingSessionRef.current += 1;
+      // Al cambiar de trekking o desmontar la pantalla,
+      // invalidamos la sesión y soltamos el GPS.
+      sessionRef.current += 1;
+      startingSessionRef.current = null;
 
       subscriptionRef.current?.remove();
-
       subscriptionRef.current = null;
     };
-  }, []);
+  }, [trekkingId]);
 
   return {
     status,

@@ -1,0 +1,636 @@
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Incidentes | Hito
+{% endblock %}
+
+{% block head %}
+
+<style>
+    .incidents-header {
+        margin-bottom: 22px;
+    }
+
+    .incidents-header h1 {
+        margin-bottom: 8px;
+    }
+
+    .incidents-description {
+        color: #aab8ac;
+        line-height: 1.6;
+    }
+
+    /* ESTADÍSTICAS */
+
+    .incidents-summary {
+        display: grid;
+        grid-template-columns:
+            repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 22px;
+    }
+
+    .incident-stat {
+        background: #19211c;
+        border: 1px solid #354336;
+        border-radius: 12px;
+        padding: 18px;
+    }
+
+    .incident-stat-label {
+        display: block;
+        color: #aab8ac;
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+    }
+
+    .incident-stat-value {
+        display: block;
+        font-size: 1.75rem;
+        font-weight: 750;
+        color: #ffffff;
+    }
+
+    .incident-stat.pending .incident-stat-value {
+        color: #f0b94b;
+    }
+
+    .incident-stat.reviewing .incident-stat-value {
+        color: #8fc8ff;
+    }
+
+    .incident-stat.resolved .incident-stat-value {
+        color: #b3e853;
+    }
+
+    /* FILTROS */
+
+    .incidents-filter-form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        padding: 18px;
+        background: #19211c;
+        border: 1px solid #354336;
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+
+    .incidents-filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 180px;
+    }
+
+    .incidents-filter-field label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #dbe6dc;
+    }
+
+    .incidents-filter-field select {
+        padding: 10px 12px;
+        min-height: 41px;
+        background: #111813;
+        border: 1px solid #4b5c4c;
+        border-radius: 8px;
+        color: #f2f6f2;
+        font: inherit;
+    }
+
+    .incidents-filter-form button {
+        min-height: 41px;
+        padding: 9px 16px;
+    }
+
+    .incidents-clear {
+        min-height: 41px;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        color: #b3e853;
+        padding: 0 8px;
+    }
+
+    /* TABLA */
+
+    .incidents-table {
+        width: 100%;
+    }
+
+    .incidents-table th,
+    .incidents-table td {
+        vertical-align: middle;
+    }
+
+    .incidents-table td {
+        overflow-wrap: anywhere;
+    }
+
+    .incident-trail {
+        display: block;
+        color: #aab8ac;
+        margin-top: 5px;
+        font-size: 0.84rem;
+    }
+
+    .incident-description-cell {
+        max-width: 260px;
+        line-height: 1.5;
+    }
+
+    .incident-status {
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid;
+        border-radius: 7px;
+        font-size: 0.79rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .incident-status.pending {
+        color: #f0b94b;
+        border-color: #866a31;
+        background: rgba(240, 185, 75, 0.1);
+    }
+
+    .incident-status.reviewing {
+        color: #8fc8ff;
+        border-color: #446884;
+        background: rgba(80, 170, 230, 0.1);
+    }
+
+    .incident-status.resolved {
+        color: #b3e853;
+        border-color: #526d39;
+        background: rgba(179, 232, 83, 0.08);
+    }
+
+    .incident-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .incident-actions a {
+        white-space: nowrap;
+    }
+
+    .incidents-count {
+        color: #aab8ac;
+        font-size: 0.88rem;
+        margin-bottom: 12px;
+    }
+
+    /* PAGINACIÓN */
+
+    .incidents-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+        padding: 12px 0;
+    }
+
+    .incidents-pagination a {
+        color: #b3e853;
+        text-decoration: none;
+    }
+
+    .incidents-pagination span {
+        color: #aab8ac;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 700px) {
+        .incidents-filter-form {
+            align-items: stretch;
+        }
+
+        .incidents-filter-field {
+            width: 100%;
+        }
+
+        .incidents-filter-field select {
+            width: 100%;
+        }
+
+        .incidents-table {
+            min-width: 1050px;
+        }
+    }
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+
+<!-- ENCABEZADO -->
+
+<div class="incidents-header">
+
+    <h1>Reportes de incidentes</h1>
+
+    <p class="incidents-description">
+        Incidentes sincronizados desde Hito Mobile
+        y seguimiento de atención por guardaparques.
+
+        Los reportes originales se conservan
+        sin modificaciones.
+    </p>
+
+</div>
+
+
+<!-- ESTADÍSTICAS -->
+
+<div class="incidents-summary">
+
+    <article class="incident-stat">
+
+        <span class="incident-stat-label">
+            Total de incidentes
+        </span>
+
+        <strong class="incident-stat-value">
+            {{ total_count }}
+        </strong>
+
+    </article>
+
+    <article class="incident-stat pending">
+
+        <span class="incident-stat-label">
+            Pendientes
+        </span>
+
+        <strong class="incident-stat-value">
+            {{ pending_count }}
+        </strong>
+
+    </article>
+
+    <article class="incident-stat reviewing">
+
+        <span class="incident-stat-label">
+            En revisión
+        </span>
+
+        <strong class="incident-stat-value">
+            {{ reviewing_count }}
+        </strong>
+
+    </article>
+
+    <article class="incident-stat resolved">
+
+        <span class="incident-stat-label">
+            Atendidos
+        </span>
+
+        <strong class="incident-stat-value">
+            {{ resolved_count }}
+        </strong>
+
+    </article>
+
+</div>
+
+
+<!-- FILTROS -->
+
+<form
+    class="incidents-filter-form"
+    method="get"
+    action="{% url 'dashboard:incidents' %}"
+>
+
+    <div class="incidents-filter-field">
+
+        <label for="incident-park">
+            Parque
+        </label>
+
+        <select
+            id="incident-park"
+            name="park"
+        >
+
+            <option value="">
+                Todos los parques
+            </option>
+
+            {% for park in parks %}
+
+                <option
+                    value="{{ park.pk }}"
+                    {% if park_filter == park.pk|stringformat:'s' %}
+                        selected
+                    {% endif %}
+                >
+                    {{ park.name }}
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+    </div>
+
+
+    <div class="incidents-filter-field">
+
+        <label for="incident-status">
+            Estado de atención
+        </label>
+
+        <select
+            id="incident-status"
+            name="status"
+        >
+
+            <option value="">
+                Todos los estados
+            </option>
+
+            <option
+                value="PENDING"
+                {% if status_filter == "PENDING" %}
+                    selected
+                {% endif %}
+            >
+                Pendiente
+            </option>
+
+            <option
+                value="REVIEWING"
+                {% if status_filter == "REVIEWING" %}
+                    selected
+                {% endif %}
+            >
+                En revisión
+            </option>
+
+            <option
+                value="RESOLVED"
+                {% if status_filter == "RESOLVED" %}
+                    selected
+                {% endif %}
+            >
+                Atendido
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <button type="submit">
+        Aplicar filtros
+    </button>
+
+    <a
+        href="{% url 'dashboard:incidents' %}"
+        class="incidents-clear"
+    >
+        Limpiar
+    </a>
+
+</form>
+
+
+<!-- CONTADOR DE RESULTADOS -->
+
+<p class="incidents-count">
+    Mostrando {{ page.start_index }}
+    a {{ page.end_index }}
+    de {{ page.paginator.count }}
+    incidentes.
+
+    {% if park_filter or status_filter %}
+        Filtros aplicados.
+    {% endif %}
+</p>
+
+
+<!-- LISTADO -->
+
+<div class="table-wrap">
+
+    <table class="incidents-table">
+
+        <thead>
+
+            <tr>
+                <th>Fecha</th>
+                <th>Excursionista</th>
+                <th>Parque / sendero</th>
+                <th>Tipo de incidente</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th>Fotografía</th>
+                <th>Acciones</th>
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for incident in page %}
+
+                <tr>
+
+                    <!-- FECHA -->
+
+                    <td>
+                        {{ incident.registered_at|date:"d/m/Y H:i" }}
+                    </td>
+
+
+                    <!-- EXCURSIONISTA -->
+
+                    <td>
+                        {{ incident.trekking.user.username }}
+                    </td>
+
+
+                    <!-- PARQUE -->
+
+                    <td>
+
+                        {{ incident.trekking.trail.park.name }}
+
+                        <span class="incident-trail">
+                            {{ incident.trekking.trail.name }}
+                        </span>
+
+                    </td>
+
+
+                    <!-- TIPO -->
+
+                    <td>
+                        {{ incident.get_incident_type_display }}
+                    </td>
+
+
+                    <!-- DESCRIPCIÓN -->
+
+                    <td class="incident-description-cell">
+                        {{ incident.description|truncatechars:95 }}
+                    </td>
+
+
+                    <!-- ESTADO -->
+
+                    <td>
+
+                        {% if incident.review_status == "PENDING" %}
+
+                            <span class="incident-status pending">
+                                Pendiente
+                            </span>
+
+                        {% elif incident.review_status == "REVIEWING" %}
+
+                            <span class="incident-status reviewing">
+                                En revisión
+                            </span>
+
+                        {% elif incident.review_status == "RESOLVED" %}
+
+                            <span class="incident-status resolved">
+                                Atendido
+                            </span>
+
+                        {% else %}
+
+                            <span class="incident-status pending">
+                                Pendiente
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- FOTOGRAFÍA -->
+
+                    <td>
+
+                        {% if incident.photo %}
+
+                            <a
+                                href="{% url 'dashboard:incident_photo' incident.pk %}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Ver fotografía
+                            </a>
+
+                        {% else %}
+
+                            <span class="incident-trail">
+                                Sin fotografía
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- ACCIONES -->
+
+                    <td>
+
+                        <div class="incident-actions">
+
+                            <a href="{% url 'dashboard:incident_detail' incident.pk %}">
+                                Gestionar incidente
+                            </a>
+
+                            <a href="{% url 'dashboard:trekking_detail' incident.trekking_id %}">
+                                Trekking #{{ incident.trekking_id }}
+                            </a>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+            {% empty %}
+
+                <tr>
+                    <td colspan="8">
+                        No se encontraron incidentes
+                        para los filtros seleccionados.
+                    </td>
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+<!-- PAGINACIÓN CON FILTROS -->
+
+{% if page.has_other_pages %}
+
+    <nav
+        class="incidents-pagination"
+        aria-label="Paginación de incidentes"
+    >
+
+        <div>
+
+            {% if page.has_previous %}
+
+                <a
+                    href="?park={{ park_filter|urlencode }}&amp;status={{ status_filter|urlencode }}&amp;page={{ page.previous_page_number }}"
+                >
+                    ← Anterior
+                </a>
+
+            {% endif %}
+
+        </div>
+
+
+        <span>
+            Página {{ page.number }}
+            de {{ page.paginator.num_pages }}
+        </span>
+
+
+        <div>
+
+            {% if page.has_next %}
+
+                <a
+                    href="?park={{ park_filter|urlencode }}&amp;status={{ status_filter|urlencode }}&amp;page={{ page.next_page_number }}"
+                >
+                    Siguiente →
+                </a>
+
+            {% endif %}
+
+        </div>
+
+    </nav>
+
+{% endif %}
+
+{% endblock %}

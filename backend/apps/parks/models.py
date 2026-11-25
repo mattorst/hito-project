@@ -57,6 +57,29 @@ class Park(models.Model):
         verbose_name="Última actualización"
     )
 
+    
+    # Horarios oficiales de operación del parque.
+    # Se dejan opcionales para preservar parques existentes.
+
+    opening_time = models.TimeField(
+        null=True,
+        blank=True,
+        verbose_name="Horario de apertura",
+    )
+
+    last_entry_time = models.TimeField(
+        null=True,
+        blank=True,
+        verbose_name="Última hora de ingreso",
+    )
+
+    return_deadline = models.TimeField(
+        null=True,
+        blank=True,
+        verbose_name="Horario límite de retorno",
+    )
+
+
     class Meta:
         verbose_name = "Parque"
         verbose_name_plural = "Parques"

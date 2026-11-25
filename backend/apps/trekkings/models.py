@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -18,6 +20,14 @@ class Trekking(models.Model):
     Representa un recorrido realizado por un excursionista
     sobre un sendero determinado.
     """
+    
+    local_id = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+        verbose_name="Identificador local de sincronización",
+    )
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -295,3 +305,79 @@ class TrackingPoint(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+
+class TrekkingCompanion(models.Model):
+    """
+    Acompañante registrado en un trekking grupal.
+    No requiere una cuenta de usuario propia.
+    """
+
+    class Sex(models.TextChoices):
+        MALE = "M", "Masculino"
+        FEMALE = "F", "Femenino"
+        OTHER = "O", "Otro"
+        UNDISCLOSED = "N", "Prefiere no informar"
+
+    local_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        verbose_name="Identificador de sincronización",
+    )
+
+    trekking = models.ForeignKey(
+        Trekking,
+        on_delete=models.CASCADE,
+        related_name="companions",
+        verbose_name="Trekking",
+    )
+
+    first_name = models.CharField(
+        max_length=100,
+        verbose_name="Nombre",
+    )
+
+    last_name = models.CharField(
+        max_length=100,
+        verbose_name="Apellido",
+    )
+
+    sex = models.CharField(
+        max_length=1,
+        choices=Sex.choices,
+        blank=True,
+        default="",
+        verbose_name="Sexo",
+    )
+
+    emergency_contact_name = models.CharField(
+        max_length=150,
+        verbose_name="Nombre del contacto de emergencia",
+    )
+
+    emergency_contact_phone = models.CharField(
+        max_length=25,
+        verbose_name="Teléfono del contacto de emergencia",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de registro",
+    )
+
+    class Meta:
+        verbose_name = "Acompañante de trekking"
+        verbose_name_plural = "Acompañantes de trekking"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+from .models_checkpoint_sync import OfflineCheckpointEvent

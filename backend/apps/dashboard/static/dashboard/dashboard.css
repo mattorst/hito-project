@@ -1,0 +1,613 @@
+
+/* ==========================================
+   HITO — DASHBOARD DE GUARDAPARQUES
+   Estilos generales
+========================================== */
+
+:root {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #e9eee9;
+    background: #0e120f;
+    font-size: 15px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+}
+
+
+/* ==========================================
+   HEADER Y NAVEGACIÓN
+========================================== */
+
+header {
+    padding: 15px 22px;
+    border-bottom: 1px solid #344035;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+a {
+    color: #c1f263;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+nav a {
+    color: #e6eee2;
+}
+
+nav form {
+    margin: 0;
+}
+
+button,
+select {
+    background: #283229;
+    color: #fff;
+    border: 1px solid #4d5d4d;
+    padding: 9px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+
+/* ==========================================
+   CONTENIDO PRINCIPAL
+========================================== */
+
+main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+h1 {
+    font-size: 1.8rem;
+    color: #c6f35e;
+    margin: 8px 0 22px;
+}
+
+h2 {
+    margin-top: 30px;
+    font-size: 1.2rem;
+}
+
+.subtle {
+    color: #acb6ab;
+}
+
+
+/* ==========================================
+   TARJETAS DE ESTADÍSTICAS
+========================================== */
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 22px 0;
+}
+
+.stats article {
+    border: 1px solid #354336;
+    background: #1a221b;
+    border-radius: 9px;
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+}
+
+.stats small {
+    color: #b5bfb4;
+}
+
+.stats strong {
+    font-size: 1.6rem;
+}
+
+
+/* ==========================================
+   TABLAS
+========================================== */
+
+.table-wrap {
+    overflow: auto;
+    border: 1px solid #344035;
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 680px;
+}
+
+th,
+td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #2b362d;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #202a22;
+    white-space: nowrap;
+}
+
+tr:last-child td {
+    border-bottom: 0;
+}
+
+tr:hover td {
+    background: #192119;
+}
+
+
+/* ==========================================
+   COLUMNAS Y SECCIONES
+========================================== */
+
+.columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.columns section {
+    padding: 16px;
+    border: 1px solid #344035;
+    border-radius: 8px;
+}
+
+.columns li {
+    padding: 6px 0;
+}
+
+
+/* ==========================================
+   FILTROS
+========================================== */
+
+.filter {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 12px 0 20px;
+    flex-wrap: wrap;
+}
+
+
+/* ==========================================
+   PAGINACIÓN
+========================================== */
+
+.pagination {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+
+/* ==========================================
+   MAPA GPS — LEAFLET
+========================================== */
+
+#map {
+    width: 100%;
+    height: 450px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #344035;
+    border-radius: 12px;
+    isolation: isolate;
+    background: #18211c;
+}
+
+/* Mantener el mapa dentro de su contenedor */
+
+#map.leaflet-container {
+    width: 100%;
+    height: 450px;
+}
+
+/*
+   Leaflet necesita controlar directamente
+   el tamaño y la posición de las teselas.
+*/
+
+#map .leaflet-tile {
+    max-width: none !important;
+    max-height: none !important;
+}
+
+/* Evitar que otros estilos alteren las imágenes */
+
+#map .leaflet-pane img {
+    max-width: none !important;
+    max-height: none !important;
+}
+
+/*
+   Evitar que el mapa se superponga
+   a las tablas y secciones inferiores.
+*/
+
+#map {
+    z-index: 0;
+}
+
+/* Controles de zoom */
+
+#map .leaflet-control-zoom a {
+    color: #263128;
+    text-decoration: none;
+}
+
+/* Popups */
+
+#map .leaflet-popup-content {
+    color: #202820;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+#map .leaflet-popup-content p {
+    margin: 6px 0;
+}
+
+
+/* ==========================================
+   DISEÑO RESPONSIVE
+========================================== */
+
+@media (max-width: 700px) {
+
+    main {
+        padding: 15px;
+    }
+
+    header {
+        padding: 15px;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .columns {
+        grid-template-columns: 1fr;
+    }
+
+    #map,
+    #map.leaflet-container {
+        height: 350px;
+    }
+
+    .filter {
+        align-items: stretch;
+    }
+
+    .pagination {
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+}
+
+
+
+/* ============================================
+   HITO — PREMIUM NAVIGATION
+   Minimal iOS / Enterprise Dark
+   ============================================ */
+
+.hito-header {
+    position: relative;
+    z-index: 1100;
+    width: 100%;
+    padding: 12px 24px;
+    background: #0b0f0e;
+    border-bottom: 1px solid rgba(255,255,255,.055);
+}
+
+.hito-navbar,
+.hito-navbar * {
+    box-sizing: border-box;
+}
+
+.hito-navbar {
+    width: 100%;
+    max-width: 1700px;
+    min-height: 66px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 22px;
+    border-radius: 19px;
+    border: 1px solid rgba(255,255,255,.085);
+    background: linear-gradient(
+        135deg,
+        rgba(30,38,35,.96),
+        rgba(17,24,22,.97)
+    );
+    box-shadow:
+        0 10px 30px rgba(0,0,0,.18),
+        inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+/* Identidad */
+
+.hito-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    flex-shrink: 0;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.hito-brand-mark {
+    width: 37px;
+    height: 37px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #b9f45c;
+}
+
+.hito-brand-mark svg {
+    width: 32px;
+    height: 32px;
+}
+
+.hito-brand-name {
+    font-size: 21px;
+    font-weight: 750;
+    letter-spacing: -.7px;
+    color: #f6f8f6;
+}
+
+.hito-brand-divider {
+    height: 21px;
+    width: 1px;
+    background: rgba(255,255,255,.24);
+    margin: 0 1px;
+}
+
+.hito-brand-subtitle {
+    color: #c0c9c3;
+    font-size: 13px;
+    font-weight: 450;
+}
+
+/* Navegación */
+
+.hito-navbar .hito-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 5px;
+    margin: 0 auto;
+    padding: 0;
+    min-width: 0;
+}
+
+.hito-navbar .hito-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 13px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    background: transparent;
+    color: #9ca9a2;
+    text-decoration: none;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 550;
+    line-height: 1.2;
+    transition:
+        background .2s ease,
+        border-color .2s ease,
+        color .2s ease,
+        box-shadow .2s ease;
+}
+
+.hito-navbar .hito-nav-link svg,
+.hito-logout-button svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+.hito-navbar .hito-nav-link:hover {
+    color: #f6faf6;
+    background: rgba(255,255,255,.065);
+}
+
+.hito-navbar .hito-nav-link.is-active {
+    color: #c6ff66;
+    background: rgba(173,235,74,.105);
+    border-color: rgba(185,244,92,.40);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.055),
+        0 0 16px rgba(185,244,92,.055);
+}
+
+/* Acciones y usuario */
+
+.hito-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    flex-shrink: 0;
+}
+
+.hito-user-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 35px;
+    width: 35px;
+    border-radius: 50%;
+    background: #2c3932;
+    color: #f5f8f5;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,.12);
+}
+
+.hito-navbar .hito-logout-form {
+    display: inline-flex;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+
+.hito-navbar .hito-logout-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 13px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.105);
+    color: #c5cec8;
+    font-size: 12px;
+    font-weight: 550;
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .2s ease;
+}
+
+.hito-navbar .hito-logout-button:hover {
+    color: #fff;
+    background: rgba(255,255,255,.09);
+    border-color: rgba(255,255,255,.19);
+}
+
+/* Accesibilidad */
+
+.hito-navbar a:focus-visible,
+.hito-navbar button:focus-visible {
+    outline: 2px solid #b9f45c;
+    outline-offset: 3px;
+}
+
+/* Pantallas medianas */
+
+@media (max-width: 1200px) {
+    .hito-header {
+        padding: 10px 15px;
+    }
+
+    .hito-navbar {
+        gap: 12px;
+        padding: 0 14px;
+    }
+
+    .hito-navbar .hito-nav-link {
+        padding: 10px 9px;
+        font-size: 12px;
+    }
+
+    .hito-brand-subtitle {
+        font-size: 12px;
+    }
+}
+
+/* Tablets y móviles */
+
+@media (max-width: 950px) {
+    .hito-navbar {
+        flex-wrap: wrap;
+        padding: 13px;
+        row-gap: 12px;
+    }
+
+    .hito-brand {
+        order: 1;
+    }
+
+    .hito-header-actions {
+        order: 2;
+        margin-left: auto;
+    }
+
+    .hito-navbar .hito-navigation {
+        order: 3;
+        flex-basis: 100%;
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: 3px;
+        scrollbar-width: thin;
+    }
+}
+
+@media (max-width: 480px) {
+    .hito-header {
+        padding: 8px;
+    }
+
+    .hito-navbar {
+        border-radius: 15px;
+        padding: 12px;
+    }
+
+    .hito-brand-subtitle {
+        display: none;
+    }
+
+    .hito-brand-divider {
+        display: none;
+    }
+
+    .hito-user-avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .hito-navbar .hito-nav-link {
+        padding: 10px 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hito-navbar .hito-nav-link,
+    .hito-navbar .hito-logout-button {
+        transition: none;
+    }
+}

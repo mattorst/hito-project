@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import {
@@ -11,13 +12,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
 import { useTrails } from "@/features/parks/hooks/useTrails";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { startTrekking } from "@/features/trekking/services/trekkingService";
 
-// --- Paleta -----------------------------------------------------------------
-// Misma línea que Resumen y Detalle de trekking: negro como lienzo,
-// blanco/gris para jerarquía de texto, un único verde lima como acento.
+// -----------------------------------------------------------------------------
+// Paleta de colores — Hito
+// -----------------------------------------------------------------------------
+
 const COLORS = {
   bg: "#0B0C0D",
   surface: "#17181B",
@@ -41,7 +43,9 @@ export default function ParkDetailScreen() {
     parkId: string;
   }>();
 
-  const numericParkId = parkId ? parseInt(parkId, 10) : 0;
+  const numericParkId = parkId
+    ? parseInt(parkId, 10)
+    : 0;
 
   const {
     trails,
@@ -50,87 +54,144 @@ export default function ParkDetailScreen() {
     reload,
   } = useTrails(numericParkId);
 
-  const { activeTrekking, setActiveTrekking } = useAuth();
+  const { activeTrekking } = useAuth();
 
-  const handleStartTrekking = async (trailId: number, trailName: string) => {
+  // ---------------------------------------------------------------------------
+  // Preparar trekking individual o grupal
+  // ---------------------------------------------------------------------------
+
+  const handleStartTrekking = (
+    trailId: number,
+    trailName: string,
+  ) => {
     if (activeTrekking) {
       Alert.alert(
         "Trekking en curso",
-        "Ya tienes un recorrido activo. Ciérralo antes de iniciar uno nuevo.",
-        [{ text: "OK", style: "cancel" }]
+        "Ya tienes un recorrido activo. Debes finalizarlo antes de iniciar uno nuevo.",
+        [
+          {
+            text: "Entendido",
+            style: "cancel",
+          },
+        ],
       );
+
       return;
     }
 
-    Alert.alert(
-      "Comenzar recorrido",
-      `¿Deseas iniciar el sendero "${trailName}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Iniciar",
-          onPress: async () => {
-            try {
-              const trekking = await startTrekking({ trail: trailId });
-              setActiveTrekking(trekking);
-              router.push("/(protected)/trekking");
-            } catch (err) {
-              console.error(err);
-              Alert.alert("Error", "No fue posible iniciar el trekking. Inténtalo de nuevo.");
-            }
-          },
-          style: 'default'
-        }
-      ]
-    );
+    // Ya no creamos el trekking directamente desde esta pantalla.
+    // Primero permitimos elegir entre recorrido individual o grupal.
+    router.push({
+      pathname: "/(protected)/trekking/prepare",
+      params: {
+        trailId: String(trailId),
+        trailName,
+      },
+    });
   };
+
+  // ---------------------------------------------------------------------------
+  // Estado de carga
+  // ---------------------------------------------------------------------------
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]} edges={['top', 'left', 'right']}>
-        <ActivityIndicator size="large" color={COLORS.lime} />
-        <Text style={styles.loadingText}>Cargando rutas...</Text>
+      <SafeAreaView
+        style={[styles.container, styles.center]}
+        edges={["top", "left", "right"]}
+      >
+        <ActivityIndicator
+          size="large"
+          color={COLORS.lime}
+        />
+
+        <Text style={styles.loadingText}>
+          Cargando rutas...
+        </Text>
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+  // ---------------------------------------------------------------------------
+  // Pantalla principal
+  // ---------------------------------------------------------------------------
 
-      {/* Cabecera minimalista, misma línea que el resto del flujo */}
+  return (
+    <SafeAreaView
+      style={styles.container}
+      edges={["top", "left", "right"]}
+    >
+      {/* Cabecera */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
           <View style={styles.roundButton}>
-            <Ionicons name="chevron-back" size={20} color={COLORS.ink} />
+            <Ionicons
+              name="chevron-back"
+              size={20}
+              color={COLORS.ink}
+            />
           </View>
-          <Text style={styles.backText}>Parques</Text>
+
+          <Text style={styles.backText}>
+            Parques
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.mainTitle}>Senderos</Text>
-        <Text style={styles.subtitle}>Elige una ruta y comienza tu recorrido</Text>
+
+        <Text style={styles.mainTitle}>
+          Senderos
+        </Text>
+
+        <Text style={styles.subtitle}>
+          Elige una ruta y comienza tu recorrido
+        </Text>
       </View>
 
+      {/* Error de carga */}
       {error && (
         <View style={styles.statusContainer}>
-          <Ionicons name="alert-circle" size={22} color={COLORS.danger} />
-          <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity onPress={reload} style={styles.retryButton}>
-            <Text style={styles.retryText}>Reintentar</Text>
+          <Ionicons
+            name="alert-circle"
+            size={22}
+            color={COLORS.danger}
+          />
+
+          <Text style={styles.error}>
+            {error}
+          </Text>
+
+          <TouchableOpacity
+            onPress={reload}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryText}>
+              Reintentar
+            </Text>
           </TouchableOpacity>
         </View>
       )}
 
+      {/* Sin senderos */}
       {!error && trails.length === 0 && (
         <View style={styles.center}>
           <View style={styles.emptyIconContainer}>
-            <Ionicons name="trail-sign-outline" size={30} color={COLORS.inkTertiary} />
+            <Ionicons
+              name="trail-sign-outline"
+              size={30}
+              color={COLORS.inkTertiary}
+            />
           </View>
+
           <Text style={styles.emptyText}>
             Este parque aún no posee senderos registrados.
           </Text>
         </View>
       )}
 
-      {/* Lista de Senderos */}
+      {/* Lista de senderos */}
       {!error && trails.length > 0 && (
         <FlatList
           data={trails}
@@ -140,45 +201,102 @@ export default function ParkDetailScreen() {
           refreshing={isLoading}
           onRefresh={reload}
           renderItem={({ item, index }) => (
-            <View style={[styles.card, index === 0 && { marginTop: 4 }]}>
+            <View
+              style={[
+                styles.card,
+                index === 0 && { marginTop: 4 },
+              ]}
+            >
+              {/* Información del sendero */}
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => router.push(`/(protected)/parks/trails/${item.id}`)}
+                onPress={() =>
+                  router.push(
+                    `/(protected)/parks/trails/${item.id}`,
+                  )
+                }
                 style={styles.cardTouch}
               >
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.trailIconWrap}>
-                    <MaterialCommunityIcons name="terrain" size={18} color={COLORS.lime} />
+                    <MaterialCommunityIcons
+                      name="terrain"
+                      size={18}
+                      color={COLORS.lime}
+                    />
                   </View>
-                  <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.inkTertiary} />
+
+                  <Text
+                    style={styles.name}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={COLORS.inkTertiary}
+                  />
                 </View>
 
-                <Text style={styles.description} numberOfLines={3}>
+                <Text
+                  style={styles.description}
+                  numberOfLines={3}
+                >
                   {item.description}
                 </Text>
 
                 <View style={styles.metaContainer}>
                   <View style={styles.metaItem}>
-                    <Ionicons name="map-outline" size={14} color={COLORS.lime} />
-                    <Text style={styles.info}>{item.distance_km} km</Text>
+                    <Ionicons
+                      name="map-outline"
+                      size={14}
+                      color={COLORS.lime}
+                    />
+
+                    <Text style={styles.info}>
+                      {item.distance_km} km
+                    </Text>
                   </View>
+
                   <View style={styles.metaDivider} />
+
                   <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={14} color={COLORS.lime} />
-                    <Text style={styles.info}>{item.estimated_duration}</Text>
+                    <Ionicons
+                      name="time-outline"
+                      size={14}
+                      color={COLORS.lime}
+                    />
+
+                    <Text style={styles.info}>
+                      {item.estimated_duration}
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
 
-              {/* Botón de Acción Principal */}
+              {/* Botón principal */}
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => handleStartTrekking(item.id, item.name)}
+                onPress={() =>
+                  handleStartTrekking(
+                    item.id,
+                    item.name,
+                  )
+                }
                 activeOpacity={0.85}
               >
-                <Ionicons name="navigate-outline" size={16} color={COLORS.black} style={{ marginRight: 8 }} />
-                <Text style={styles.actionButtonText}>Iniciar Trekking</Text>
+                <Ionicons
+                  name="navigate-outline"
+                  size={16}
+                  color={COLORS.black}
+                  style={{ marginRight: 8 }}
+                />
+
+                <Text style={styles.actionButtonText}>
+                  Iniciar Trekking
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -188,6 +306,10 @@ export default function ParkDetailScreen() {
   );
 }
 
+// -----------------------------------------------------------------------------
+// Estilos
+// -----------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -195,23 +317,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
   },
+
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
+
   header: {
     marginBottom: 18,
     marginTop: 8,
     paddingHorizontal: 4,
   },
+
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: -6,
     marginBottom: 14,
   },
+
   roundButton: {
     width: 34,
     height: 34,
@@ -223,49 +349,57 @@ const styles = StyleSheet.create({
     borderColor: COLORS.glassBorder,
     marginRight: 6,
   },
+
   backText: {
     color: COLORS.inkSecondary,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
   },
+
   mainTitle: {
     fontSize: 28,
     fontWeight: "800",
     color: COLORS.ink,
     letterSpacing: -0.6,
   },
+
   subtitle: {
     fontSize: 14,
     color: COLORS.inkSecondary,
     marginTop: 4,
   },
+
   loadingText: {
     marginTop: 12,
     fontSize: 15,
     color: COLORS.inkSecondary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
+
   listContent: {
     paddingBottom: 36,
   },
-  // Tarjeta estilo oscuro minimalista
+
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 20,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: COLORS.surfaceBorder,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
+
   cardTouch: {
     padding: 18,
     paddingBottom: 14,
   },
+
   cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
+
   trailIconWrap: {
     width: 30,
     height: 30,
@@ -275,6 +409,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
+
   name: {
     fontSize: 17,
     fontWeight: "700",
@@ -283,6 +418,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     letterSpacing: -0.3,
   },
+
   description: {
     fontSize: 13,
     color: COLORS.inkSecondary,
@@ -290,33 +426,37 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginLeft: 40,
   },
+
   metaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
     paddingTop: 12,
     marginTop: 2,
   },
+
   metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
+
   metaDivider: {
     width: 1,
     height: 12,
     backgroundColor: COLORS.divider,
     marginHorizontal: 12,
   },
+
   info: {
     color: COLORS.inkSecondary,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 5,
   },
-  // Botón de acción principal — acento lima, coherente con el resto de la app
+
   actionButton: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: COLORS.lime,
     margin: 16,
     marginTop: 4,
@@ -325,29 +465,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   actionButtonText: {
     color: COLORS.black,
     fontSize: 15,
     fontWeight: "800",
   },
+
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 16,
     backgroundColor: COLORS.dangerDim,
     marginVertical: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,107,94,0.25)',
+    borderColor: "rgba(255,107,94,0.25)",
   },
+
   error: {
     color: COLORS.danger,
     fontSize: 14,
     marginHorizontal: 8,
     flex: 1,
-    fontWeight: '500',
+    fontWeight: "500",
   },
+
   retryButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -356,11 +500,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.glassBorder,
   },
+
   retryText: {
     color: COLORS.ink,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
+
   emptyIconContainer: {
     width: 64,
     height: 64,
@@ -372,10 +518,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.surfaceBorder,
   },
+
   emptyText: {
     fontSize: 15,
     color: COLORS.inkSecondary,
     textAlign: "center",
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

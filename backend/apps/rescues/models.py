@@ -1,5 +1,8 @@
-from django.core.exceptions import ValidationError  # <-- PASO 1.1: Asegurar esta importación
+
+from django.core.exceptions import ValidationError
 from django.db import models
+
+from .models_audit import RescueAuditLog, RescueAuditAction
 from apps.trekkings.models import Trekking
 
 
@@ -10,9 +13,17 @@ class RescueStatus(models.TextChoices):
 
 
 class Rescue(models.Model):
-    """
-    Representa una operación de rescate asociada a un trekking.
-    """
+    """Operación de rescate asociada a un trekking."""
+
+    # NULL para conservar rescates anteriores a esta migración.
+    # UNIQUE impide duplicados en reintentos offline.
+    local_id = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+        verbose_name="Identificador local de sincronización",
+    )
 
     trekking = models.ForeignKey(
         Trekking,
@@ -26,6 +37,22 @@ class Rescue(models.Model):
         choices=RescueStatus.choices,
         default=RescueStatus.ACTIVE,
         verbose_name="Estado",
+    )
+
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        verbose_name="Latitud de solicitud",
+    )
+
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        verbose_name="Longitud de solicitud",
     )
 
     started_at = models.DateTimeField(
@@ -65,9 +92,26 @@ class Rescue(models.Model):
             f"{self.started_at:%d/%m/%Y %H:%M}"
         )
 
-    # <-- PASO 1.2: Agregar el método clean exacto de ChatGPT alineado con __str__
     def clean(self):
         errors = {}
+
+        if (self.latitude is None) != (self.longitude is None):
+            errors["latitude"] = (
+                "Las coordenadas deben estar completas "
+                "o ambas ausentes."
+            )
+
+        if self.latitude is not None:
+            if not (-90 <= self.latitude <= 90):
+                errors["latitude"] = (
+                    "La latitud debe estar entre -90 y 90 grados."
+                )
+
+        if self.longitude is not None:
+            if not (-180 <= self.longitude <= 180):
+                errors["longitude"] = (
+                    "La longitud debe estar entre -180 y 180 grados."
+                )
 
         if (
             self.started_at
@@ -75,58 +119,40 @@ class Rescue(models.Model):
             and self.finished_at < self.started_at
         ):
             errors["finished_at"] = (
-                "La fecha y hora de finalización no puede ser anterior al inicio del rescate."
+                "La finalización no puede ser anterior "
+                "al inicio del rescate."
             )
 
-        if (
-            self.status == RescueStatus.COMPLETED
-            and self.finished_at is None
+        if self.status in (
+            RescueStatus.COMPLETED,
+            RescueStatus.CANCELLED,
         ):
-            errors["finished_at"] = (
-                "Un rescate completado debe tener fecha y hora de finalización."
-            )
+            if self.finished_at is None:
+                errors["finished_at"] = (
+                    "Un rescate cerrado necesita fecha de cierre."
+                )
 
-        if (
-            self.status == RescueStatus.CANCELLED
-            and self.finished_at is None
-        ):
-            errors["finished_at"] = (
-                "Un rescate cancelado debe tener fecha y hora de finalización."
-            )
+            if not (self.closed_reason or "").strip():
+                errors["closed_reason"] = (
+                    "Debe indicar el motivo de cierre."
+                )
 
-        if (
-            self.status == RescueStatus.ACTIVE
-            and self.finished_at is not None
-        ):
-            errors["status"] = (
-                "Un rescate activo no puede tener fecha de finalización."
-            )
+        elif self.status == RescueStatus.ACTIVE:
+            if self.finished_at is not None:
+                errors["finished_at"] = (
+                    "Un rescate activo no puede estar finalizado."
+                )
 
-        if (
-            self.status in (
-                RescueStatus.COMPLETED,
-                RescueStatus.CANCELLED,
-            )
-            and not self.closed_reason.strip()
-        ):
-            errors["closed_reason"] = (
-                "Debe indicar el motivo de cierre del rescate."
-            )
-
-        if (
-            self.status == RescueStatus.ACTIVE
-            and self.closed_reason.strip()
-        ):
-            errors["closed_reason"] = (
-                "Un rescate activo no puede tener motivo de cierre."
-            )
+            if (self.closed_reason or "").strip():
+                errors["closed_reason"] = (
+                    "Un rescate activo no tiene motivo de cierre."
+                )
 
         if errors:
             raise ValidationError(errors)
 
         super().clean()
 
-    # <-- PASO 1.3: Agregar la sobrescritura de save
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)

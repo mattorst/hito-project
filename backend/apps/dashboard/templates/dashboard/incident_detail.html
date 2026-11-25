@@ -1,0 +1,686 @@
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Incidente #{{ incident.pk }} | Hito
+{% endblock %}
+
+{% block head %}
+
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+>
+
+<style>
+    .incident-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: #19211c;
+        border: 1px solid #354336;
+        border-radius: 12px;
+    }
+
+    .incident-section h2 {
+        margin-top: 0;
+    }
+
+    .incident-description {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.7;
+    }
+
+    .incident-muted {
+        color: #aab8ac;
+        font-size: 0.9rem;
+    }
+
+    .incident-badge {
+        display: inline-block;
+        padding: 6px 11px;
+        border-radius: 7px;
+        border: 1px solid #53634f;
+        background: #253022;
+        color: #b3e853;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    .incident-badge.pending {
+        color: #eac36a;
+        border-color: #7f6b3b;
+        background: #312b1e;
+    }
+
+    .incident-badge.reviewing {
+        color: #99c8f6;
+        border-color: #4e7290;
+        background: #1b2b38;
+    }
+
+    .incident-badge.resolved {
+        color: #b3e853;
+        border-color: #526d39;
+    }
+
+    .incident-section label {
+        display: block;
+        margin: 12px 0 8px;
+        font-weight: 600;
+    }
+
+    .incident-section textarea,
+    .incident-section select {
+        width: 100%;
+        max-width: 750px;
+        box-sizing: border-box;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #526052;
+        background: #0e1511;
+        color: #eff4ef;
+        font: inherit;
+    }
+
+    .incident-section textarea:focus,
+    .incident-section select:focus {
+        outline: 2px solid #b3e853;
+        outline-offset: 2px;
+    }
+
+    .incident-section button {
+        margin-top: 15px;
+    }
+
+    .incident-error {
+        color: #ff9191;
+    }
+
+    .incident-photo {
+        max-width: 100%;
+        max-height: 480px;
+        object-fit: contain;
+        border-radius: 10px;
+        background: #101611;
+        border: 1px solid #354336;
+    }
+
+    #incident-map {
+        width: 100%;
+        height: 370px;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        z-index: 0;
+        background: #17211b;
+    }
+
+    #incident-map .leaflet-tile,
+    #incident-map .leaflet-pane img {
+        max-width: none !important;
+        max-height: none !important;
+    }
+
+    .incident-warning {
+        color: #f0b94b;
+    }
+
+    .incident-message {
+        margin: 12px 0;
+        padding: 12px;
+        border: 1px solid #526d39;
+        background: #223025;
+        border-radius: 8px;
+    }
+
+    .incident-audit-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .incident-audit-table th,
+    .incident-audit-table td {
+        padding: 12px;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid #354336;
+    }
+
+    .incident-audit-table details {
+        margin-top: 6px;
+    }
+
+    .incident-audit-table summary {
+        color: #b3e853;
+        cursor: pointer;
+    }
+
+    .incident-audit-content {
+        margin-top: 10px;
+        padding: 12px;
+        background: #0e1511;
+        border: 1px solid #354336;
+        border-radius: 8px;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 700px) {
+        .incident-section {
+            padding: 14px;
+        }
+
+        #incident-map {
+            height: 310px;
+        }
+
+        .incident-audit-table {
+            min-width: 650px;
+        }
+    }
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+
+<p>
+    <a href="{% url 'dashboard:incidents' %}">
+        ← Volver a incidentes
+    </a>
+</p>
+
+<h1>
+    Reporte de incidente #{{ incident.pk }}
+</h1>
+
+<p>
+    {% if current_status == "PENDING" %}
+        <span class="incident-badge pending">
+            Pendiente
+        </span>
+
+    {% elif current_status == "REVIEWING" %}
+        <span class="incident-badge reviewing">
+            En revisión
+        </span>
+
+    {% elif current_status == "RESOLVED" %}
+        <span class="incident-badge resolved">
+            Atendido
+        </span>
+    {% endif %}
+</p>
+
+
+<!-- MENSAJES -->
+
+{% if messages %}
+
+    {% for message in messages %}
+        <div class="incident-message" role="status">
+            {{ message }}
+        </div>
+    {% endfor %}
+
+{% endif %}
+
+
+<!-- INFORMACIÓN GENERAL -->
+
+<div class="stats">
+
+    <article>
+        <small>Excursionista</small>
+        <strong>
+            {{ incident.trekking.user.username }}
+        </strong>
+    </article>
+
+    <article>
+        <small>Tipo de incidente</small>
+        <strong>
+            {{ incident.get_incident_type_display }}
+        </strong>
+    </article>
+
+    <article>
+        <small>Parque</small>
+        <strong>
+            {{ incident.trekking.trail.park.name }}
+        </strong>
+    </article>
+
+    <article>
+        <small>Fecha registrada</small>
+        <strong style="font-size:1rem;">
+            {{ incident.registered_at|date:"d/m/Y H:i:s" }}
+        </strong>
+    </article>
+
+</div>
+
+
+<!-- REPORTE ORIGINAL -->
+
+<section class="incident-section">
+
+    <h2>Reporte original del excursionista</h2>
+
+    <p>
+        <strong>Sendero:</strong>
+        {{ incident.trekking.trail.name }}
+    </p>
+
+    <p>
+        <strong>Trekking:</strong>
+
+        <a href="{% url 'dashboard:trekking_detail' incident.trekking_id %}">
+            #{{ incident.trekking_id }}
+        </a>
+    </p>
+
+    <p>
+        <strong>Estado del trekking:</strong>
+        {{ incident.trekking.get_status_display }}
+    </p>
+
+    <p>
+        <strong>Descripción:</strong>
+    </p>
+
+    <div class="incident-description">{{ incident.description }}</div>
+
+    <p>
+        <strong>Fecha de registro:</strong>
+        {{ incident.registered_at|date:"d/m/Y H:i:s" }}
+    </p>
+
+    <p>
+        <strong>Fecha de recepción en Django:</strong>
+        {{ incident.created_at|date:"d/m/Y H:i:s" }}
+    </p>
+
+    <p class="incident-muted">
+        El contenido original del reporte no se
+        modifica desde el dashboard.
+    </p>
+
+</section>
+
+
+<!-- FOTOGRAFÍA -->
+
+<section class="incident-section">
+
+    <h2>Fotografía adjunta</h2>
+
+    {% if incident.photo %}
+
+        <a
+            href="{% url 'dashboard:incident_photo' incident.pk %}"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            <img
+                class="incident-photo"
+                src="{% url 'dashboard:incident_photo' incident.pk %}"
+                alt="Fotografía adjunta al incidente"
+                loading="lazy"
+            >
+        </a>
+
+        <p class="incident-muted">
+            Fotografía recibida junto al incidente.
+            Pulsa para abrirla en otra pestaña.
+        </p>
+
+    {% else %}
+
+        <p class="incident-muted">
+            Este incidente no tiene fotografía.
+        </p>
+
+    {% endif %}
+
+</section>
+
+
+<!-- MAPA -->
+
+<section class="incident-section">
+
+    <h2>Ubicación registrada del incidente</h2>
+
+    {% if incident_position %}
+
+        <div
+            id="incident-map"
+            role="region"
+            aria-label="Mapa de ubicación del incidente"
+        ></div>
+
+        <p
+            id="incident-map-warning"
+            class="incident-warning"
+        ></p>
+
+        <p class="incident-muted">
+            Coordenadas:
+            {{ incident.latitude }},
+            {{ incident.longitude }}.
+
+            La posición corresponde al reporte
+            almacenado, no a una ubicación GPS en vivo.
+        </p>
+
+    {% else %}
+
+        <p class="incident-warning">
+            El incidente no tiene coordenadas
+            geográficas registradas.
+        </p>
+
+    {% endif %}
+
+</section>
+
+
+<!-- SEGUIMIENTO -->
+
+<section class="incident-section">
+
+    <h2>Seguimiento del guardaparque</h2>
+
+    <p class="incident-muted">
+        Registra el estado de atención y las medidas
+        adoptadas. No se alterará el reporte original
+        ni el estado del trekking.
+    </p>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <label for="{{ form.status.id_for_label }}">
+            {{ form.status.label }}
+        </label>
+
+        {{ form.status }}
+
+        {% for error in form.status.errors %}
+            <p class="incident-error">{{ error }}</p>
+        {% endfor %}
+
+        <label for="{{ form.notes.id_for_label }}">
+            {{ form.notes.label }}
+        </label>
+
+        {{ form.notes }}
+
+        {% for error in form.notes.errors %}
+            <p class="incident-error">{{ error }}</p>
+        {% endfor %}
+
+        <button type="submit">
+            Guardar seguimiento
+        </button>
+
+    </form>
+
+    {% if follow_up %}
+
+        <p class="incident-muted">
+            Última modificación:
+
+            {{ follow_up.updated_at|date:"d/m/Y H:i:s" }}
+
+            {% if follow_up.updated_by %}
+                · {{ follow_up.updated_by.username }}
+            {% endif %}
+        </p>
+
+    {% else %}
+
+        <p class="incident-muted">
+            No hay atención registrada por
+            el personal de guardaparques.
+        </p>
+
+    {% endif %}
+
+</section>
+
+
+<!-- AUDITORÍA -->
+
+<section class="incident-section">
+
+    <h2>Historial de auditoría</h2>
+
+    <p class="incident-muted">
+        Cada modificación del seguimiento
+        conserva el funcionario, la fecha,
+        el estado anterior y las observaciones.
+    </p>
+
+    <div class="table-wrap">
+
+        <table class="incident-audit-table">
+
+            <thead>
+                <tr>
+                    <th>Fecha y hora</th>
+                    <th>Funcionario</th>
+                    <th>Estado anterior</th>
+                    <th>Estado posterior</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for log in audit_logs %}
+
+                    <tr>
+
+                        <td>
+                            {{ log.created_at|date:"d/m/Y H:i:s" }}
+                        </td>
+
+                        <td>
+                            {{ log.actor_username }}
+                        </td>
+
+                        <td>
+                            {{ log.previous_status }}
+                        </td>
+
+                        <td>
+                            {{ log.new_status }}
+                        </td>
+
+                        <td>
+
+                            <details>
+
+                                <summary>
+                                    Ver observaciones
+                                </summary>
+
+                                <div class="incident-audit-content">
+
+                                    <p>
+                                        <strong>
+                                            Observación anterior:
+                                        </strong>
+                                    </p>
+
+                                    <p>
+                                        {{ log.previous_notes|default:"Sin observaciones"|linebreaksbr }}
+                                    </p>
+
+                                    <p>
+                                        <strong>
+                                            Observación nueva:
+                                        </strong>
+                                    </p>
+
+                                    <p>
+                                        {{ log.new_notes|default:"Sin observaciones"|linebreaksbr }}
+                                    </p>
+
+                                </div>
+
+                            </details>
+
+                        </td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="5">
+                            Todavía no hay acciones
+                            registradas para este incidente.
+                        </td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- DATOS SEGUROS PARA JAVASCRIPT -->
+
+{{ incident_position|json_script:"incident-position-data" }}
+
+{% endblock %}
+
+
+{% block scripts %}
+
+{% if incident_position %}
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const mapElement = document.getElementById(
+        "incident-map"
+    );
+
+    const dataElement = document.getElementById(
+        "incident-position-data"
+    );
+
+    const warning = document.getElementById(
+        "incident-map-warning"
+    );
+
+    if (
+        !mapElement ||
+        !dataElement ||
+        typeof L === "undefined"
+    ) {
+        if (warning) {
+            warning.textContent =
+                "No se pudo inicializar el mapa.";
+        }
+        return;
+    }
+
+    let position;
+
+    try {
+        position = JSON.parse(
+            dataElement.textContent
+        );
+    } catch (error) {
+        if (warning) {
+            warning.textContent =
+                "No se pudieron leer las coordenadas.";
+        }
+        return;
+    }
+
+    const lat = Number(position.lat);
+    const lng = Number(position.lng);
+
+    if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        Math.abs(lat) > 90 ||
+        Math.abs(lng) > 180
+    ) {
+        if (warning) {
+            warning.textContent =
+                "Coordenadas inválidas.";
+        }
+        return;
+    }
+
+    const map = L.map("incident-map").setView(
+        [lat, lng],
+        15
+    );
+
+    L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution:
+                "&copy; OpenStreetMap contributors",
+            referrerPolicy:
+                "strict-origin-when-cross-origin"
+        }
+    ).addTo(map);
+
+    const marker = L.circleMarker(
+        [lat, lng],
+        {
+            radius: 11,
+            color: "#fff",
+            weight: 2,
+            fillColor: "#f0b94b",
+            fillOpacity: 1
+        }
+    ).addTo(map);
+
+    const popup = document.createElement("div");
+
+    const title = document.createElement("strong");
+
+    title.textContent = position.type;
+
+    popup.appendChild(title);
+
+    const description = document.createElement("p");
+
+    description.textContent =
+        "Ubicación registrada del incidente. " +
+        "No representa seguimiento GPS en vivo.";
+
+    popup.appendChild(description);
+
+    marker.bindPopup(popup).openPopup();
+
+    requestAnimationFrame(function () {
+        map.invalidateSize();
+    });
+
+});
+</script>
+
+{% endif %}
+
+{% endblock %}

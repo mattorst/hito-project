@@ -1,8 +1,10 @@
+
 from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
 )
 from rest_framework import serializers
+
 from apps.trekkings.models import (
     CheckpointRecord,
     TrackingPoint,
@@ -11,6 +13,7 @@ from apps.incidents.models import Incident
 
 
 class SyncCheckpointRecordSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = CheckpointRecord
         fields = (
@@ -21,8 +24,23 @@ class SyncCheckpointRecordSerializer(serializers.ModelSerializer):
             "longitude",
         )
 
+    def validate_trekking(self, trekking):
+        request = self.context.get("request")
+
+        if (
+            request is None
+            or not request.user.is_authenticated
+            or trekking.user_id != request.user.id
+        ):
+            raise serializers.ValidationError(
+                "El trekking no pertenece al usuario autenticado."
+            )
+
+        return trekking
+
 
 class SyncIncidentSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Incident
         fields = (
@@ -35,8 +53,23 @@ class SyncIncidentSerializer(serializers.ModelSerializer):
             "photo",
         )
 
+    def validate_trekking(self, trekking):
+        request = self.context.get("request")
+
+        if (
+            request is None
+            or not request.user.is_authenticated
+            or trekking.user_id != request.user.id
+        ):
+            raise serializers.ValidationError(
+                "El trekking no pertenece al usuario autenticado."
+            )
+
+        return trekking
+
 
 class SyncTrackingPointSerializer(serializers.ModelSerializer):
+
     latitude = serializers.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -103,16 +136,19 @@ class SyncTrackingPointSerializer(serializers.ModelSerializer):
 
 
 class SyncSerializer(serializers.Serializer):
+
     checkpoint_records = SyncCheckpointRecordSerializer(
         many=True,
         required=False,
         default=list,
     )
+
     incidents = SyncIncidentSerializer(
         many=True,
         required=False,
         default=list,
     )
+
     tracking_points = SyncTrackingPointSerializer(
         many=True,
         required=False,

@@ -56,6 +56,9 @@ INSTALLED_APPS = [
     "apps.rescues",
     "apps.sync",
     "apps.shared",
+
+
+    "apps.dashboard",
     
 
 ]
@@ -165,6 +168,9 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_RATES': {
+        'registration': '5/hour',
+    },
 }
 
 SPECTACULAR_SETTINGS = {

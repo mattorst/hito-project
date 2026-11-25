@@ -1,5 +1,15 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useLocalSearchParams, router } from "expo-router";
+
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  router,
+  useLocalSearchParams,
+} from "expo-router";
+
 import {
   ActivityIndicator,
   FlatList,
@@ -11,62 +21,93 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
-import { getTrails } from "@/features/parks/services/parksService";
-import type { Trail } from "@/features/parks/types";
-import TrailMap from "@/features/parks/components/TrailMap";
 
-// --- Paleta de Colores iOS Dark Theme (Línea Gráfica Hito) ---
+import { useCheckpoints } from "@/features/parks/hooks/useCheckpoints";
+
+import {
+  getTrails,
+  getParkById,
+} from "@/features/parks/services/parksService";
+
+import type {
+  Park,
+  Trail,
+} from "@/features/parks/types";
+
+import TrailMap from "@/features/parks/components/TrailMap";
+import ParkScheduleCard from "@/features/parks/components/ParkScheduleCard";
+
+// ---------------------------------------------------------
+// HITO — COLORES
+// ---------------------------------------------------------
+
 const COLORS = {
-  background: "#0B0C0D",     // Fondo oscuro principal
-  surface: "#17181B",        // Superficie de tarjetas
-  surfaceBorder: "rgba(255, 255, 255, 0.10)",
-  lime: "#C8FF00",           // Acento verde lima Hito
-  limeBg: "rgba(200, 255, 0, 0.12)",
-  
-  inkPrimary: "#FFFFFF",     // Texto blanco puro
-  inkSecondary: "#9BA1A6",   // Texto gris secundario
-  inkTertiary: "#6E7378",    // Texto deshabilitado / etiquetas
-  
-  danger: "#FF453A",         // Rojo iOS para alertas
-  dangerBg: "rgba(255, 69, 58, 0.15)",
-  shadow: "#000000",
+  background: "#0B0C0D",
+  surface: "#17181B",
+  surfaceBorder: "rgba(255,255,255,0.10)",
+  lime: "#C8FF00",
+  limeBg: "rgba(200,255,0,0.12)",
+  inkPrimary: "#FFFFFF",
+  inkSecondary: "#9BA1A6",
+  inkTertiary: "#6E7378",
+  danger: "#FF453A",
+  dangerBg: "rgba(255,69,58,0.15)",
 };
 
-// --- HELPERS DE TRADUCCIÓN ---
+// ---------------------------------------------------------
+// FORMATO DE DIFICULTAD Y ESTADO
+// ---------------------------------------------------------
+
 const formatDifficulty = (diff?: string) => {
   if (!diff) return null;
-  const normalized = diff.toUpperCase();
-  switch (normalized) {
-    case "EASY": return "Fácil";
-    case "MEDIUM": return "Moderada";
-    case "HARD": return "Exigente";
-    case "EXPERT": return "Experto";
-    default: return diff;
+
+  switch (diff.toUpperCase()) {
+    case "EASY":
+      return "Fácil";
+    case "MEDIUM":
+    case "MODERATE":
+      return "Moderada";
+    case "HARD":
+      return "Exigente";
+    case "EXPERT":
+      return "Experto";
+    default:
+      return diff;
   }
 };
 
 const formatStatus = (status?: string) => {
   if (!status) return null;
-  const normalized = status.toUpperCase();
-  switch (normalized) {
-    case "OPEN": return "Abierto";
-    case "CLOSED": return "Cerrado";
-    case "MAINTENANCE": return "En Mantenimiento";
-    default: return status;
+
+  switch (status.toUpperCase()) {
+    case "OPEN":
+      return "Abierto";
+    case "CLOSED":
+      return "Cerrado";
+    case "MAINTENANCE":
+      return "En mantenimiento";
+    default:
+      return status;
   }
 };
 
-// --- FOTOS LOCALES DE ENLADRILLADO ---
+// ---------------------------------------------------------
+// FOTOGRAFÍAS
+// ---------------------------------------------------------
+
 const ENLADRILLADO_PHOTOS = [
   require("@/assets/images/enladrillado/e1.jpg"),
   require("@/assets/images/enladrillado/e2.jpg"),
   require("@/assets/images/enladrillado/e3.jpg"),
 ];
 
-// --- EQUIPAMIENTO FORMATO GRID IOS ---
+// ---------------------------------------------------------
+// EQUIPAMIENTO
+// ---------------------------------------------------------
+
 interface EquipmentItem {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -101,43 +142,71 @@ const EQUIPMENT_GRID: EquipmentItem[] = [
   },
 ];
 
-// --- TIPS DEL GUARDAPARQUES ---
+// ---------------------------------------------------------
+// CONSEJOS
+// ---------------------------------------------------------
+
 const TRAIL_TIPS = [
   {
     id: "1",
     icon: "footsteps",
     title: "Calzado adecuado",
-    description: "Usa botas o zapatillas de trekking con buen agarre para terreno irregular.",
+    description:
+      "Usa botas o zapatillas de trekking con buen agarre para terreno irregular.",
   },
   {
     id: "2",
     icon: "water",
     title: "Hidratación",
-    description: "Lleva al menos 1.5L de agua por persona. No hay puntos de agua potable en ruta.",
+    description:
+      "Lleva al menos 1.5L de agua por persona. No hay puntos de agua potable en ruta.",
   },
   {
     id: "3",
     icon: "partly-sunny",
     title: "Protección solar",
-    description: "Aplica bloqueador y lleva gorra; hay tramos descubiertos expuestos al sol.",
+    description:
+      "Aplica bloqueador y lleva gorra; hay tramos descubiertos expuestos al sol.",
   },
   {
     id: "4",
     icon: "medkit",
     title: "Seguridad Offline",
-    description: "Asegúrate de llevar batería suficiente. El registro GPS y alertas funcionan sin señal.",
+    description:
+      "Asegúrate de llevar batería suficiente. El registro GPS funciona sin señal.",
   },
 ];
 
+// ---------------------------------------------------------
+// PANTALLA
+// ---------------------------------------------------------
+
 export default function TrailDetailScreen() {
-  const { trailId } = useLocalSearchParams<{ trailId: string }>();
-  const numericTrailId = trailId ? parseInt(trailId, 10) : 0;
+  const { trailId } = useLocalSearchParams<{
+    trailId: string;
+  }>();
+
+  const numericTrailId = trailId
+    ? parseInt(trailId, 10)
+    : 0;
 
   const [trail, setTrail] = useState<Trail | null>(null);
-  const [isTrailLoading, setIsTrailLoading] = useState(true);
-  const [isMapModalVisible, setIsMapModalVisible] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null);
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [park, setPark] = useState<Park | null>(null);
+
+  const [isTrailLoading, setIsTrailLoading] =
+    useState(true);
+
+  const [isParkLoading, setIsParkLoading] =
+    useState(false);
+
+  const [isMapModalVisible, setIsMapModalVisible] =
+    useState(false);
+
+  const [selectedPhoto, setSelectedPhoto] =
+    useState<any | null>(null);
+
+  const [activePhotoIndex, setActivePhotoIndex] =
+    useState(0);
 
   const {
     checkpoints,
@@ -146,48 +215,133 @@ export default function TrailDetailScreen() {
     reload: reloadCheckpoints,
   } = useCheckpoints(numericTrailId);
 
+  // -------------------------------------------------------
+  // CARGAR SENDERO
+  // -------------------------------------------------------
+
   const loadTrail = useCallback(async () => {
-    if (!numericTrailId) return;
+    if (!numericTrailId) {
+      setIsTrailLoading(false);
+      return;
+    }
+
     setIsTrailLoading(true);
+
     try {
       const trails = await getTrails();
-      const found = trails.find((t) => t.id === numericTrailId);
-      if (found) {
-        setTrail(found);
-      }
-    } catch (err) {
-      console.error("Error al cargar detalle del sendero:", err);
+
+      const found = trails.find(
+        (item) => item.id === numericTrailId,
+      );
+
+      setTrail(found ?? null);
+    } catch (error) {
+      console.error(
+        "Error al cargar detalle del sendero:",
+        error,
+      );
     } finally {
       setIsTrailLoading(false);
     }
   }, [numericTrailId]);
 
   useEffect(() => {
-    loadTrail();
+    void loadTrail();
   }, [loadTrail]);
 
-  const isLoading = isTrailLoading || isCheckpointsLoading;
+  // -------------------------------------------------------
+  // NUEVO: CARGAR PARQUE Y HORARIOS
+  // -------------------------------------------------------
+
+  useEffect(() => {
+    if (!trail?.park) {
+      setPark(null);
+      setIsParkLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    setPark(null);
+    setIsParkLoading(true);
+
+    const loadPark = async () => {
+      try {
+        const found = await getParkById(trail.park);
+
+        if (mounted) {
+          setPark(found);
+        }
+      } catch (error) {
+        console.error(
+          "Error al cargar los horarios del parque:",
+          error,
+        );
+
+        if (mounted) {
+          setPark(null);
+        }
+      } finally {
+        if (mounted) {
+          setIsParkLoading(false);
+        }
+      }
+    };
+
+    void loadPark();
+
+    return () => {
+      mounted = false;
+    };
+  }, [trail?.park]);
+
+  const isLoading =
+    isTrailLoading || isCheckpointsLoading;
+
+  // -------------------------------------------------------
+  // CARGANDO
+  // -------------------------------------------------------
 
   if (isLoading && !trail) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]} edges={["top", "left", "right"]}>
-        <ActivityIndicator size="small" color={COLORS.lime} />
-        <Text style={styles.loadingText}>Cargando experiencia de sendero...</Text>
+      <SafeAreaView
+        style={[styles.container, styles.center]}
+        edges={["top", "left", "right"]}
+      >
+        <ActivityIndicator
+          size="small"
+          color={COLORS.lime}
+        />
+
+        <Text style={styles.loadingText}>
+          Cargando experiencia de sendero...
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      {/* Navigation Bar Estilo iOS */}
+    <SafeAreaView
+      style={styles.container}
+      edges={["top", "left", "right"]}
+    >
+      {/* NAVEGACIÓN */}
+
       <View style={styles.navigationBar}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
-          style={styles.backButton} 
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-back" size={24} color={COLORS.lime} />
-          <Text style={styles.backText}>Senderos</Text>
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={COLORS.lime}
+          />
+
+          <Text style={styles.backText}>
+            Senderos
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -198,238 +352,471 @@ export default function TrailDetailScreen() {
         showsVerticalScrollIndicator={false}
         refreshing={isLoading}
         onRefresh={() => {
-          loadTrail();
-          reloadCheckpoints();
+          void loadTrail();
+          void reloadCheckpoints();
         }}
+
         ListHeaderComponent={
           <View>
-            {/* CABECERA CON BADGE Y WIDGET DE CLIMA */}
+            {/* CABECERA */}
+
             <View style={styles.titleContainer}>
               <View style={styles.headerTopRow}>
                 <View style={styles.headerBadge}>
-                  <Ionicons name="footsteps-sharp" size={13} color={COLORS.lime} style={{ marginRight: 6 }} />
-                  <Text style={styles.headerBadgeText}>RUTA DE SENDERISMO</Text>
+                  <Ionicons
+                    name="footsteps-sharp"
+                    size={13}
+                    color={COLORS.lime}
+                    style={{ marginRight: 6 }}
+                  />
+
+                  <Text style={styles.headerBadgeText}>
+                    RUTA DE SENDERISMO
+                  </Text>
                 </View>
 
-                {/* Widget de Clima Compacto */}
                 <View style={styles.weatherWidget}>
-                  <Ionicons name="sunny" size={14} color="#FFD60A" style={{ marginRight: 4 }} />
-                  <Text style={styles.weatherText}>18°C · Despejado</Text>
+                  <Ionicons
+                    name="sunny"
+                    size={14}
+                    color="#FFD60A"
+                    style={{ marginRight: 4 }}
+                  />
+
+                  <Text style={styles.weatherText}>
+                    18°C · Despejado
+                  </Text>
                 </View>
               </View>
 
-              <Text style={styles.mainTitle} numberOfLines={2}>
+              <Text
+                style={styles.mainTitle}
+                numberOfLines={2}
+              >
                 {trail?.name ?? "Detalle del Sendero"}
               </Text>
-              
+
               <View style={styles.badgeRow}>
                 {trail?.difficulty && (
                   <View style={styles.badge}>
-                    <Ionicons name="fitness-outline" size={13} color={COLORS.inkSecondary} style={{ marginRight: 4 }} />
-                    <Text style={styles.badgeText}>{formatDifficulty(trail.difficulty)}</Text>
+                    <Ionicons
+                      name="fitness-outline"
+                      size={13}
+                      color={COLORS.inkSecondary}
+                      style={{ marginRight: 4 }}
+                    />
+
+                    <Text style={styles.badgeText}>
+                      {formatDifficulty(trail.difficulty)}
+                    </Text>
                   </View>
                 )}
+
                 {trail?.status && (
-                  <View style={[styles.badge, styles.badgeActive]}>
+                  <View
+                    style={[
+                      styles.badge,
+                      styles.badgeActive,
+                    ]}
+                  >
                     <View style={styles.activeDot} />
-                    <Text style={[styles.badgeText, styles.badgeActiveText]}>{formatStatus(trail.status)}</Text>
+
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        styles.badgeActiveText,
+                      ]}
+                    >
+                      {formatStatus(trail.status)}
+                    </Text>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* CARRUSEL DE FOTOS LOCALES CON PUNTOS DE PAGINACIÓN */}
+            {/* GALERÍA */}
+
             <View style={styles.sectionBlock}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeader}>Galería en terreno</Text>
-                <Text style={styles.sectionHeaderHint}>Toca para ampliar</Text>
+                <Text style={styles.sectionHeader}>
+                  Galería en terreno
+                </Text>
+
+                <Text style={styles.sectionHeaderHint}>
+                  Toca para ampliar
+                </Text>
               </View>
-              <ScrollView 
-                horizontal 
+
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.carouselContainer}
+                contentContainerStyle={
+                  styles.carouselContainer
+                }
                 decelerationRate="fast"
-                snapToInterval={280 + 12}
-                onScroll={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const index = Math.round(x / (280 + 12));
+                snapToInterval={292}
+                onScroll={(event) => {
+                  const x =
+                    event.nativeEvent.contentOffset.x;
+
+                  const index = Math.round(x / 292);
+
                   setActivePhotoIndex(index);
                 }}
                 scrollEventThrottle={16}
               >
-                {ENLADRILLADO_PHOTOS.map((photoSource, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.photoCard}
-                    activeOpacity={0.88}
-                    onPress={() => setSelectedPhoto(photoSource)}
-                  >
-                    <Image 
-                      source={photoSource} 
-                      style={styles.photoImage}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.photoZoomBadge}>
-                      <Ionicons name="scan-outline" size={14} color="#FFFFFF" />
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {ENLADRILLADO_PHOTOS.map(
+                  (photoSource, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.photoCard}
+                      activeOpacity={0.88}
+                      onPress={() =>
+                        setSelectedPhoto(photoSource)
+                      }
+                    >
+                      <Image
+                        source={photoSource}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                      />
+
+                      <View style={styles.photoZoomBadge}>
+                        <Ionicons
+                          name="scan-outline"
+                          size={14}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  ),
+                )}
               </ScrollView>
 
-              {/* Puntos de paginación */}
               <View style={styles.paginationDotsRow}>
-                {ENLADRILLADO_PHOTOS.map((_, index) => (
-                  <View 
-                    key={index} 
-                    style={[
-                      styles.dot, 
-                      activePhotoIndex === index && styles.dotActive
-                    ]} 
-                  />
-                ))}
+                {ENLADRILLADO_PHOTOS.map(
+                  (_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        activePhotoIndex === index &&
+                          styles.dotActive,
+                      ]}
+                    />
+                  ),
+                )}
               </View>
             </View>
 
-            {/* PREVISUALIZACIÓN DEL MAPA */}
+            {/* MAPA */}
+
             <View style={styles.mapCard}>
               <View style={styles.mapContainer}>
-                <TrailMap 
-                  routeGeoJSON={trail?.route_geojson ?? null} 
-                  checkpoints={checkpoints} 
+                <TrailMap
+                  routeGeoJSON={
+                    trail?.route_geojson ?? null
+                  }
+                  checkpoints={checkpoints}
                 />
 
                 <TouchableOpacity
                   style={styles.expandButton}
-                  onPress={() => setIsMapModalVisible(true)}
+                  onPress={() =>
+                    setIsMapModalVisible(true)
+                  }
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="expand" size={14} color={COLORS.inkPrimary} style={{ marginRight: 6 }} />
-                  <Text style={styles.expandButtonText}>Pantalla completa</Text>
+                  <Ionicons
+                    name="expand"
+                    size={14}
+                    color={COLORS.inkPrimary}
+                    style={{ marginRight: 6 }}
+                  />
+
+                  <Text
+                    style={styles.expandButtonText}
+                  >
+                    Pantalla completa
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* BARRA DE ESTADÍSTICAS Y MÉTRICAS */}
+            {/* ESTADÍSTICAS */}
+
             {trail && (
               <View style={styles.statsBar}>
                 <View style={styles.statItem}>
-                  <Ionicons name="map-outline" size={18} color={COLORS.lime} />
-                  <Text style={styles.statValue}>{trail.distance_km} km</Text>
-                  <Text style={styles.statLabel}>Distancia</Text>
+                  <Ionicons
+                    name="map-outline"
+                    size={18}
+                    color={COLORS.lime}
+                  />
+
+                  <Text style={styles.statValue}>
+                    {trail.distance_km} km
+                  </Text>
+
+                  <Text style={styles.statLabel}>
+                    Distancia
+                  </Text>
                 </View>
+
                 <View style={styles.statDivider} />
+
                 <View style={styles.statItem}>
-                  <Ionicons name="time-outline" size={18} color={COLORS.lime} />
-                  <Text style={styles.statValue}>{trail.estimated_duration}</Text>
-                  <Text style={styles.statLabel}>Duración</Text>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={COLORS.lime}
+                  />
+
+                  <Text style={styles.statValue}>
+                    {trail.estimated_duration}
+                  </Text>
+
+                  <Text style={styles.statLabel}>
+                    Duración
+                  </Text>
                 </View>
+
                 <View style={styles.statDivider} />
+
                 <View style={styles.statItem}>
-                  <Ionicons name="trending-up-outline" size={18} color={COLORS.lime} />
-                  <Text style={styles.statValue}>{trail.max_altitude} m</Text>
-                  <Text style={styles.statLabel}>Altitud Máx</Text>
+                  <Ionicons
+                    name="trending-up-outline"
+                    size={18}
+                    color={COLORS.lime}
+                  />
+
+                  <Text style={styles.statValue}>
+                    {trail.max_altitude} m
+                  </Text>
+
+                  <Text style={styles.statLabel}>
+                    Altitud Máx
+                  </Text>
                 </View>
               </View>
             )}
 
-            {/* EQUIPAMIENTO RECOMENDADO — ESTILO GRID IOS LIMPIO */}
+            {/* NUEVO: HORARIOS DEL PARQUE */}
+
+            <ParkScheduleCard
+              schedule={park}
+              isLoading={isParkLoading}
+            />
+
+            {/* EQUIPAMIENTO */}
+
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionHeader}>Equipamiento recomendado</Text>
+              <Text style={styles.sectionHeader}>
+                Equipamiento recomendado
+              </Text>
+
               <View style={styles.equipGrid}>
                 {EQUIPMENT_GRID.map((item) => (
-                  <View key={item.id} style={styles.equipGridCard}>
+                  <View
+                    key={item.id}
+                    style={styles.equipGridCard}
+                  >
                     <View style={styles.equipIconWrap}>
-                      <Ionicons name={item.icon} size={18} color={COLORS.lime} />
+                      <Ionicons
+                        name={item.icon}
+                        size={18}
+                        color={COLORS.lime}
+                      />
                     </View>
-                    <Text style={styles.equipTitle}>{item.label}</Text>
-                    <Text style={styles.equipSubtext}>{item.detail}</Text>
+
+                    <Text style={styles.equipTitle}>
+                      {item.label}
+                    </Text>
+
+                    <Text style={styles.equipSubtext}>
+                      {item.detail}
+                    </Text>
                   </View>
                 ))}
               </View>
             </View>
 
-            {/* DESCRIPCIÓN ACERCA DE LA RUTA */}
+            {/* DESCRIPCIÓN */}
+
             {trail?.description && (
               <View style={styles.sectionBlock}>
-                <Text style={styles.sectionHeader}>Acerca de la ruta</Text>
-                <Text style={styles.description}>{trail.description}</Text>
+                <Text style={styles.sectionHeader}>
+                  Acerca de la ruta
+                </Text>
+
+                <Text style={styles.description}>
+                  {trail.description}
+                </Text>
               </View>
             )}
 
-            {/* TARJETA DE RESGUARDO Y SEGURIDAD */}
+            {/* SEGURIDAD */}
+
             <View style={styles.securityBanner}>
               <View style={styles.securityIconWrap}>
-                <Ionicons name="shield-checkmark" size={22} color={COLORS.lime} />
+                <Ionicons
+                  name="shield-checkmark"
+                  size={22}
+                  color={COLORS.lime}
+                />
               </View>
+
               <View style={styles.securityTextWrap}>
-                <Text style={styles.securityTitle}>Sendero Monitoreado</Text>
+                <Text style={styles.securityTitle}>
+                  Sendero Monitoreado
+                </Text>
+
                 <Text style={styles.securitySubtitle}>
-                  Guardaparques activos en ruta. Tu posición y alertas se registran en SQLite sin necesidad de internet.
+                  Tu posición se registra en SQLite
+                  sin necesidad de Internet. Los datos
+                  pendientes se sincronizarán cuando
+                  exista conexión.
                 </Text>
               </View>
             </View>
 
-            {/* CONSEJOS & TIPS DEL GUARDAPARQUES */}
+            {/* CONSEJOS */}
+
             <View style={styles.sectionBlock}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeader}>Tips del Guardaparques</Text>
+                <Text style={styles.sectionHeader}>
+                  Tips del Guardaparques
+                </Text>
               </View>
-              <ScrollView 
-                horizontal 
+
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.tipsContainer}
+                contentContainerStyle={
+                  styles.tipsContainer
+                }
               >
                 {TRAIL_TIPS.map((tip) => (
-                  <View key={tip.id} style={styles.tipCard}>
+                  <View
+                    key={tip.id}
+                    style={styles.tipCard}
+                  >
                     <View style={styles.tipIconWrap}>
-                      <Ionicons name={tip.icon as any} size={18} color={COLORS.lime} />
+                      <Ionicons
+                        name={
+                          tip.icon as keyof typeof Ionicons.glyphMap
+                        }
+                        size={18}
+                        color={COLORS.lime}
+                      />
                     </View>
-                    <Text style={styles.tipTitle}>{tip.title}</Text>
-                    <Text style={styles.tipDescription}>{tip.description}</Text>
+
+                    <Text style={styles.tipTitle}>
+                      {tip.title}
+                    </Text>
+
+                    <Text style={styles.tipDescription}>
+                      {tip.description}
+                    </Text>
                   </View>
                 ))}
               </ScrollView>
             </View>
 
-            {/* LISTA DE CHECKPOINTS */}
-            <Text style={styles.sectionHeader}>Checkpoints de Control</Text>
+            {/* CHECKPOINTS */}
+
+            <Text style={styles.sectionHeader}>
+              Checkpoints de Control
+            </Text>
 
             {checkpointsError && (
               <View style={styles.statusContainer}>
-                <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
-                <Text style={styles.error}>{checkpointsError}</Text>
+                <Ionicons
+                  name="alert-circle"
+                  size={18}
+                  color={COLORS.danger}
+                />
+
+                <Text style={styles.error}>
+                  {checkpointsError}
+                </Text>
               </View>
             )}
 
-            {!checkpointsError && checkpoints.length === 0 && (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="flag-outline" size={32} color={COLORS.inkTertiary} style={{ marginBottom: 6 }} />
-                <Text style={styles.emptyText}>Sin checkpoints configurados en este tramo.</Text>
-              </View>
-            )}
+            {!checkpointsError &&
+              checkpoints.length === 0 && (
+                <View style={styles.emptyContainer}>
+                  <Ionicons
+                    name="flag-outline"
+                    size={32}
+                    color={COLORS.inkTertiary}
+                    style={{ marginBottom: 6 }}
+                  />
+
+                  <Text style={styles.emptyText}>
+                    Sin checkpoints configurados
+                    en este tramo.
+                  </Text>
+                </View>
+              )}
           </View>
         }
+
         renderItem={({ item, index }) => (
           <View style={styles.card}>
-            <View style={styles.checkpointIndexContainer}>
-              <Text style={styles.checkpointIndexText}>{index + 1}</Text>
+            <View
+              style={styles.checkpointIndexContainer}
+            >
+              <Text
+                style={styles.checkpointIndexText}
+              >
+                {index + 1}
+              </Text>
             </View>
+
             <View style={styles.cardContent}>
-              <Text style={styles.name}>{item.name}</Text>
-              
+              <Text style={styles.name}>
+                {item.name}
+              </Text>
+
               <View style={styles.infoRow}>
-                <Ionicons name="location-sharp" size={13} color={COLORS.inkSecondary} style={{ marginRight: 4 }} />
-                <Text style={styles.info}>{item.latitude}, {item.longitude}</Text>
+                <Ionicons
+                  name="location-sharp"
+                  size={13}
+                  color={COLORS.inkSecondary}
+                  style={{ marginRight: 4 }}
+                />
+
+                <Text style={styles.info}>
+                  {item.latitude}, {item.longitude}
+                </Text>
               </View>
 
               <View style={styles.infoGrid}>
                 <View style={styles.miniTag}>
-                  <Ionicons name="radio-outline" size={12} color={COLORS.lime} style={{ marginRight: 4 }} />
-                  <Text style={styles.miniTagText}>{item.radius_meters} m radio</Text>
+                  <Ionicons
+                    name="radio-outline"
+                    size={12}
+                    color={COLORS.lime}
+                    style={{ marginRight: 4 }}
+                  />
+
+                  <Text style={styles.miniTagText}>
+                    {item.radius_meters} m radio
+                  </Text>
                 </View>
+
                 <View style={styles.miniTag}>
-                  <Ionicons name="qr-code-outline" size={12} color={COLORS.inkSecondary} style={{ marginRight: 4 }} />
-                  <Text style={styles.miniTagText}>{item.qr_identifier}</Text>
+                  <Ionicons
+                    name="qr-code-outline"
+                    size={12}
+                    color={COLORS.inkSecondary}
+                    style={{ marginRight: 4 }}
+                  />
+
+                  <Text style={styles.miniTagText}>
+                    {item.qr_identifier}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -437,51 +824,85 @@ export default function TrailDetailScreen() {
         )}
       />
 
-      {/* MODAL 1: FOTO EN PANTALLA COMPLETA */}
-      <Modal 
-        visible={selectedPhoto !== null} 
-        transparent={true} 
+      {/* MODAL FOTO */}
+
+      <Modal
+        visible={selectedPhoto !== null}
+        transparent
         animationType="fade"
-        onRequestClose={() => setSelectedPhoto(null)}
+        onRequestClose={() =>
+          setSelectedPhoto(null)
+        }
       >
         <View style={styles.fullImageModalBg}>
-          <TouchableOpacity 
-            style={styles.fullImageCloseBtn} 
-            onPress={() => setSelectedPhoto(null)}
-            activeOpacity={0.8}
+          <TouchableOpacity
+            style={styles.fullImageCloseBtn}
+            onPress={() =>
+              setSelectedPhoto(null)
+            }
           >
-            <Ionicons name="close" size={26} color="#FFFFFF" />
+            <Ionicons
+              name="close"
+              size={26}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
 
           {selectedPhoto && (
-            <Image 
-              source={selectedPhoto} 
-              style={styles.fullImage} 
-              resizeMode="contain" 
+            <Image
+              source={selectedPhoto}
+              style={styles.fullImage}
+              resizeMode="contain"
             />
           )}
         </View>
       </Modal>
 
-      {/* MODAL 2: MAPA EN PANTALLA COMPLETA */}
-      <Modal visible={isMapModalVisible} animationType="slide" presentationStyle="fullScreen">
-        <SafeAreaView style={styles.modalContainer} edges={["top", "left", "right", "bottom"]}>
+      {/* MODAL MAPA */}
+
+      <Modal
+        visible={isMapModalVisible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() =>
+          setIsMapModalVisible(false)
+        }
+      >
+        <SafeAreaView
+          style={styles.modalContainer}
+          edges={[
+            "top",
+            "left",
+            "right",
+            "bottom",
+          ]}
+        >
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle} numberOfLines={1}>
+            <Text
+              style={styles.modalTitle}
+              numberOfLines={1}
+            >
               {trail?.name ?? "Mapa del Sendero"}
             </Text>
-            <TouchableOpacity 
-              onPress={() => setIsMapModalVisible(false)} 
-              style={styles.closeButton} 
-              activeOpacity={0.7}
+
+            <TouchableOpacity
+              onPress={() =>
+                setIsMapModalVisible(false)
+              }
+              style={styles.closeButton}
             >
-              <Text style={styles.closeText}>Listo</Text>
+              <Text style={styles.closeText}>
+                Listo
+              </Text>
             </TouchableOpacity>
           </View>
+
           <View style={styles.modalMapWrapper}>
-            <TrailMap 
-              routeGeoJSON={trail?.route_geojson ?? null} 
-              checkpoints={checkpoints} 
+            <TrailMap
+              routeGeoJSON={
+                trail?.route_geojson ?? null
+              }
+              checkpoints={checkpoints}
             />
           </View>
         </SafeAreaView>
@@ -489,6 +910,10 @@ export default function TrailDetailScreen() {
     </SafeAreaView>
   );
 }
+
+// ---------------------------------------------------------
+// ESTILOS — HITO
+// ---------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -580,7 +1005,7 @@ const styles = StyleSheet.create({
   },
   badgeActive: {
     backgroundColor: COLORS.limeBg,
-    borderColor: "rgba(200, 255, 0, 0.3)",
+    borderColor: "rgba(200,255,0,0.3)",
   },
   badgeActiveText: {
     color: COLORS.lime,
@@ -601,8 +1026,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 40,
   },
-
-  /* --- GALERÍA FOTOS --- */
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -637,7 +1060,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     right: 10,
-    backgroundColor: "rgba(11, 12, 13, 0.75)",
+    backgroundColor: "rgba(11,12,13,0.75)",
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -663,8 +1086,6 @@ const styles = StyleSheet.create({
     width: 18,
     backgroundColor: COLORS.lime,
   },
-
-  /* --- MAPA PREVIEW --- */
   mapCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 20,
@@ -683,7 +1104,7 @@ const styles = StyleSheet.create({
     bottom: 12,
     right: 12,
     flexDirection: "row",
-    backgroundColor: "rgba(11, 12, 13, 0.85)",
+    backgroundColor: "rgba(11,12,13,0.85)",
     borderWidth: 1,
     borderColor: COLORS.surfaceBorder,
     paddingHorizontal: 12,
@@ -696,8 +1117,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-
-  /* --- MÉTRICAS Y ESTADÍSTICAS --- */
   statsBar: {
     flexDirection: "row",
     backgroundColor: COLORS.surface,
@@ -730,8 +1149,6 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: COLORS.surfaceBorder,
   },
-
-  /* --- EQUIPAMIENTO FORMATO GRID IOS --- */
   equipGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -766,8 +1183,6 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     lineHeight: 16,
   },
-
-  /* --- SECCIONES Y SEGURIDAD --- */
   sectionBlock: {
     marginBottom: 22,
   },
@@ -789,7 +1204,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "rgba(200, 255, 0, 0.25)",
+    borderColor: "rgba(200,255,0,0.25)",
     borderRadius: 16,
     padding: 14,
     marginBottom: 22,
@@ -818,8 +1233,6 @@ const styles = StyleSheet.create({
     color: COLORS.inkSecondary,
     lineHeight: 17,
   },
-
-  /* --- TIPS --- */
   tipsContainer: {
     paddingRight: 16,
     gap: 12,
@@ -852,8 +1265,6 @@ const styles = StyleSheet.create({
     color: COLORS.inkSecondary,
     lineHeight: 16,
   },
-
-  /* --- TARJETAS DE CHECKPOINTS --- */
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -870,7 +1281,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     backgroundColor: COLORS.limeBg,
     borderWidth: 1,
-    borderColor: "rgba(200, 255, 0, 0.3)",
+    borderColor: "rgba(200,255,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -906,7 +1317,7 @@ const styles = StyleSheet.create({
   miniTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -916,8 +1327,6 @@ const styles = StyleSheet.create({
     color: COLORS.inkSecondary,
     fontWeight: "500",
   },
-
-  /* --- ESTADOS VACÍO / ERROR --- */
   statusContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -944,8 +1353,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "500",
   },
-
-  /* --- MODALES --- */
   modalContainer: {
     flex: 1,
     backgroundColor: COLORS.background,

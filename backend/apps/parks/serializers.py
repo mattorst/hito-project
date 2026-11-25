@@ -1,7 +1,12 @@
+
 from rest_framework import serializers
 
 from apps.parks.models import Park, Trail, Checkpoint
 
+
+# ---------------------------------------------------------
+# PARQUES
+# ---------------------------------------------------------
 
 class ParkSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,9 +19,19 @@ class ParkSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "default_return_time",
+
+            # Horarios configurados desde Django Admin
+            "opening_time",
+            "last_entry_time",
+            "return_deadline",
+
             "is_active",
         )
 
+
+# ---------------------------------------------------------
+# SENDEROS
+# ---------------------------------------------------------
 
 class TrailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -93,6 +108,10 @@ class TrailSerializer(serializers.ModelSerializer):
 
         return value
 
+
+# ---------------------------------------------------------
+# CHECKPOINTS
+# ---------------------------------------------------------
 
 class CheckpointSerializer(serializers.ModelSerializer):
     class Meta:

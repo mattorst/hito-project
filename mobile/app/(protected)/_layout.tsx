@@ -1,17 +1,34 @@
+
 import React from "react";
+
 import {
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+
 import { Redirect, Tabs } from "expo-router";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import type {
+  BottomTabBarProps,
+} from "@react-navigation/bottom-tabs";
+
+import {
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
 import { Ionicons } from "@expo/vector-icons";
 
-import { useAuth } from "@/features/auth/context/AuthContext";
-import { useSync } from "@/features/sync/hooks/useSync";
+import {
+  useAuth,
+} from "@/features/auth/context/AuthContext";
+
+import AutoSyncRunner from "@/features/sync/components/AutoSyncRunner";
+
+// ---------------------------------------------------------
+// HITO — COLORES
+// ---------------------------------------------------------
 
 const C = {
   bg: "#0B0C0D",
@@ -23,6 +40,10 @@ const C = {
 };
 
 type IconName = keyof typeof Ionicons.glyphMap;
+
+// ---------------------------------------------------------
+// HITO — ELEMENTOS DE NAVEGACIÓN
+// ---------------------------------------------------------
 
 const NAV_ITEMS: {
   route: string;
@@ -52,38 +73,56 @@ const NAV_ITEMS: {
   },
 ];
 
+// ---------------------------------------------------------
+// HITO — BARRA INFERIOR FLOTANTE
+// ---------------------------------------------------------
+
 function FloatingTabBar({
   state,
   navigation,
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
-  // La guía tiene su propia navegación.
-  // No mostramos la barra flotante mientras esté abierta.
+  // La guía y la preparación del trekking
+  // utilizan su propia navegación.
+  //
+  // Ocultamos la barra flotante en esas vistas.
+
   const currentRoute = state.routes[state.index];
 
-  if (currentRoute?.name === "guide/index") {
-    return null;
-  }
+  if (
+  currentRoute?.name === "guide/index" ||
+  currentRoute?.name === "trekking/prepare" ||
+  currentRoute?.name === "trekking/index"
+) {
+  return null;
+}
 
   return (
     <View
       pointerEvents="box-none"
       style={[
         styles.tabPosition,
-        { bottom: Math.max(insets.bottom, 12) + 4 },
+        {
+          bottom: Math.max(insets.bottom, 12) + 4,
+        },
       ]}
     >
       <View style={styles.tabBar}>
         {NAV_ITEMS.map((item) => {
           const route = state.routes.find(
-            (r) => r.name === item.route
+            (r) => r.name === item.route,
           );
 
-          if (!route) return null;
+          if (!route) {
+            return null;
+          }
 
-          const routeIndex = state.routes.indexOf(route);
-          const focused = state.index === routeIndex;
+          const routeIndex =
+            state.routes.indexOf(route);
+
+          const focused =
+            state.index === routeIndex;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -92,10 +131,17 @@ function FloatingTabBar({
               canPreventDefault: true,
             });
 
-            if (!focused && !event.defaultPrevented) {
+            if (
+              !focused &&
+              !event.defaultPrevented
+            ) {
               navigation.navigate(route.name);
             }
           };
+
+          // ---------------------------------------------
+          // BOTÓN CENTRAL — ESCÁNER QR
+          // ---------------------------------------------
 
           if (item.center) {
             return (
@@ -104,7 +150,9 @@ function FloatingTabBar({
                 onPress={onPress}
                 style={styles.navItem}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: focused }}
+                accessibilityState={{
+                  selected: focused,
+                }}
                 accessibilityLabel="Escanear checkpoint"
               >
                 <View style={styles.scanButton}>
@@ -118,13 +166,19 @@ function FloatingTabBar({
             );
           }
 
+          // ---------------------------------------------
+          // BOTONES NORMALES
+          // ---------------------------------------------
+
           return (
             <Pressable
               key={route.key}
               onPress={onPress}
               style={styles.navItem}
               accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
+              accessibilityState={{
+                selected: focused,
+              }}
               accessibilityLabel={item.label}
             >
               <Ionicons
@@ -134,13 +188,18 @@ function FloatingTabBar({
                     : item.inactive
                 }
                 size={21}
-                color={focused ? C.lime : C.muted}
+                color={
+                  focused
+                    ? C.lime
+                    : C.muted
+                }
               />
 
               <Text
                 style={[
                   styles.navLabel,
-                  focused && styles.navLabelActive,
+                  focused &&
+                    styles.navLabelActive,
                 ]}
               >
                 {item.label}
@@ -153,21 +212,58 @@ function FloatingTabBar({
   );
 }
 
+// ---------------------------------------------------------
+// HITO — LAYOUT PROTEGIDO
+// ---------------------------------------------------------
+
 export default function ProtectedLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+  } = useAuth();
 
-  useSync(isAuthenticated);
+  // Esperar la restauración de la sesión.
+  if (isLoading) {
+    return null;
+  }
 
-  if (isLoading) return null;
-
+  // Sin sesión, regresar al login.
   if (!isAuthenticated) {
     return <Redirect href="/login" />;
   }
 
   return (
     <View style={styles.root}>
+      {/* 
+        SINCRONIZACIÓN AUTOMÁTICA HITO
+
+        Este componente no muestra interfaz.
+
+        Detecta:
+        - Sesión autenticada.
+        - Conexión a Internet.
+        - Reconexión.
+        - Regreso de la app a primer plano.
+        - Reintentos periódicos.
+
+        Coordina:
+        - Excursiones y acompañantes.
+        - Solicitudes y cancelaciones de rescate.
+        - Checkpoints QR.
+        - Coordenadas GPS.
+        - Incidentes y fotografías.
+
+        Solo debe montarse una vez.
+      */}
+
+      <AutoSyncRunner />
+
+      {/* NAVEGACIÓN PRINCIPAL */}
+
       <Tabs
-        tabBar={(props) => <FloatingTabBar {...props} />}
+        tabBar={(props) => (
+          <FloatingTabBar {...props} />
+        )}
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
@@ -180,20 +276,35 @@ export default function ProtectedLayout() {
       >
         <Tabs.Screen
           name="index"
-          options={{ title: "Explorar" }}
+          options={{
+            title: "Explorar",
+          }}
         />
 
         <Tabs.Screen
           name="scan/index"
-          options={{ title: "Escanear" }}
+          options={{
+            title: "Escanear",
+          }}
         />
 
         <Tabs.Screen
           name="trekking/history"
-          options={{ title: "Historial" }}
+          options={{
+            title: "Historial",
+          }}
         />
 
-        {/* Nueva pantalla informativa */}
+        <Tabs.Screen
+          name="trekking/prepare"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+
+        {/* Pantalla informativa del explorador */}
+
         <Tabs.Screen
           name="guide/index"
           options={{
@@ -206,11 +317,19 @@ export default function ProtectedLayout() {
   );
 }
 
+// ---------------------------------------------------------
+// HITO — ESTILOS
+// ---------------------------------------------------------
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: C.bg,
   },
+
+  // -------------------------------------------------------
+  // BARRA FLOTANTE
+  // -------------------------------------------------------
 
   tabPosition: {
     position: "absolute",
@@ -224,20 +343,31 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 350,
     height: 64,
+
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
+
     backgroundColor: C.surface,
+
     borderRadius: 32,
     borderWidth: 1,
     borderColor: C.border,
 
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
     shadowOpacity: 0.16,
     shadowRadius: 12,
+
     elevation: 8,
   },
+
+  // -------------------------------------------------------
+  // ELEMENTOS DE NAVEGACIÓN
+  // -------------------------------------------------------
 
   navItem: {
     flex: 1,
@@ -258,11 +388,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  // -------------------------------------------------------
+  // ESCÁNER CENTRAL
+  // -------------------------------------------------------
+
   scanButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
+
     backgroundColor: C.lime,
+
     alignItems: "center",
     justifyContent: "center",
   },

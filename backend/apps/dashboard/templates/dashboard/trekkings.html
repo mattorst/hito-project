@@ -1,0 +1,48 @@
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}Trekkings | Hito{% endblock %}
+
+{% block content %}
+<h1>Trekkings registrados</h1>
+
+<p>Excursiones recibidas desde la aplicación móvil.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Excursionista</th>
+            <th>Parque</th>
+            <th>Sendero</th>
+            <th>Estado</th>
+            <th>Inicio</th>
+            <th>Detalle</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for trekking in page %}
+        <tr>
+            <td>{{ trekking.id }}</td>
+            <td>{{ trekking.user.username }}</td>
+            <td>{{ trekking.trail.park.name }}</td>
+            <td>{{ trekking.trail.name }}</td>
+            <td>{{ trekking.get_status_display }}</td>
+            <td>{{ trekking.started_at|date:"d/m/Y H:i" }}</td>
+            <td>
+                <a href="{% url 'dashboard:trekking_detail' trekking.pk %}">
+                    Ver detalle
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7">
+                Todavía no hay trekkings registrados.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

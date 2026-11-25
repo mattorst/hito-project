@@ -1,0 +1,1089 @@
+
+{% extends "dashboard/base.html" %}
+{% block title %}Centro de monitoreo | Hito{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+    #monitor-map {
+        height: 380px;
+        width: 100%;
+        border: 1px solid #344035;
+        border-radius: 10px;
+        background: #18211c;
+        position: relative;
+        overflow: hidden;
+        z-index: 0;
+    }
+
+    #monitor-map .leaflet-tile,
+    #monitor-map .leaflet-pane img {
+        max-width: none !important;
+        max-height: none !important;
+    }
+
+    #monitor-map .leaflet-popup-content {
+        color: #202820;
+    }
+
+    .monitor-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 15px 0;
+    }
+
+    .monitor-actions label {
+        color: #acb6ab;
+    }
+
+    .monitor-caption {
+        color: #acb6ab;
+        font-size: 0.88rem;
+    }
+
+    .monitor-alert {
+        color: #ffb3a3;
+        font-weight: 650;
+    }
+
+    .monitor-warn {
+        color: #f0b94b;
+        font-weight: 650;
+    }
+
+    .monitor-ok {
+        color: #c1f263;
+    }
+
+    .monitor-chip {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        border-radius: 5px;
+        border: 1px solid #354336;
+        display: inline-block;
+    }
+
+    .monitor-no-data {
+        color: #acb6ab;
+        font-size: 0.92rem;
+    }
+
+    .monitor-help {
+        padding: 12px 15px;
+        background: #1a221b;
+        border: 1px solid #354336;
+        border-radius: 8px;
+    }
+
+    .monitor-map-fallback {
+        border: 1px solid #344035;
+        background: #1a221b;
+        border-radius: 9px;
+        padding: 24px;
+        color: #acb6ab;
+    }
+
+    /* =====================================
+       PANEL DE EMERGENCIAS SOS
+    ===================================== */
+
+    .sos-panel {
+        background: #24191c;
+        border: 1px solid #9a4950;
+        padding: 14px;
+        border-radius: 10px;
+        margin: 15px 0;
+    }
+
+    .sos-panel h2 {
+        margin: 0 0 10px;
+        color: #ff9c9e;
+    }
+
+    .sos-panel li {
+        margin: 9px 0;
+    }
+
+    /* =====================================
+       MARCADOR SOS ANIMADO
+    ===================================== */
+
+    .sos-marker {
+        width: 34px;
+        height: 34px;
+        position: relative;
+    }
+
+    .sos-marker__core {
+        position: absolute;
+        inset: 4px;
+        z-index: 2;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 800;
+        color: white;
+        background: #d93347;
+    }
+
+    .sos-marker__pulse {
+        position: absolute;
+        inset: 0;
+        background: rgba(240, 70, 90, 0.25);
+        border: 2px solid #ed5363;
+        border-radius: 50%;
+        animation: sosPulse 2s ease-out infinite;
+    }
+
+    @keyframes sosPulse {
+        from {
+            opacity: 1;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 0;
+            transform: scale(2.5);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sos-marker__pulse {
+            animation: none;
+        }
+    }
+
+    @media (max-width: 700px) {
+        #monitor-map {
+            height: 350px;
+        }
+
+        .monitor-actions {
+            align-items: stretch;
+        }
+
+        .monitor-actions select {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<!-- =====================================
+     ENCABEZADO
+===================================== -->
+
+<h1>Centro de monitoreo</h1>
+
+<p class="subtle">
+    Excursiones activas y últimas posiciones GPS
+    almacenadas en Django.
+
+    No es un seguimiento en tiempo real:
+    la app sincroniza cuando tiene conectividad.
+</p>
+
+
+<!-- =====================================
+     ESTADÍSTICAS
+===================================== -->
+
+<div class="stats">
+
+    <article>
+        <small>Excursiones en seguimiento</small>
+        <strong>{{ active_count }}</strong>
+    </article>
+
+    <article>
+        <small>Regreso estimado vencido</small>
+        <strong>{{ overdue_count }}</strong>
+    </article>
+
+    <article>
+        <small>Trekkings con alerta de rescate</small>
+        <strong>{{ active_rescue_count }}</strong>
+    </article>
+
+    <article>
+        <small>GPS antiguo o inexistente</small>
+        <strong>{{ stale_count }}</strong>
+    </article>
+
+    <article>
+        <small>
+            Solicitudes SOS activas
+            (todos los estados de trekking)
+        </small>
+        <strong>{{ sos_count }}</strong>
+    </article>
+
+</div>
+
+
+<!-- =====================================
+     FILTRO POR PARQUE
+===================================== -->
+
+<form
+    class="monitor-actions"
+    method="get"
+    action="{% url 'dashboard:monitoreo' %}"
+>
+
+    <label for="park-filter">
+        Parque
+    </label>
+
+    <select
+        name="park"
+        id="park-filter"
+    >
+
+        <option value="">
+            Todos los parques
+        </option>
+
+        {% for park in parks %}
+
+            <option
+                value="{{ park.pk }}"
+                {% if park_filter == park.pk|stringformat:'s' %}
+                    selected
+                {% endif %}
+            >
+                {{ park.name }}
+            </option>
+
+        {% endfor %}
+
+    </select>
+
+    <button type="submit">
+        Aplicar filtro
+    </button>
+
+    <a href="{% url 'dashboard:monitoreo' %}">
+        Limpiar
+    </a>
+
+    <a href="" aria-label="Actualizar monitoreo">
+        Actualizar ahora
+    </a>
+
+</form>
+
+
+<!-- =====================================
+     FECHA DE ACTUALIZACIÓN
+===================================== -->
+
+<p class="monitor-caption">
+    Última actualización de esta pantalla:
+    {{ now|date:"d/m/Y H:i:s" }}
+
+    · Se actualiza automáticamente cada
+    {{ refresh_seconds }} segundos.
+
+    Un GPS antiguo o ausente no confirma
+    una emergencia.
+</p>
+
+
+<!-- =====================================
+     SOLICITUDES SOS ACTIVAS
+===================================== -->
+
+{% if active_sos %}
+
+<section
+    class="sos-panel"
+    aria-label="Solicitudes SOS activas"
+>
+
+    <h2>
+        Solicitudes SOS activas ({{ sos_count }})
+    </h2>
+
+    <p>
+        Se muestran incluso cuando el trekking
+        ya figura como completado.
+
+        {{ sos_without_location }}
+        sin coordenadas utilizables.
+    </p>
+
+    <ul>
+
+        {% for item in active_sos %}
+
+        <li>
+
+            <a href="{% url 'dashboard:rescue_detail' item.rescue.pk %}">
+                SOS #{{ item.rescue.pk }}
+            </a>
+
+            · {{ item.rescue.trekking.user.username }}
+
+            · Trekking #{{ item.rescue.trekking_id }}
+
+            ({{ item.rescue.trekking.get_status_display }})
+
+            · {{ item.rescue.started_at|date:"d/m/Y H:i:s" }}
+
+            {% if not item.has_location %}
+                · Ubicación no registrada
+            {% endif %}
+
+        </li>
+
+        {% endfor %}
+
+    </ul>
+
+</section>
+
+{% endif %}
+
+
+<!-- =====================================
+     MAPA GENERAL DE MONITOREO
+===================================== -->
+
+<h2>
+    Mapa de últimas posiciones conocidas
+    y solicitudes SOS
+</h2>
+
+{% if map_positions or sos_positions %}
+
+    <div
+        id="monitor-map"
+        role="region"
+        aria-label="Mapa de últimas posiciones GPS y solicitudes SOS"
+    ></div>
+
+    <p class="monitor-caption">
+        Los marcadores GPS representan posiciones
+        sincronizadas de las excursiones.
+
+        Los marcadores SOS rojos representan
+        ubicaciones registradas en solicitudes
+        de rescate activas.
+
+        No son ubicaciones en vivo.
+    </p>
+
+    <p
+        id="monitor-map-warning"
+        class="monitor-warn"
+    ></p>
+
+{% else %}
+
+    <div class="monitor-map-fallback">
+        No hay posiciones GPS ni solicitudes SOS
+        con coordenadas disponibles para el
+        filtro seleccionado.
+
+        Los registros pueden consultarse
+        en los listados correspondientes.
+    </div>
+
+{% endif %}
+
+
+<!-- =====================================
+     EXCURSIONISTAS EN SEGUIMIENTO
+===================================== -->
+
+<h2>Excursionistas en seguimiento</h2>
+
+<div class="monitor-help">
+    <strong>Prioridad:</strong>
+
+    rescate, luego regreso vencido.
+
+    La antigüedad del GPS se informa por separado.
+
+    Los estados corresponden a datos recibidos
+    por Django y pueden cambiar después
+    de una sincronización offline.
+</div>
+
+
+<div
+    class="table-wrap"
+    style="margin-top: 14px;"
+>
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Trekking</th>
+                <th>Excursionista</th>
+                <th>Parque / sendero</th>
+                <th>Acompañantes</th>
+                <th>Situación</th>
+                <th>Regreso estimado</th>
+                <th>Último GPS registrado</th>
+                <th>Último QR registrado</th>
+                <th>Detalle</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for row in page %}
+
+                {% with t=row.trekking %}
+
+                <tr>
+
+                    <td>
+                        #{{ t.pk }}
+                    </td>
+
+                    <td>
+                        {{ t.user.username }}
+                    </td>
+
+                    <td>
+                        {{ t.trail.park.name }}
+
+                        <br>
+
+                        <small class="subtle">
+                            {{ t.trail.name }}
+                        </small>
+                    </td>
+
+                    <td>
+                        {{ t.companion_count }}
+                    </td>
+
+                    <td>
+
+                        {% if row.rescue_alert %}
+
+                            <span class="monitor-alert">
+                                Rescate / estado rescate
+                            </span>
+
+                        {% elif row.overdue %}
+
+                            <span class="monitor-warn">
+                                Regreso vencido
+                            </span>
+
+                        {% else %}
+
+                            <span class="monitor-ok">
+                                Sin alertas de horario o rescate
+                            </span>
+
+                        {% endif %}
+
+                        <br>
+
+                        <small class="subtle">
+                            {{ t.get_status_display }}
+                        </small>
+
+                    </td>
+
+                    <td>
+                        {{ t.estimated_return_time|date:"d/m/Y H:i"|default:"Sin definir" }}
+                    </td>
+
+                    <td>
+
+                        {% if t.last_gps_at %}
+
+                            {{ t.last_gps_at|date:"d/m/Y H:i:s" }}
+
+                            <br>
+
+                            <small class="subtle">
+                                Hace {{ t.last_gps_at|timesince:now }}
+                            </small>
+
+                            {% if row.gps_stale %}
+
+                                <br>
+
+                                <span class="monitor-warn">
+                                    Dato antiguo (&gt; 30 min)
+                                </span>
+
+                            {% endif %}
+
+                        {% else %}
+
+                            <span class="monitor-no-data">
+                                Sin GPS sincronizado
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if t.last_qr_at %}
+
+                            {{ t.last_qr_name }}
+
+                            <br>
+
+                            <small class="subtle">
+                                {{ t.last_qr_at|date:"d/m/Y H:i:s" }}
+                            </small>
+
+                        {% else %}
+
+                            <span class="monitor-no-data">
+                                Sin QR sincronizado
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        <a href="{% url 'dashboard:trekking_detail' t.pk %}">
+                            Abrir
+                        </a>
+
+                    </td>
+
+                </tr>
+
+                {% endwith %}
+
+            {% empty %}
+
+                <tr>
+                    <td colspan="9">
+                        No hay excursiones activas
+                        para el filtro seleccionado.
+                    </td>
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+<!-- =====================================
+     PAGINACIÓN
+===================================== -->
+
+{% if page.has_other_pages %}
+
+<nav
+    class="pagination"
+    aria-label="Páginas de monitoreo"
+>
+
+    {% if page.has_previous %}
+
+        <a href="?park={{ park_filter }}&amp;page={{ page.previous_page_number }}">
+            Anterior
+        </a>
+
+    {% endif %}
+
+    <span>
+        Página {{ page.number }}
+        de {{ page.paginator.num_pages }}
+    </span>
+
+    {% if page.has_next %}
+
+        <a href="?park={{ park_filter }}&amp;page={{ page.next_page_number }}">
+            Siguiente
+        </a>
+
+    {% endif %}
+
+</nav>
+
+{% endif %}
+
+
+<!-- =====================================
+     DATOS JSON PARA LEAFLET
+===================================== -->
+
+{{ map_positions|json_script:"monitor-map-data" }}
+
+{{ sos_positions|json_script:"monitor-sos-data" }}
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<!-- =====================================
+     ACTUALIZACIÓN AUTOMÁTICA
+===================================== -->
+
+<script>
+(function () {
+
+    const refreshSeconds =
+        Number("{{ refresh_seconds|default:60 }}") || 60;
+
+    const refreshMilliseconds =
+        Math.max(refreshSeconds, 10) * 1000;
+
+    window.setTimeout(function () {
+        window.location.reload();
+    }, refreshMilliseconds);
+
+})();
+</script>
+
+
+{% if map_positions or sos_positions %}
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // =====================================
+    // ELEMENTOS DEL MAPA
+    // =====================================
+
+    const container = document.getElementById(
+        "monitor-map"
+    );
+
+    const source = document.getElementById(
+        "monitor-map-data"
+    );
+
+    const sosSource = document.getElementById(
+        "monitor-sos-data"
+    );
+
+    const warning = document.getElementById(
+        "monitor-map-warning"
+    );
+
+    if (
+        !container ||
+        !source ||
+        !sosSource ||
+        typeof L === "undefined"
+    ) {
+
+        if (warning) {
+            warning.textContent =
+                "No se pudo iniciar el mapa Leaflet.";
+        }
+
+        return;
+    }
+
+
+    // =====================================
+    // LEER DATOS ENVIADOS POR DJANGO
+    // =====================================
+
+    let points = [];
+    let sosPoints = [];
+
+    try {
+
+        points = JSON.parse(
+            source.textContent
+        );
+
+        sosPoints = JSON.parse(
+            sosSource.textContent
+        );
+
+    } catch (error) {
+
+        if (warning) {
+            warning.textContent =
+                "No se pudieron leer las ubicaciones.";
+        }
+
+        return;
+    }
+
+    if (!Array.isArray(points)) {
+        points = [];
+    }
+
+    if (!Array.isArray(sosPoints)) {
+        sosPoints = [];
+    }
+
+
+    // =====================================
+    // CREAR MAPA
+    // =====================================
+
+    const map = L.map("monitor-map", {
+        zoomControl: true,
+        scrollWheelZoom: true
+    });
+
+
+    // =====================================
+    // OPENSTREETMAP
+    // =====================================
+
+    const tileLayer = L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors",
+            referrerPolicy: "strict-origin-when-cross-origin"
+        }
+    );
+
+    tileLayer.on("tileerror", function () {
+
+        if (warning && !warning.textContent) {
+            warning.textContent =
+                "Algunas imágenes del mapa no pudieron cargarse.";
+        }
+
+    });
+
+    tileLayer.addTo(map);
+
+
+    // =====================================
+    // CAPAS DEL MAPA
+    // =====================================
+
+    const gpsLayer = L.layerGroup().addTo(map);
+
+    const sosLayer = L.layerGroup().addTo(map);
+
+    const allBounds = L.latLngBounds([]);
+
+    const sosBounds = L.latLngBounds([]);
+
+
+    // =====================================
+    // MARCADORES GPS
+    // =====================================
+
+    const colors = {
+        rescue: "#EC7676",
+        overdue: "#F0B94B",
+        normal: "#B3E853"
+    };
+
+    points.forEach(function (point) {
+
+        if (
+            !point ||
+            point.lat === null ||
+            point.lat === undefined ||
+            point.lng === null ||
+            point.lng === undefined ||
+            point.lat === "" ||
+            point.lng === ""
+        ) {
+            return;
+        }
+
+        const lat = Number(point.lat);
+        const lng = Number(point.lng);
+
+        if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng) ||
+            Math.abs(lat) > 90 ||
+            Math.abs(lng) > 180
+        ) {
+            return;
+        }
+
+        const marker = L.circleMarker(
+            [lat, lng],
+            {
+                radius: 9,
+                color: "#FFFFFF",
+                weight: 2,
+                fillColor:
+                    colors[point.priority] ||
+                    colors.normal,
+                fillOpacity: 1
+            }
+        );
+
+        marker.addTo(gpsLayer);
+
+
+        // =================================
+        // POPUP DEL EXCURSIONISTA
+        // =================================
+
+        const popup = document.createElement("div");
+
+        const title = document.createElement("strong");
+
+        title.textContent =
+            "Trekking #" +
+            point.id +
+            " · " +
+            point.user;
+
+        popup.appendChild(title);
+
+        [
+            point.trail,
+            "Último GPS registrado: " + point.at,
+            point.stale
+                ? "Ubicación antigua"
+                : "Última ubicación conocida"
+        ].forEach(function (value) {
+
+            const line = document.createElement("p");
+
+            line.textContent = value;
+
+            popup.appendChild(line);
+        });
+
+        const link = document.createElement("a");
+
+        link.href =
+            "{% url 'dashboard:trekkings' %}" +
+            encodeURIComponent(String(point.id)) +
+            "/";
+
+        link.textContent = "Abrir detalle del trekking";
+
+        popup.appendChild(link);
+
+        marker.bindPopup(popup);
+
+        allBounds.extend([lat, lng]);
+
+    });
+
+
+    // =====================================
+    // MARCADORES SOS ANIMADOS
+    // =====================================
+
+    sosPoints.forEach(function (sos) {
+
+        if (
+            !sos ||
+            sos.lat === null ||
+            sos.lat === undefined ||
+            sos.lng === null ||
+            sos.lng === undefined ||
+            sos.lat === "" ||
+            sos.lng === ""
+        ) {
+            return;
+        }
+
+        const lat = Number(sos.lat);
+        const lng = Number(sos.lng);
+
+        if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng) ||
+            Math.abs(lat) > 90 ||
+            Math.abs(lng) > 180
+        ) {
+            return;
+        }
+
+
+        // =================================
+        // ÍCONO SOS
+        // =================================
+
+        const sosIcon = L.divIcon({
+
+            html:
+                '<div class="sos-marker">' +
+                    '<div class="sos-marker__pulse"></div>' +
+                    '<div class="sos-marker__core">SOS</div>' +
+                '</div>',
+
+            className: "",
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+
+        });
+
+
+        const marker = L.marker(
+            [lat, lng],
+            {
+                icon: sosIcon
+            }
+        );
+
+        marker.addTo(sosLayer);
+
+
+        // =================================
+        // POPUP DE EMERGENCIA
+        // =================================
+
+        const popup = document.createElement("div");
+
+        const title = document.createElement("strong");
+
+        title.textContent =
+            "SOS #" +
+            sos.id +
+            " · " +
+            sos.user;
+
+        popup.appendChild(title);
+
+        [
+            sos.trail,
+            "Solicitud: " + sos.at,
+            "Estado del trekking: " +
+                sos.trekking_status,
+            "Ubicación de la solicitud SOS (no GPS en vivo)"
+        ].forEach(function (value) {
+
+            const line = document.createElement("p");
+
+            line.textContent = value;
+
+            popup.appendChild(line);
+        });
+
+
+        // Enlace seguro a la gestión del rescate.
+
+        const link = document.createElement("a");
+
+        link.href =
+            "{% url 'dashboard:rescues' %}" +
+            encodeURIComponent(String(sos.id)) +
+            "/";
+
+        link.textContent = "Gestionar rescate";
+
+        popup.appendChild(link);
+
+        marker.bindPopup(popup);
+
+        sosBounds.extend([lat, lng]);
+
+        allBounds.extend([lat, lng]);
+
+    });
+
+
+    // =====================================
+    // SELECTOR DE CAPAS
+    // =====================================
+
+    L.control.layers(
+        null,
+        {
+            "Últimas ubicaciones GPS": gpsLayer,
+            "Solicitudes SOS activas": sosLayer
+        },
+        {
+            collapsed: false,
+            position: "topright"
+        }
+    ).addTo(map);
+
+
+    // =====================================
+    // CENTRAR EL MAPA
+    // =====================================
+
+    // Si hay rescates activos, se priorizan
+    // sus coordenadas al abrir el monitoreo.
+
+    const initialBounds = sosBounds.isValid()
+        ? sosBounds
+        : allBounds;
+
+    if (initialBounds.isValid()) {
+
+        if (
+            initialBounds.getSouthWest().equals(
+                initialBounds.getNorthEast()
+            )
+        ) {
+
+            map.setView(
+                initialBounds.getCenter(),
+                15
+            );
+
+        } else {
+
+            map.fitBounds(
+                initialBounds,
+                {
+                    padding: [35, 35],
+                    maxZoom: 15
+                }
+            );
+
+        }
+
+    } else {
+
+        map.setView(
+            [-35.43, -71.65],
+            10
+        );
+
+    }
+
+
+    // =====================================
+    // AJUSTAR DIMENSIONES
+    // =====================================
+
+    requestAnimationFrame(function () {
+        map.invalidateSize();
+    });
+
+    window.addEventListener(
+        "resize",
+        function () {
+            map.invalidateSize();
+        }
+    );
+
+});
+</script>
+
+{% endif %}
+
+{% endblock %}

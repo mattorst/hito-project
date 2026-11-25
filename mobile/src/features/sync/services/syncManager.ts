@@ -1,121 +1,352 @@
-import { syncQueue } from "./syncQueue";
-import { synchronize } from "./syncService";
-import { createIncident } from "@/features/incidents/services/incidentService";
-import { incidentPhotoExists, deleteIncidentPhoto } from "@/features/incidents/services/incidentFileStorage";
 
-import type {
-  SyncCheckpointRecord,
-  IncidentSyncPayload,
-  SyncEvent,
-} from "../types";
+import {
+  syncPendingTrekkingBootstraps,
+} from "./localTrekkingBootstrapSync";
 
-interface SyncManagerResult {
+import {
+  syncPendingQrEvents,
+} from "./localCheckpointSync";
+
+import {
+  syncPendingTrackingPoints,
+} from "./localTrackingSync";
+
+import {
+  syncPendingIncidents,
+} from "./localIncidentSync";
+
+import {
+  syncPendingRescues,
+} from "./localRescueSync";
+
+// ---------------------------------------------------------
+// HITO — COORDINADOR AUTOMÁTICO OFFLINE-FIRST
+// ---------------------------------------------------------
+
+export type SyncStage =
+  | "trekkings"
+  | "rescues"
+  | "checkpoints"
+  | "tracking"
+  | "incidents";
+
+export interface SyncStageResult {
+  stage: SyncStage;
   synchronized: number;
   failed: number;
-  remaining: number;
+  skipped: number;
+  error: string | null;
 }
 
-export async function syncPendingEvents(): Promise<SyncManagerResult> {
-  const events = await syncQueue.getAll();
+export interface SyncManagerResult {
+  synchronized: number;
+  failed: number;
+  skipped: number;
+  stages: SyncStageResult[];
+}
 
-  if (events.length === 0) {
-    return {
-      synchronized: 0,
-      failed: 0,
-      remaining: 0,
-    };
-  }
+export interface SyncManagerOptions {
+  ownerUserId: string;
 
-  let synchronizedCount = 0;
-  let failedCount = 0;
+  shouldContinue?: () => boolean;
+}
 
-  // 1. Sincronizar Checkpoints de forma masiva (si existen)
-  const checkpointEvents = events.filter(
-    (event) => event.type === "checkpoint",
-  );
+// Una sola sincronización automática a la vez.
+// Las tarjetas manuales conservan sus controles propios.
 
-  if (checkpointEvents.length > 0) {
-    const checkpointRecords: SyncCheckpointRecord[] =
-      checkpointEvents.map(
-        (event) => event.payload as SyncCheckpointRecord,
-      );
+let activeSync: Promise<SyncManagerResult> | null = null;
 
-    try {
-      const result = await synchronize({
-        checkpoint_records: checkpointRecords,
-        incidents: [],
-      });
+// ---------------------------------------------------------
+// UTILIDADES
+// ---------------------------------------------------------
 
-      const failedCheckpointIndices = new Set(
-        result.data.failed
-          .filter((f) => f.type === "checkpoint_record")
-          .map((f) => f.index),
-      );
+function errorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Error desconocido.";
+}
 
-      for (let i = 0; i < checkpointEvents.length; i++) {
-        const event = checkpointEvents[i];
-        if (!failedCheckpointIndices.has(i)) {
-          await syncQueue.remove(event.id);
-          synchronizedCount++;
-        } else {
-          failedCount++;
-        }
-      }
-    } catch (err) {
-      console.error("Error sincronizando lote de checkpoints:", err);
-      failedCount += checkpointEvents.length;
-    }
-  }
-
-  // 2. Sincronizar Incidentes uno por uno (por el manejo de la foto multipart)
-  const incidentEvents = events.filter(
-    (event) => event.type === "incident",
-  );
-
-  for (const event of incidentEvents) {
-    const payload = event.payload as IncidentSyncPayload;
-
-    try {
-      // Verificar si la foto local existe antes de enviar (si es que lleva foto)
-      if (payload.photoUri) {
-        const exists = await incidentPhotoExists(payload.photoUri);
-        if (!exists) {
-          throw new Error("La fotografía local del incidente ya no existe.");
-        }
-      }
-
-      // Reconstruimos el objeto CreateIncidentRequest que espera createIncident
-      const incidentResponse = await createIncident({
-        trekking: payload.trekking,
-        incident_type: payload.incident_type as any,
-        description: payload.description,
-        latitude: payload.latitude,
-        longitude: payload.longitude,
-        registered_at: payload.registered_at,
-        photo: payload.photoUri,
-      });
-
-      if (incidentResponse) {
-        // Éxito: removemos de la cola y borramos la foto local temporal
-        await syncQueue.remove(event.id);
-        if (payload.photoUri) {
-          await deleteIncidentPhoto(payload.photoUri);
-        }
-        synchronizedCount++;
-      } else {
-        failedCount++;
-      }
-    } catch (err) {
-      console.error(`Error sincronizando incidente offline ${event.id}:`, err);
-      failedCount++;
-    }
-  }
-
-  const remaining = await syncQueue.getAll();
-
+function createResult(): SyncManagerResult {
   return {
-    synchronized: synchronizedCount,
-    failed: failedCount,
-    remaining: remaining.length,
+    synchronized: 0,
+    failed: 0,
+    skipped: 0,
+    stages: [],
   };
+}
+
+function addStage(
+  result: SyncManagerResult,
+  stage: SyncStageResult,
+): void {
+  result.stages.push(stage);
+
+  result.synchronized += stage.synchronized;
+  result.failed += stage.failed;
+  result.skipped += stage.skipped;
+}
+
+// ---------------------------------------------------------
+// EJECUTAR SINCRONIZACIÓN
+// ---------------------------------------------------------
+
+async function executeSync(
+  options: SyncManagerOptions,
+): Promise<SyncManagerResult> {
+  const ownerUserId = options.ownerUserId.trim();
+
+  if (!/^[1-9]\d*$/.test(ownerUserId)) {
+    throw new Error(
+      "No fue posible identificar al usuario.",
+    );
+  }
+
+  const shouldContinue =
+    options.shouldContinue ?? (() => true);
+
+  const result = createResult();
+
+  // -------------------------------------------------------
+  // 1. EXCURSIONES Y ACOMPAÑANTES
+  // -------------------------------------------------------
+  //
+  // Deben enviarse primero porque los demás
+  // registros dependen del trekking remoto.
+  //
+  // Utilizamos directamente el servicio probado.
+  // No dependemos de hooks de React.
+  // -------------------------------------------------------
+
+  if (!shouldContinue()) {
+    return result;
+  }
+
+  try {
+    const response =
+      await syncPendingTrekkingBootstraps(
+        ownerUserId,
+      );
+
+    addStage(result, {
+      stage: "trekkings",
+      synchronized: response.synchronized,
+      failed: response.failed,
+      skipped: 0,
+      error:
+        response.failed > 0
+          ? `${response.failed} excursión(es) no se sincronizaron.`
+          : null,
+    });
+
+    // No detenemos todos los módulos por un fallo
+    // parcial: los servicios posteriores comprueban
+    // individualmente si su trekking está sincronizado.
+  } catch (error) {
+    const message = errorMessage(error);
+
+    console.warn(
+      "[Hito AutoSync] Error en excursiones:",
+      message,
+    );
+
+    addStage(result, {
+      stage: "trekkings",
+      synchronized: 0,
+      failed: 1,
+      skipped: 0,
+      error: message,
+    });
+
+    // Sin poder comprobar el bootstrap,
+    // no continuamos con registros dependientes.
+    return result;
+  }
+
+  // -------------------------------------------------------
+  // 2. SOLICITUDES Y CANCELACIONES DE RESCATE
+  // -------------------------------------------------------
+  //
+  // Prioridad por seguridad.
+  // Un rescate pendiente no debe esperar
+  // detrás de muchas coordenadas GPS.
+  // -------------------------------------------------------
+
+  if (!shouldContinue()) {
+    return result;
+  }
+
+  try {
+    const response =
+      await syncPendingRescues(ownerUserId);
+
+    addStage(result, {
+      stage: "rescues",
+      synchronized: response.synchronized,
+      failed: response.failed,
+      skipped: 0,
+      error:
+        response.failed > 0
+          ? "Algunos rescates siguen pendientes."
+          : null,
+    });
+  } catch (error) {
+    const message = errorMessage(error);
+
+    console.warn(
+      "[Hito AutoSync] Error en rescates:",
+      message,
+    );
+
+    addStage(result, {
+      stage: "rescues",
+      synchronized: 0,
+      failed: 1,
+      skipped: 0,
+      error: message,
+    });
+  }
+
+  // -------------------------------------------------------
+  // 3. CHECKPOINTS QR
+  // -------------------------------------------------------
+
+  if (!shouldContinue()) {
+    return result;
+  }
+
+  try {
+    const response =
+      await syncPendingQrEvents(ownerUserId);
+
+    addStage(result, {
+      stage: "checkpoints",
+      synchronized: response.synchronized,
+      failed: response.failed,
+      skipped: response.skipped,
+      error:
+        response.failed > 0 ||
+        response.skipped > 0
+          ? "Algunos checkpoints siguen pendientes."
+          : null,
+    });
+  } catch (error) {
+    const message = errorMessage(error);
+
+    console.warn(
+      "[Hito AutoSync] Error en checkpoints:",
+      message,
+    );
+
+    addStage(result, {
+      stage: "checkpoints",
+      synchronized: 0,
+      failed: 1,
+      skipped: 0,
+      error: message,
+    });
+  }
+
+  // -------------------------------------------------------
+  // 4. COORDENADAS GPS
+  // -------------------------------------------------------
+
+  if (!shouldContinue()) {
+    return result;
+  }
+
+  try {
+    const response =
+      await syncPendingTrackingPoints(ownerUserId);
+
+    addStage(result, {
+      stage: "tracking",
+      synchronized: response.synchronized,
+      failed: response.failed,
+      skipped: 0,
+      error:
+        response.failed > 0
+          ? "Algunas coordenadas siguen pendientes."
+          : null,
+    });
+  } catch (error) {
+    const message = errorMessage(error);
+
+    console.warn(
+      "[Hito AutoSync] Error en GPS:",
+      message,
+    );
+
+    addStage(result, {
+      stage: "tracking",
+      synchronized: 0,
+      failed: 1,
+      skipped: 0,
+      error: message,
+    });
+  }
+
+  // -------------------------------------------------------
+  // 5. INCIDENTES Y FOTOGRAFÍAS
+  // -------------------------------------------------------
+
+  if (!shouldContinue()) {
+    return result;
+  }
+
+  try {
+    const response =
+      await syncPendingIncidents(ownerUserId);
+
+    addStage(result, {
+      stage: "incidents",
+      synchronized: response.synchronized,
+      failed: response.failed,
+      skipped: 0,
+      error:
+        response.failed > 0
+          ? "Algunos incidentes siguen pendientes."
+          : null,
+    });
+  } catch (error) {
+    const message = errorMessage(error);
+
+    console.warn(
+      "[Hito AutoSync] Error en incidentes:",
+      message,
+    );
+
+    addStage(result, {
+      stage: "incidents",
+      synchronized: 0,
+      failed: 1,
+      skipped: 0,
+      error: message,
+    });
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------
+// ENTRADA PÚBLICA DEL COORDINADOR
+// ---------------------------------------------------------
+
+export async function syncPendingEvents(
+  options: SyncManagerOptions,
+): Promise<SyncManagerResult> {
+  if (activeSync) {
+    return activeSync;
+  }
+
+  const promise = executeSync(options);
+
+  activeSync = promise;
+
+  try {
+    return await promise;
+  } finally {
+    if (activeSync === promise) {
+      activeSync = null;
+    }
+  }
 }

@@ -1,12 +1,22 @@
+
 import uuid
 from datetime import time, timedelta
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from apps.parks.models import Park, Trail
-from apps.trekkings.models import Trekking, TrackingPoint
+
+from apps.parks.models import Park, Trail, Checkpoint
+from apps.trekkings.models import (
+    Trekking,
+    TrackingPoint,
+    CheckpointRecord,
+)
+from apps.incidents.models import Incident, IncidentType
+
 
 User = get_user_model()
 
@@ -98,7 +108,11 @@ class TrackingPointSyncTests(APITestCase):
         }
 
     def test_tracking_point_is_created(self):
-        payload = {"tracking_points": [self.build_tracking_point_payload()]}
+        payload = {
+            "tracking_points": [
+                self.build_tracking_point_payload()
+            ]
+        }
 
         response = self.client.post(
             self.url,
@@ -128,7 +142,9 @@ class TrackingPointSyncTests(APITestCase):
 
         payload = {
             "tracking_points": [
-                self.build_tracking_point_payload(local_id=local_id)
+                self.build_tracking_point_payload(
+                    local_id=local_id
+                )
             ]
         }
 
@@ -155,7 +171,9 @@ class TrackingPointSyncTests(APITestCase):
         )
 
         self.assertEqual(
-            TrackingPoint.objects.filter(local_id=local_id).count(),
+            TrackingPoint.objects.filter(
+                local_id=local_id
+            ).count(),
             1,
         )
 
@@ -208,17 +226,23 @@ class TrackingPointSyncTests(APITestCase):
         )
 
         self.assertEqual(
-            TrackingPoint.objects.filter(local_id=local_id).count(),
+            TrackingPoint.objects.filter(
+                local_id=local_id
+            ).count(),
             1,
         )
 
         self.assertEqual(
-            TrackingPoint.objects.get(local_id=local_id).trekking_id,
+            TrackingPoint.objects.get(
+                local_id=local_id
+            ).trekking_id,
             self.trekking.id,
         )
 
         self.assertEqual(
-            len(second_response.data["data"]["synced_local_ids"]),
+            len(
+                second_response.data["data"]["synced_local_ids"]
+            ),
             0,
         )
 
@@ -255,7 +279,9 @@ class TrackingPointSyncTests(APITestCase):
     def test_invalid_latitude_is_rejected(self):
         payload = {
             "tracking_points": [
-                self.build_tracking_point_payload(latitude=91.0)
+                self.build_tracking_point_payload(
+                    latitude=91.0
+                )
             ]
         }
 
@@ -278,7 +304,9 @@ class TrackingPointSyncTests(APITestCase):
     def test_invalid_longitude_is_rejected(self):
         payload = {
             "tracking_points": [
-                self.build_tracking_point_payload(longitude=181.0)
+                self.build_tracking_point_payload(
+                    longitude=181.0
+                )
             ]
         }
 
@@ -301,7 +329,9 @@ class TrackingPointSyncTests(APITestCase):
     def test_invalid_local_id_is_rejected(self):
         payload = {
             "tracking_points": [
-                self.build_tracking_point_payload(local_id="not-a-uuid")
+                self.build_tracking_point_payload(
+                    local_id="not-a-uuid"
+                )
             ]
         }
 
@@ -318,5 +348,71 @@ class TrackingPointSyncTests(APITestCase):
 
         self.assertEqual(
             TrackingPoint.objects.count(),
+            0,
+        )
+
+    def test_incident_from_other_user_is_rejected(self):
+        payload = {
+            "incidents": [
+                {
+                    "trekking": self.other_trekking.id,
+                    "incident_type": IncidentType.choices[0][0],
+                    "description": "Prueba de seguridad de Hito.",
+                    "registered_at": timezone.now().isoformat(),
+                }
+            ]
+        }
+
+        response = self.client.post(
+            self.url,
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+        self.assertEqual(
+            Incident.objects.count(),
+            0,
+        )
+
+    def test_checkpoint_from_other_user_is_rejected(self):
+        checkpoint = Checkpoint.objects.create(
+            trail=self.trail,
+            sequence=1,
+            name="Checkpoint de prueba",
+            latitude=Decimal("-33.448900"),
+            longitude=Decimal("-70.669300"),
+            qr_identifier="CHK-TEST-SECURITY-001",
+        )
+
+        payload = {
+            "checkpoint_records": [
+                {
+                    "trekking": self.other_trekking.id,
+                    "checkpoint": checkpoint.id,
+                    "registered_at": timezone.now().isoformat(),
+                    "latitude": -33.448900,
+                    "longitude": -70.669300,
+                }
+            ]
+        }
+
+        response = self.client.post(
+            self.url,
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+        self.assertEqual(
+            CheckpointRecord.objects.count(),
             0,
         )

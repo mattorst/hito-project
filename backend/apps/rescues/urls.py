@@ -1,4 +1,8 @@
+
 from django.urls import path
+
+from apps.rescues.sync_views import RescueSyncAPIView
+
 from apps.rescues.views import (
     RescueCreateAPIView,
     ActiveRescueAPIView,
@@ -26,5 +30,12 @@ urlpatterns = [
         "rescues/<int:pk>/cancel/",
         RescueCancelAPIView.as_view(),
         name="rescue-cancel",
+    ),
+
+    # Sincronización de rescates Offline-First
+    path(
+        "rescues/sync/",
+        RescueSyncAPIView.as_view(),
+        name="rescue-sync",
     ),
 ]

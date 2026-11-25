@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Acceso guardaparques | Hito</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: Arial, sans-serif;
+            background: #101310;
+            color: #f4f6f3;
+        }
+
+        .login {
+            box-sizing: border-box;
+            width: min(400px, 90%);
+            padding: 36px;
+            background: #1b211c;
+            border: 1px solid #344033;
+            border-radius: 18px;
+        }
+
+        h1 { margin-bottom: 6px; }
+        p { color: #a5aea5; }
+
+        label {
+            display: block;
+            margin: 18px 0 8px;
+        }
+
+        input {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 13px;
+            background: #101510;
+            color: white;
+            border: 1px solid #465145;
+            border-radius: 9px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 14px;
+            border: 0;
+            border-radius: 9px;
+            background: #c9f35c;
+            color: #151b12;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .error { color: #ff9999; }
+    </style>
+</head>
+<body>
+    <main class="login">
+        <h1>HITO</h1>
+        <p>Acceso para personal de guardaparques</p>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {% if form.errors %}
+                <p class="error">
+                    Credenciales incorrectas o acceso no autorizado.
+                </p>
+            {% endif %}
+
+            <label for="id_username">Usuario</label>
+            {{ form.username }}
+
+            <label for="id_password">Contraseña</label>
+            {{ form.password }}
+
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            <button type="submit">Iniciar sesión</button>
+        </form>
+    </main>
+</body>
+</html>

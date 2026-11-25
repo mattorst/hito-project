@@ -1,486 +1,433 @@
 
-import React, { useState } from "react";
+import React, {
+  useCallback,
+  useRef,
+  useState,
+} from "react";
+
 import {
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-// ─────────────────────────────────────────
+// =========================================================
 // HITO — GUÍA DEL EXPLORADOR
-// ─────────────────────────────────────────
+//
+// Tutorial horizontal, minimalista, estilo glass iOS.
+//
+// Flujo real:
+// Parque -> Sendero -> Iniciar trekking ->
+// Solo o grupo -> Acompañantes -> QR portería ->
+// Checkpoints -> GPS -> Seguridad -> Offline ->
+// QR portería para finalizar.
+// =========================================================
 
 const C = {
   bg: "#0B0C0D",
-  surface: "#17181B",
-  surfaceAlt: "#202226",
+  surface: "#171A1B",
+  surfaceAlt: "#202526",
   white: "#FFFFFF",
-  muted: "#9BA1A6",
+  muted: "#A8B0B1",
+  subtle: "#778283",
   lime: "#C6FF4D",
-  border: "rgba(255,255,255,0.09)",
+  limeDim: "rgba(198,255,77,0.13)",
+  border: "rgba(255,255,255,0.14)",
 };
 
-// Imagen ubicada en mobile/src/assets/images/
-const GUIDE_COVER = require("../../../src/assets/images/guia-explorador.png");
+// Conservamos la imagen actual.
+const GUIDE_COVER = require(
+  "../../../src/assets/images/guia-explorador.png"
+);
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-type GuideSection = {
+type GuideSlide = {
   id: string;
-  number: string;
+  eyebrow: string;
   title: string;
-  subtitle: string;
+  description: string;
   icon: IconName;
-  steps: {
-    title: string;
-    description: string;
-  }[];
-  note?: string;
+  tip: string;
+  image?: boolean;
 };
 
-// ─────────────────────────────────────────
-// CONTENIDO DE LA GUÍA
-// ─────────────────────────────────────────
+// =========================================================
+// CONTENIDO DEL TUTORIAL
+// Ordenado según el funcionamiento actual de Hito.
+// =========================================================
 
-const SECTIONS: GuideSection[] = [
+const SLIDES: GuideSlide[] = [
+  {
+    id: "welcome",
+    eyebrow: "BIENVENIDO",
+    title: "Tu recorrido, a tu ritmo.",
+    description:
+      "Explora parques, conoce sus senderos y registra tus caminatas con Hito.",
+    icon: "compass-outline",
+    tip: "Todo lo que necesitas para comenzar.",
+    image: true,
+  },
   {
     id: "explore",
-    number: "01",
-    title: "Explora los parques",
-    subtitle: "Encuentra tu próxima aventura",
-    icon: "compass-outline",
-    steps: [
-      {
-        title: "Ingresa a Explorar",
-        description:
-          "Desde la pantalla principal encontrarás los parques disponibles en Hito.",
-      },
-      {
-        title: "Selecciona un parque",
-        description:
-          "Toca su tarjeta para conocer los senderos y consultar la información disponible.",
-      },
-      {
-        title: "Revisa el recorrido",
-        description:
-          "Consulta los detalles del sendero antes de comenzar tu expedición.",
-      },
-    ],
+    eyebrow: "01 / EXPLORA",
+    title: "Elige tu sendero.",
+    description:
+      "Entra a un parque, revisa sus senderos y selecciona el que quieras recorrer.",
+    icon: "trail-sign-outline",
+    tip: "Pulsa «Iniciar trekking» para continuar.",
+  },
+  {
+    id: "companions",
+    eyebrow: "02 / PREPÁRATE",
+    title: "¿Solo o acompañado?",
+    description:
+      "Indica si caminarás solo o en grupo. Si vas acompañado, agrega a las personas que irán contigo.",
+    icon: "people-outline",
+    tip: "Revisa los datos antes de comenzar.",
   },
   {
     id: "start",
-    number: "02",
-    title: "Inicia tu trekking",
-    subtitle: "Comienza a registrar tu recorrido",
-    icon: "footsteps-outline",
-    steps: [
-      {
-        title: "Elige un sendero",
-        description:
-          "Selecciona el recorrido que deseas realizar desde el parque correspondiente.",
-      },
-      {
-        title: "Sigue el proceso de inicio",
-        description:
-          "Utiliza las opciones disponibles en el sendero para comenzar tu trekking.",
-      },
-      {
-        title: "Consulta tu actividad",
-        description:
-          "Cuando tengas un trekking activo, podrás volver a él desde la tarjeta «Trekking en curso» de Inicio.",
-      },
-    ],
+    eyebrow: "03 / COMIENZA",
+    title: "Escanea la portería.",
+    description:
+      "Cuando estés en la entrada del sendero, escanea su código QR para iniciar tu trekking.",
+    icon: "scan-outline",
+    tip: "El primer escaneo abre tu recorrido.",
+  },
+  {
+    id: "checkpoints",
+    eyebrow: "04 / REGISTRA",
+    title: "Cada punto cuenta.",
+    description:
+      "Escanea los QR de ida y vuelta. En la cima, registra tu llegada y luego el inicio del descenso.",
+    icon: "checkmark-circle-outline",
+    tip: "Tus checkpoints se actualizan en el mapa.",
   },
   {
     id: "map",
-    number: "03",
-    title: "Mapa y checkpoints",
-    subtitle: "Identifica puntos del sendero",
+    eyebrow: "05 / UBÍCATE",
+    title: "Tu camino en el mapa.",
+    description:
+      "Consulta tu ubicación, el recorrido GPS y los puntos de control durante la caminata.",
     icon: "map-outline",
-    steps: [
-      {
-        title: "Consulta el mapa",
-        description:
-          "Visualiza el recorrido y los checkpoints representados en el mapa del sendero.",
-      },
-      {
-        title: "Identifica los puntos",
-        description:
-          "Los marcadores permiten reconocer los checkpoints disponibles durante la expedición.",
-      },
-      {
-        title: "Sigue el sendero",
-        description:
-          "Utiliza la información del mapa como apoyo para orientarte durante tu recorrido.",
-      },
-    ],
-    note:
-      "El mapa de la aplicación no sustituye la señalización del parque ni las indicaciones de sus guardaparques.",
+    tip: "Sigue también las señales del sendero.",
   },
   {
-    id: "scan",
-    number: "04",
-    title: "Escanea códigos QR",
-    subtitle: "Registra tus checkpoints, incluso offline",
-    icon: "scan-outline",
-    steps: [
-      {
-        title: "Busca el checkpoint",
-        description:
-          "Cuando llegues a un punto de control, identifica su código QR.",
-      },
-      {
-        title: "Abre el escáner",
-        description:
-          "Presiona «Escanear» en la barra inferior de Hito.",
-      },
-      {
-        title: "Apunta la cámara",
-        description:
-          "Coloca el código dentro del recuadro de escaneo y espera a que la aplicación lo detecte.",
-      },
-      {
-        title: "Registra el checkpoint",
-        description:
-          "Hito permite guardar el registro del checkpoint en el dispositivo, incluso cuando no tienes conexión a internet.",
-      },
-      {
-        title: "Comprueba el resultado",
-        description:
-          "Revisa la información que muestra Hito para confirmar que el registro se realizó correctamente.",
-      },
-    ],
-    note:
-      "Los checkpoints guardados sin conexión permanecen pendientes de sincronización hasta que puedan enviarse correctamente al servidor.",
-  },
-  {
-    id: "incident",
-    number: "05",
-    title: "Reportes de incidentes",
-    subtitle: "Registra situaciones con o sin internet",
-    icon: "warning-outline",
-    steps: [
-      {
-        title: "Identifica una situación",
-        description:
-          "Si encuentras un problema durante el recorrido, evalúa primero tu seguridad.",
-      },
-      {
-        title: "Crea un reporte",
-        description:
-          "Utiliza la herramienta de reportes de incidentes disponible durante tu trekking para registrar la situación.",
-      },
-      {
-        title: "Guarda el reporte offline",
-        description:
-          "Si no tienes internet, Hito permite almacenar el reporte localmente en tu dispositivo.",
-      },
-      {
-        title: "Sincroniza posteriormente",
-        description:
-          "Cuando recuperes la conexión, el reporte pendiente podrá sincronizarse con el servidor.",
-      },
-    ],
-    note:
-      "Un incidente guardado offline todavía no ha sido recibido por el servidor. No utilices los reportes como único medio para solicitar ayuda urgente.",
-  },
-  {
-    id: "emergency",
-    number: "06",
-    title: "Asistencia y emergencias",
-    subtitle: "La seguridad es lo primero",
+    id: "safety",
+    eyebrow: "06 / SEGURIDAD",
+    title: "Estamos para ayudarte.",
+    description:
+      "Durante tu trekking puedes reportar incidentes o registrar una solicitud de rescate.",
     icon: "shield-checkmark-outline",
-    steps: [
-      {
-        title: "Prioriza tu seguridad",
-        description:
-          "Si ocurre una emergencia, busca un lugar seguro y evita exponerte a nuevos riesgos.",
-      },
-      {
-        title: "Solicita ayuda",
-        description:
-          "Contacta a los servicios de emergencia o a los responsables del parque cuando sea posible.",
-      },
-      {
-        title: "Utiliza Hito como apoyo",
-        description:
-          "Consulta las herramientas de seguridad disponibles en la aplicación para obtener información de apoyo durante tu recorrido.",
-      },
-    ],
-    note:
-      "Hito no reemplaza los servicios de rescate ni los procedimientos de emergencia del parque. Sin conexión, no debes asumir que una solicitud de ayuda ha sido recibida.",
+    tip: "Una solicitud enviada no significa que la ayuda ya esté en camino.",
   },
   {
     id: "offline",
-    number: "07",
-    title: "Conexión y sincronización",
-    subtitle: "Explora incluso sin internet",
+    eyebrow: "07 / SIN CONEXIÓN",
+    title: "Sin señal, sigue registrando.",
+    description:
+      "Hito guarda tus registros en el teléfono e intenta enviarlos automáticamente cuando vuelve la conexión.",
     icon: "cloud-offline-outline",
-    steps: [
-      {
-        title: "Continúa sin conexión",
-        description:
-          "Hito utiliza una arquitectura Offline-First, diseñada para funcionar en lugares donde la conexión a internet es limitada o inexistente.",
-      },
-      {
-        title: "Registra checkpoints offline",
-        description:
-          "Puedes escanear y registrar checkpoints durante tu trekking aunque no tengas internet. Los registros se almacenan localmente en tu dispositivo.",
-      },
-      {
-        title: "Reporta incidentes offline",
-        description:
-          "Los reportes de incidentes también pueden guardarse localmente cuando no tienes conexión, evitando perder la información registrada.",
-      },
-      {
-        title: "Sincroniza tus registros",
-        description:
-          "Cuando recuperas la conexión, Hito sincroniza los registros pendientes con el servidor.",
-      },
-      {
-        title: "Comprueba el estado",
-        description:
-          "Verifica que la sincronización se haya completado correctamente antes de considerar enviados tus registros.",
-      },
-    ],
-    note:
-      "Los registros guardados localmente no deben considerarse recibidos por el servidor hasta que su sincronización se complete correctamente.",
+    tip: "Revisa el estado para confirmar su envío.",
   },
   {
     id: "finish",
-    number: "08",
-    title: "Finaliza tu aventura",
-    subtitle: "Cierra el recorrido y revisa el resumen",
+    eyebrow: "08 / FINALIZA",
+    title: "Cierra tu recorrido.",
+    description:
+      "Al regresar a la portería, escanea nuevamente su QR para finalizar tu trekking.",
     icon: "flag-outline",
-    steps: [
-      {
-        title: "Termina el recorrido",
-        description:
-          "Cuando hayas completado tu trekking, utiliza la opción de finalización disponible en Hito.",
-      },
-      {
-        title: "Revisa tu resumen",
-        description:
-          "Consulta la información de la expedición finalizada, incluyendo su duración.",
-      },
-      {
-        title: "Comparte tu experiencia",
-        description:
-          "Utiliza la opción de compartir para enviar el resumen de tu aventura.",
-      },
-    ],
-  },
-  {
-    id: "history",
-    number: "09",
-    title: "Consulta tu historial",
-    subtitle: "Revive tus expediciones",
-    icon: "time-outline",
-    steps: [
-      {
-        title: "Abre Historial",
-        description:
-          "Selecciona «Historial» desde la barra inferior.",
-      },
-      {
-        title: "Selecciona una expedición",
-        description:
-          "Explora tus trekkings registrados y abre el que quieras consultar.",
-      },
-      {
-        title: "Revisa sus detalles",
-        description:
-          "Consulta la información guardada de cada aventura.",
-      },
-    ],
+    tip: "Tu recorrido quedará guardado.",
   },
 ];
 
-// ─────────────────────────────────────────
-// COMPONENTE: PASO
-// ─────────────────────────────────────────
+// =========================================================
+// ILUSTRACIÓN DE MONTAÑAS
+// Conserva el diseño anterior.
+// =========================================================
 
-function GuideStep({
+function MountainArtwork({
+  icon,
   index,
-  title,
-  description,
 }: {
+  icon: IconName;
   index: number;
-  title: string;
-  description: string;
 }) {
   return (
-    <View style={styles.stepRow}>
-      <View style={styles.stepNumber}>
-        <Text style={styles.stepNumberText}>
-          {index + 1}
-        </Text>
+    <View style={styles.artwork}>
+      <View style={styles.sunGlow} />
+
+      <View style={styles.artTop}>
+        <View style={styles.artIndex}>
+          <Text style={styles.artIndexText}>
+            {String(index).padStart(2, "0")}
+          </Text>
+        </View>
+
+        <Ionicons
+          name="navigate-outline"
+          size={20}
+          color="rgba(255,255,255,0.55)"
+        />
       </View>
 
-      <View style={styles.stepCopy}>
-        <Text style={styles.stepTitle}>
-          {title}
-        </Text>
-
-        <Text style={styles.stepDescription}>
-          {description}
-        </Text>
+      <View style={styles.artCenter}>
+        <View style={styles.orbitOuter}>
+          <View style={styles.orbitInner}>
+            <Ionicons
+              name={icon}
+              size={67}
+              color={C.lime}
+            />
+          </View>
+        </View>
       </View>
+
+      <View style={styles.mountainBack} />
+      <View style={styles.mountainFront} />
     </View>
   );
 }
 
-// ─────────────────────────────────────────
-// COMPONENTE: CAPÍTULO
-// ─────────────────────────────────────────
+// =========================================================
+// TARJETA DEL TUTORIAL
+// =========================================================
 
-function GuideAccordion({
-  section,
-  expanded,
-  visited,
-  onToggle,
+function SlideCard({
+  slide,
+  index,
+  width,
+  height,
 }: {
-  section: GuideSection;
-  expanded: boolean;
-  visited: boolean;
-  onToggle: () => void;
+  slide: GuideSlide;
+  index: number;
+  width: number;
+  height: number;
 }) {
+  const isCover = slide.image === true;
+
   return (
     <View
       style={[
-        styles.accordion,
-        expanded && styles.accordionExpanded,
+        styles.slidePage,
+        { width },
       ]}
     >
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={section.title}
-        style={({ pressed }) => [
-          styles.accordionHeader,
-          pressed && styles.pressed,
+      <View
+        style={[
+          styles.slideFrame,
+          { height },
         ]}
       >
-        <View style={styles.sectionIcon}>
-          <Ionicons
-            name={section.icon}
-            size={21}
-            color={expanded ? C.lime : C.white}
-          />
-        </View>
-
-        <View style={styles.sectionCopy}>
-          <Text style={styles.sectionNumber}>
-            CAPÍTULO {section.number}
-          </Text>
-
-          <Text style={styles.sectionTitle}>
-            {section.title}
-          </Text>
-
-          <Text style={styles.sectionSubtitle}>
-            {section.subtitle}
-          </Text>
-        </View>
-
-        {visited && !expanded && (
-          <Ionicons
-            name="checkmark-circle"
-            size={17}
-            color={C.lime}
-          />
-        )}
-
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={19}
-          color={expanded ? C.lime : C.muted}
+        <BlurView
+          intensity={35}
+          tint="dark"
+          style={StyleSheet.absoluteFillObject}
         />
-      </Pressable>
 
-      {expanded && (
-        <View style={styles.accordionBody}>
-          <View style={styles.bodyDivider} />
+        <View style={styles.frameTint} />
 
-          {section.steps.map((step, index) => (
-            <GuideStep
-              key={`${section.id}-${index}`}
-              index={index}
-              title={step.title}
-              description={step.description}
-            />
-          ))}
+        <View style={styles.slideContents}>
+          {/* IMAGEN O ILUSTRACIÓN */}
 
-          {section.note && (
-            <View style={styles.noteBox}>
-              <Ionicons
-                name="information-circle-outline"
-                size={19}
-                color={C.lime}
+          <View
+            style={[
+              styles.visualFrame,
+              {
+                height: Math.max(
+                  175,
+                  Math.min(310, height * 0.49)
+                ),
+              },
+            ]}
+          >
+            {isCover ? (
+              <View style={styles.coverArtwork}>
+                <Image
+                  source={GUIDE_COVER}
+                  style={styles.coverImage}
+                  resizeMode="cover"
+                  accessibilityLabel="Excursionista en la naturaleza"
+                />
+              </View>
+            ) : (
+              <MountainArtwork
+                icon={slide.icon}
+                index={index}
               />
+            )}
+          </View>
 
-              <Text style={styles.noteText}>
-                {section.note}
+          {/* INFORMACIÓN */}
+
+          <View style={styles.copyArea}>
+            <View style={styles.eyebrowRow}>
+              <View style={styles.eyebrowLine} />
+
+              <Text style={styles.eyebrow}>
+                {slide.eyebrow}
               </Text>
             </View>
-          )}
+
+            <Text
+              style={styles.slideTitle}
+              adjustsFontSizeToFit
+              numberOfLines={3}
+            >
+              {slide.title}
+            </Text>
+
+            <Text style={styles.slideDescription}>
+              {slide.description}
+            </Text>
+          </View>
+
+          {/* NOTA BREVE */}
+
+          <View style={styles.tipBox}>
+            <Ionicons
+              name="information-circle-outline"
+              color={C.lime}
+              size={17}
+            />
+
+            <Text style={styles.tipText}>
+              {slide.tip}
+            </Text>
+          </View>
         </View>
-      )}
+      </View>
     </View>
   );
 }
 
-// ─────────────────────────────────────────
+// =========================================================
 // PANTALLA PRINCIPAL
-// ─────────────────────────────────────────
+// =========================================================
 
 export default function HitoGuideScreen() {
   const insets = useSafeAreaInsets();
 
-  const [expandedId, setExpandedId] =
-    useState<string | null>("explore");
+  const {
+    width: screenWidth,
+    height: screenHeight,
+  } = useWindowDimensions();
 
-  const [visitedIds, setVisitedIds] =
-    useState<string[]>(["explore"]);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const handleToggle = (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
+  const [activeIndex, setActiveIndex] =
+    useState(0);
 
-    setExpandedId(id);
+  const lastIndex = SLIDES.length - 1;
 
-    setVisitedIds((current) =>
-      current.includes(id)
-        ? current
-        : [...current, id]
-    );
-  };
+  const isLast =
+    activeIndex === lastIndex;
 
-  const progress =
-    (visitedIds.length / SECTIONS.length) * 100;
+  const horizontalPadding = 18;
 
-  const handleBack = () => {
+  const cardWidth =
+    screenWidth - horizontalPadding * 2;
+
+  // Conservamos el tamaño de las tarjetas.
+  const availableHeight =
+    screenHeight -
+    insets.top -
+    insets.bottom -
+    165;
+
+  const cardHeight = Math.max(
+    405,
+    Math.min(650, availableHeight)
+  );
+
+  // -------------------------------------------------------
+  // VOLVER
+  // -------------------------------------------------------
+
+  const handleBack = useCallback(() => {
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/(protected)");
     }
+  }, []);
+
+  // -------------------------------------------------------
+  // DESLIZAR A UNA TARJETA
+  // -------------------------------------------------------
+
+  const goToSlide = useCallback(
+    (index: number) => {
+      const next = Math.min(
+        Math.max(index, 0),
+        lastIndex
+      );
+
+      scrollRef.current?.scrollTo({
+        x: next * screenWidth,
+        animated: true,
+      });
+
+      setActiveIndex(next);
+    },
+    [lastIndex, screenWidth]
+  );
+
+  // -------------------------------------------------------
+  // DETECTAR DESLIZAMIENTO MANUAL
+  // -------------------------------------------------------
+
+  const handleMomentumEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>
+  ) => {
+    const x =
+      event.nativeEvent.contentOffset.x;
+
+    const index = Math.round(
+      x / screenWidth
+    );
+
+    setActiveIndex(
+      Math.min(
+        Math.max(index, 0),
+        lastIndex
+      )
+    );
   };
+
+  // -------------------------------------------------------
+  // SIGUIENTE / FINALIZAR
+  // -------------------------------------------------------
+
+  const handleNext = () => {
+    if (isLast) {
+      router.replace("/(protected)");
+      return;
+    }
+
+    goToSlide(activeIndex + 1);
+  };
+
+  // =======================================================
+  // RENDER
+  // =======================================================
 
   return (
     <SafeAreaView
@@ -492,232 +439,193 @@ export default function HitoGuideScreen() {
         backgroundColor={C.bg}
       />
 
-      {/* BARRA SUPERIOR */}
+      {/* ENCABEZADO */}
 
       <View style={styles.topBar}>
         <Pressable
           onPress={handleBack}
+          style={({ pressed }) => [
+            styles.iconButton,
+            pressed && styles.pressed,
+          ]}
+          hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Volver a Explorar"
-          style={styles.backButton}
+          accessibilityLabel="Volver"
         >
           <Ionicons
-            name="arrow-back"
-            size={21}
+            name="chevron-back"
+            size={22}
             color={C.white}
           />
         </Pressable>
 
-        <Text style={styles.topBarTitle}>
-          HITO / GUÍA
-        </Text>
-
-        <View style={styles.topBarRight}>
-          <Ionicons
-            name="book-outline"
-            size={21}
-            color={C.lime}
-          />
+        <View style={styles.topBarCenter}>
+          <Text style={styles.headerTitle}>
+            GUÍA DEL EXPLORADOR
+          </Text>
         </View>
+
+        <Pressable
+          onPress={() =>
+            router.replace("/(protected)")
+          }
+          style={styles.skipButton}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar tutorial"
+        >
+          <Text style={styles.skipText}>
+            Cerrar
+          </Text>
+        </Pressable>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
+      {/* CARRUSEL HORIZONTAL */}
+
+      <View style={styles.carouselArea}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          onMomentumScrollEnd={
+            handleMomentumEnd
+          }
+          decelerationRate="fast"
+          accessibilityLabel="Pasos del tutorial"
+          contentContainerStyle={{
+            alignItems: "center",
+          }}
+        >
+          {SLIDES.map((slide, index) => (
+            <View
+              key={slide.id}
+              style={{
+                width: screenWidth,
+                paddingHorizontal:
+                  horizontalPadding,
+              }}
+            >
+              <SlideCard
+                slide={slide}
+                index={index}
+                width={cardWidth}
+                height={cardHeight}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* CONTROLES INFERIORES */}
+
+      <View
+        style={[
+          styles.bottomArea,
           {
-            paddingBottom:
-              Math.max(insets.bottom, 20) + 40,
+            paddingBottom: Math.max(
+              insets.bottom,
+              16
+            ),
           },
         ]}
       >
-        {/* PORTADA DEL MANUAL */}
+        {/* INDICADOR DE PÁGINAS */}
 
-        <View style={styles.coverSection}>
-          <View style={styles.coverImageFrame}>
-            <Image
-              source={GUIDE_COVER}
-              style={styles.coverImage}
-              resizeMode="contain"
-              accessibilityLabel="Portada de la Guía del explorador de Hito, con un excursionista leyendo un manual en la naturaleza"
-            />
-          </View>
-
-          <View style={styles.coverCaption}>
-            <View style={styles.coverCaptionLeft}>
-              <Text style={styles.coverEyebrow}>
-                MANUAL DE AVENTURA
-              </Text>
-
-              <Text style={styles.coverCaptionTitle}>
-                Tu guía del explorador
-              </Text>
-
-              <Text style={styles.coverCaptionSubtitle}>
-                9 capítulos para descubrir Hito.
-              </Text>
-            </View>
-
-            <View style={styles.coverCaptionIcon}>
-              <Ionicons
-                name="compass-outline"
-                size={23}
-                color={C.lime}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* OFFLINE-FIRST */}
-
-        <View style={styles.offlineCard}>
-          <View style={styles.offlineCardTop}>
-            <View style={styles.offlineIcon}>
-              <Ionicons
-                name="cloud-offline-outline"
-                size={24}
-                color={C.lime}
-              />
-            </View>
-
-            <View style={styles.offlineCopy}>
-              <Text style={styles.offlineEyebrow}>
-                DISEÑADO PARA LA NATURALEZA
-              </Text>
-
-              <Text style={styles.offlineTitle}>
-                Tu aventura no depende de la señal.
-              </Text>
-            </View>
-          </View>
-
-          <Text style={styles.offlineDescription}>
-            Registra checkpoints y reportes de incidentes
-            sin conexión. Sincroniza tus registros cuando
-            vuelva internet.
+        <View style={styles.progressRow}>
+          <Text style={styles.progressLabel}>
+            {String(activeIndex + 1).padStart(2, "0")}
+            {" / "}
+            {String(SLIDES.length).padStart(2, "0")}
           </Text>
 
-          <View style={styles.offlineTags}>
-            <View style={styles.offlineTag}>
-              <Text style={styles.offlineTagText}>
-                QR OFFLINE
-              </Text>
-            </View>
-
-            <View style={styles.offlineTag}>
-              <Text style={styles.offlineTagText}>
-                INCIDENTES
-              </Text>
-            </View>
-
-            <View style={styles.offlineTag}>
-              <Text style={styles.offlineTagText}>
-                SINCRONIZACIÓN
-              </Text>
-            </View>
+          <View style={styles.dots}>
+            {SLIDES.map((slide, index) => (
+              <Pressable
+                key={slide.id}
+                onPress={() =>
+                  goToSlide(index)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Ver paso ${index + 1}`}
+                style={[
+                  styles.dot,
+                  index === activeIndex &&
+                    styles.dotActive,
+                ]}
+              />
+            ))}
           </View>
+
+          <Ionicons
+            name="swap-horizontal-outline"
+            size={18}
+            color={C.subtle}
+          />
         </View>
 
-        {/* PROGRESO */}
+        {/* BOTONES */}
 
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeading}>
-            <View style={styles.progressHeadingCopy}>
-              <Text style={styles.progressEyebrow}>
-                TU RECORRIDO
-              </Text>
-
-              <Text style={styles.progressTitle}>
-                Guía del explorador
-              </Text>
-            </View>
-
-            <Text style={styles.progressCount}>
-              {visitedIds.length}/{SECTIONS.length}
-            </Text>
-          </View>
-
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${progress}%` },
+        <View style={styles.buttonRow}>
+          {activeIndex > 0 && (
+            <Pressable
+              onPress={() =>
+                goToSlide(activeIndex - 1)
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Paso anterior"
+              style={({ pressed }) => [
+                styles.previousButton,
+                pressed && styles.pressed,
               ]}
-            />
-          </View>
-
-          <Text style={styles.progressHint}>
-            Toca cada capítulo para descubrir cómo
-            utilizar Hito.
-          </Text>
-        </View>
-
-        {/* CAPÍTULOS */}
-
-        <View style={styles.chapters}>
-          {SECTIONS.map((section) => (
-            <GuideAccordion
-              key={section.id}
-              section={section}
-              expanded={expandedId === section.id}
-              visited={visitedIds.includes(section.id)}
-              onToggle={() => handleToggle(section.id)}
-            />
-          ))}
-        </View>
-
-        {/* CIERRE */}
-
-        <View style={styles.footerCard}>
-          <View style={styles.footerIcon}>
-            <Ionicons
-              name="compass-outline"
-              size={25}
-              color={C.lime}
-            />
-          </View>
-
-          <Text style={styles.footerTitle}>
-            ¿Listo para explorar?
-          </Text>
-
-          <Text style={styles.footerDescription}>
-            Tu próxima aventura te espera.
-            Descubre los parques disponibles
-            y comienza a explorar con Hito.
-          </Text>
+            >
+              <Ionicons
+                name="arrow-back"
+                size={21}
+                color={C.white}
+              />
+            </Pressable>
+          )}
 
           <Pressable
-            onPress={() => router.replace("/(protected)")}
+            onPress={handleNext}
             accessibilityRole="button"
+            accessibilityLabel={
+              isLast
+                ? "Ir a explorar"
+                : "Siguiente paso"
+            }
             style={({ pressed }) => [
-              styles.exploreButton,
+              styles.nextButton,
               pressed && styles.pressed,
             ]}
           >
-            <Text style={styles.exploreButtonText}>
-              Ir a explorar
+            <Text style={styles.nextText}>
+              {isLast
+                ? "Ir a explorar"
+                : "Siguiente"}
             </Text>
 
             <Ionicons
-              name="arrow-forward"
-              size={19}
+              name={
+                isLast
+                  ? "compass-outline"
+                  : "arrow-forward"
+              }
+              size={20}
               color={C.bg}
             />
           </Pressable>
         </View>
-
-        <Text style={styles.footerBrand}>
-          HITO / EXPLORE RESPONSIBLY
-        </Text>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────
+// =========================================================
 // ESTILOS
-// ─────────────────────────────────────────
+// Se conserva la estética glass anterior.
+// =========================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -726,66 +634,111 @@ const styles = StyleSheet.create({
   },
 
   pressed: {
-    opacity: 0.8,
+    opacity: 0.72,
   },
 
-  // NAVEGACIÓN
+  // -------------------------------------------------------
+  // ENCABEZADO
+  // -------------------------------------------------------
 
   topBar: {
-    height: 62,
-    paddingHorizontal: 20,
+    height: 66,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
   },
 
-  backButton: {
+  iconButton: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: C.surface,
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  topBarTitle: {
-    color: C.white,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 2,
-  },
-
-  topBarRight: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 22,
-  },
-
-  // PORTADA
-
-  coverSection: {
-    marginBottom: 18,
-  },
-
-  coverImageFrame: {
-    width: "82%",
-    aspectRatio: 2 / 3,
-    alignSelf: "center",
-    borderRadius: 22,
-    overflow: "hidden",
-    backgroundColor: C.surface,
+    backgroundColor:
+      "rgba(255,255,255,0.07)",
     borderWidth: 1,
     borderColor: C.border,
+  },
+
+  topBarCenter: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+
+  headerTitle: {
+    color: C.white,
+    fontWeight: "800",
+    fontSize: 13,
+    letterSpacing: 1.6,
+    textAlign: "center",
+  },
+
+  skipButton: {
+    width: 57,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+
+  skipText: {
+    color: C.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // -------------------------------------------------------
+  // CARRUSEL
+  // -------------------------------------------------------
+
+  carouselArea: {
+    flex: 1,
+    justifyContent: "center",
+  },
+
+  slidePage: {
+    justifyContent: "center",
+  },
+
+  slideFrame: {
+    backgroundColor:
+      "rgba(30,35,35,0.75)",
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor:
+      "rgba(255,255,255,0.18)",
+  },
+
+  frameTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor:
+      "rgba(13,18,18,0.32)",
+  },
+
+  slideContents: {
+    flex: 1,
+    padding: 17,
+  },
+
+  // -------------------------------------------------------
+  // ILUSTRACIONES
+  // -------------------------------------------------------
+
+  visualFrame: {
+    width: "100%",
+    borderRadius: 22,
+    overflow: "hidden",
+    backgroundColor: "#1D2928",
+  },
+
+  coverArtwork: {
+    flex: 1,
+    backgroundColor: "#14201D",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
 
   coverImage: {
@@ -793,373 +746,247 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  coverCaption: {
+  artwork: {
+    flex: 1,
+    backgroundColor: "#182824",
+    overflow: "hidden",
+  },
+
+  sunGlow: {
+    position: "absolute",
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor:
+      "rgba(198,255,77,0.07)",
+    alignSelf: "center",
+    top: 25,
+  },
+
+  artTop: {
+    position: "absolute",
+    top: 17,
+    left: 17,
+    right: 17,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
-    paddingHorizontal: 3,
-    paddingTop: 18,
-  },
-
-  coverCaptionLeft: {
-    flex: 1,
-  },
-
-  coverEyebrow: {
-    color: C.lime,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-    marginBottom: 7,
-  },
-
-  coverCaptionTitle: {
-    color: C.white,
-    fontSize: 21,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-
-  coverCaptionSubtitle: {
-    color: C.muted,
-    fontSize: 12,
-    marginTop: 6,
-  },
-
-  coverCaptionIcon: {
-    width: 47,
-    height: 47,
-    borderRadius: 15,
-    backgroundColor: C.surface,
     alignItems: "center",
-    justifyContent: "center",
+    zIndex: 3,
   },
 
-  // OFFLINE-FIRST
-
-  offlineCard: {
-    backgroundColor: C.surface,
+  artIndex: {
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    backgroundColor:
+      "rgba(0,0,0,0.19)",
     borderRadius: 20,
-    padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(198,255,77,0.16)",
-    marginBottom: 6,
+    borderColor:
+      "rgba(255,255,255,0.12)",
   },
 
-  offlineCardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 13,
-  },
-
-  offlineIcon: {
-    width: 49,
-    height: 49,
-    borderRadius: 15,
-    backgroundColor: "#29341F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  offlineCopy: {
-    flex: 1,
-  },
-
-  offlineEyebrow: {
-    color: C.lime,
+  artIndexText: {
+    color: C.white,
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1.1,
-    marginBottom: 6,
   },
 
-  offlineTitle: {
-    color: C.white,
-    fontSize: 15,
-    fontWeight: "800",
-    lineHeight: 21,
+  artCenter: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 14,
+    zIndex: 2,
   },
 
-  offlineDescription: {
-    color: C.muted,
-    fontSize: 12,
-    lineHeight: 20,
-    marginTop: 14,
+  orbitOuter: {
+    width: 174,
+    height: 174,
+    borderRadius: 87,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor:
+      "rgba(198,255,77,0.25)",
+    backgroundColor:
+      "rgba(198,255,77,0.04)",
   },
 
-  offlineTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 7,
-    marginTop: 15,
+  orbitInner: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor:
+      "rgba(11,12,13,0.55)",
+    borderWidth: 1,
+    borderColor:
+      "rgba(255,255,255,0.17)",
   },
 
-  offlineTag: {
-    backgroundColor: "#29341F",
-    borderRadius: 30,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+  mountainBack: {
+    position: "absolute",
+    width: 270,
+    height: 270,
+    bottom: -213,
+    left: -90,
+    transform: [{ rotate: "45deg" }],
+    backgroundColor: "#30453A",
   },
 
-  offlineTagText: {
-    color: C.lime,
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+  mountainFront: {
+    position: "absolute",
+    width: 325,
+    height: 325,
+    bottom: -267,
+    right: -110,
+    transform: [{ rotate: "45deg" }],
+    backgroundColor: "#24392F",
   },
 
-  // PROGRESO
+  // -------------------------------------------------------
+  // TEXTO DE CADA TARJETA
+  // -------------------------------------------------------
 
-  progressSection: {
-    marginTop: 31,
-    marginBottom: 22,
-  },
-
-  progressHeading: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-
-  progressHeadingCopy: {
+  copyArea: {
     flex: 1,
+    paddingHorizontal: 5,
+    paddingTop: 19,
   },
 
-  progressEyebrow: {
-    color: C.lime,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.7,
-    marginBottom: 8,
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginBottom: 11,
   },
 
-  progressTitle: {
-    color: C.white,
-    fontSize: 23,
-    fontWeight: "800",
-    letterSpacing: -0.7,
-  },
-
-  progressCount: {
-    color: C.lime,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  progressTrack: {
-    height: 4,
-    backgroundColor: C.surfaceAlt,
-    borderRadius: 2,
-    overflow: "hidden",
-    marginTop: 18,
-  },
-
-  progressFill: {
-    height: "100%",
+  eyebrowLine: {
+    width: 18,
+    height: 2,
     backgroundColor: C.lime,
     borderRadius: 2,
   },
 
-  progressHint: {
-    color: C.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 12,
-  },
-
-  // CAPÍTULOS
-
-  chapters: {
-    gap: 11,
-  },
-
-  accordion: {
-    backgroundColor: C.surface,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: C.border,
-    overflow: "hidden",
-  },
-
-  accordionExpanded: {
-    borderColor: "rgba(198,255,77,0.28)",
-  },
-
-  accordionHeader: {
-    padding: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    minHeight: 86,
-  },
-
-  sectionIcon: {
-    width: 45,
-    height: 45,
-    borderRadius: 14,
-    backgroundColor: C.surfaceAlt,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  sectionCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  sectionNumber: {
+  eyebrow: {
     color: C.lime,
     fontSize: 9,
     fontWeight: "800",
-    letterSpacing: 1.3,
-    marginBottom: 5,
+    letterSpacing: 1.5,
   },
 
-  sectionTitle: {
+  slideTitle: {
     color: C.white,
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-
-  sectionSubtitle: {
-    color: C.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 5,
-  },
-
-  accordionBody: {
-    paddingHorizontal: 16,
-    paddingBottom: 18,
-  },
-
-  bodyDivider: {
-    height: 1,
-    backgroundColor: C.border,
-    marginBottom: 19,
-  },
-
-  // PASOS
-
-  stepRow: {
-    flexDirection: "row",
-    gap: 13,
-    marginBottom: 21,
-  },
-
-  stepNumber: {
-    width: 25,
-    height: 25,
-    borderRadius: 13,
-    backgroundColor: "#29341F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  stepNumberText: {
-    color: C.lime,
-    fontSize: 11,
+    fontSize: 24,
     fontWeight: "800",
+    letterSpacing: -0.7,
+    lineHeight: 29,
   },
 
-  stepCopy: {
-    flex: 1,
-    paddingTop: 2,
-  },
-
-  stepTitle: {
-    color: C.white,
+  slideDescription: {
+    marginTop: 11,
+    color: "#CED3D3",
     fontSize: 13,
-    fontWeight: "700",
+    lineHeight: 20,
+    fontWeight: "400",
   },
 
-  stepDescription: {
-    color: C.muted,
-    fontSize: 12,
-    lineHeight: 19,
-    marginTop: 6,
-  },
-
-  noteBox: {
+  tipBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    backgroundColor: "#232A1C",
+    gap: 9,
+    padding: 12,
     borderRadius: 13,
-    padding: 13,
-  },
-
-  noteText: {
-    flex: 1,
-    color: "#C5CCB8",
-    fontSize: 11,
-    lineHeight: 18,
-  },
-
-  // CIERRE
-
-  footerCard: {
-    backgroundColor: C.surface,
-    borderRadius: 23,
-    padding: 22,
-    marginTop: 28,
+    backgroundColor:
+      "rgba(198,255,77,0.08)",
     borderWidth: 1,
-    borderColor: C.border,
-    alignItems: "center",
+    borderColor:
+      "rgba(198,255,77,0.13)",
   },
 
-  footerIcon: {
-    width: 55,
-    height: 55,
-    borderRadius: 18,
-    backgroundColor: "#29341F",
+  tipText: {
+    flex: 1,
+    color: "#C8D2C4",
+    fontSize: 11,
+    lineHeight: 17,
+  },
+
+  // -------------------------------------------------------
+  // CONTROLES INFERIORES
+  // -------------------------------------------------------
+
+  bottomArea: {
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    backgroundColor: C.bg,
+  },
+
+  progressRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     marginBottom: 17,
   },
 
-  footerTitle: {
-    color: C.white,
-    fontSize: 21,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-
-  footerDescription: {
+  progressLabel: {
     color: C.muted,
-    fontSize: 12,
-    lineHeight: 20,
-    textAlign: "center",
-    marginTop: 10,
-    marginBottom: 23,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    width: 55,
   },
 
-  exploreButton: {
-    width: "100%",
-    height: 52,
+  dots: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 4,
+    backgroundColor:
+      "rgba(255,255,255,0.24)",
+  },
+
+  dotActive: {
+    width: 24,
     backgroundColor: C.lime,
-    borderRadius: 15,
+  },
+
+  buttonRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  previousButton: {
+    width: 54,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: C.surfaceAlt,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+
+  nextButton: {
+    flex: 1,
+    height: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 11,
+    gap: 12,
+    backgroundColor: C.lime,
+    borderRadius: 16,
   },
 
-  exploreButtonText: {
+  nextText: {
     color: C.bg,
     fontSize: 14,
     fontWeight: "800",
-  },
-
-  footerBrand: {
-    color: "#55595E",
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 2,
-    textAlign: "center",
-    marginTop: 28,
   },
 });

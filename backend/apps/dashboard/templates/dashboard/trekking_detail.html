@@ -1,0 +1,1434 @@
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Trekking #{{ trekking.pk }} | Hito
+{% endblock %}
+
+{% block head %}
+<!-- LEAFLET CSS -->
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+>
+
+<style>
+    /* =====================================
+       MAPA
+       ===================================== */
+    #map {
+        width: 100%;
+        height: 500px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #344035;
+        border-radius: 12px;
+        background: #18211c;
+        z-index: 0;
+    }
+
+    #map .leaflet-tile,
+    #map .leaflet-pane img {
+        max-width: none !important;
+        max-height: none !important;
+    }
+
+    #map .leaflet-popup-content {
+        color: #202820;
+        line-height: 1.5;
+        min-width: 180px;
+    }
+
+    #map .leaflet-popup-content p {
+        margin: 6px 0;
+    }
+
+    #map .leaflet-control-zoom a {
+        color: #222;
+    }
+
+    /* =====================================
+       LEYENDA
+       ===================================== */
+    .map-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+        margin: 14px 0;
+        font-size: 13px;
+        color: #cbd5cb;
+    }
+
+    .map-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .map-legend-line {
+        display: inline-block;
+        width: 28px;
+        height: 0;
+        border-top: 4px solid;
+        border-radius: 4px;
+    }
+
+    .map-legend-line.official {
+        border-color: #368bfa;
+        border-top-style: dashed;
+    }
+
+    .map-legend-line.gps {
+        border-color: #b3e853;
+    }
+
+    .map-legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.5);
+    }
+
+    .map-legend-dot.start {
+        background: #65c0ff;
+    }
+
+    .map-legend-dot.last {
+        background: #f0b94b;
+    }
+
+    .map-legend-dot.pending {
+        background: #8b98a5;
+    }
+
+    .map-legend-dot.outbound {
+        background: #368bfa;
+    }
+
+    .map-legend-dot.return {
+        background: #f0b94b;
+    }
+
+    .map-legend-dot.complete {
+        background: #a8e647;
+    }
+
+    /* =====================================
+       NAVEGACIÓN LEAFLET
+       ===================================== */
+    .hito-map-navigation {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 9px;
+        background: #18211c;
+        border: 1px solid #344035;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+    .hito-map-navigation button {
+        width: 145px;
+        padding: 10px;
+        border: 1px solid #4d5d4d;
+        border-radius: 7px;
+        background: #283229;
+        color: #fff;
+        font-family: inherit;
+        font-size: 12px;
+        text-align: center;
+        cursor: pointer;
+    }
+
+    .hito-map-navigation button:hover:not(:disabled) {
+        background: #374738;
+    }
+
+    .hito-map-navigation button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    /* =====================================
+       POPUPS DE CHECKPOINTS
+       ===================================== */
+    .hito-checkpoint-popup {
+        min-width: 200px;
+    }
+
+    .hito-checkpoint-popup strong {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 14px;
+    }
+
+    .hito-checkpoint-popup ul {
+        margin: 9px 0 0;
+        padding-left: 18px;
+    }
+
+    .hito-checkpoint-popup li {
+        margin-bottom: 7px;
+        overflow-wrap: anywhere;
+    }
+
+    .hito-checkpoint-popup small {
+        color: #4e5c50;
+    }
+
+    .map-warning {
+        color: #f0b94b;
+        margin-top: 10px;
+    }
+
+    .map-note {
+        color: #acb6ab;
+        font-size: 13px;
+        margin-top: 12px;
+    }
+
+    /* =====================================
+       RESPONSIVE
+       ===================================== */
+    @media (max-width: 700px) {
+        #map {
+            height: 380px;
+        }
+
+        .map-legend {
+            gap: 12px;
+        }
+
+        .hito-map-navigation {
+            padding: 6px;
+        }
+
+        .hito-map-navigation button {
+            width: 120px;
+            font-size: 11px;
+            padding: 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- =====================================
+     VOLVER
+===================================== -->
+<p>
+    <a href="{% url 'dashboard:trekkings' %}">
+        ← Volver a trekkings
+    </a>
+</p>
+
+<!-- =====================================
+     INFORMACIÓN GENERAL
+===================================== -->
+<h1>
+    Trekking #{{ trekking.pk }} — {{ trekking.user.username }}
+</h1>
+
+<div class="stats">
+    <article>
+        <small>Estado</small>
+        <strong>{{ trekking.get_status_display }}</strong>
+    </article>
+
+    <article>
+        <small>Parque</small>
+        <strong>{{ trekking.trail.park.name }}</strong>
+    </article>
+
+    <article>
+        <small>Sendero</small>
+        <strong>{{ trekking.trail.name }}</strong>
+    </article>
+
+    <article>
+        <small>Puntos GPS recibidos</small>
+        <strong>{{ gps_count }}</strong>
+    </article>
+
+    <article>
+        <small>Checkpoints del sendero</small>
+        <strong>{{ map_checkpoints|length }}</strong>
+    </article>
+
+    <article>
+        <small>Eventos QR recibidos</small>
+        <strong>{{ qr_events|length }}</strong>
+    </article>
+</div>
+
+<p>
+    <b>Inicio:</b>
+    {{ trekking.started_at|date:"d/m/Y H:i" }}
+
+    · <b>Regreso estimado:</b>
+    {{ trekking.estimated_return_time|date:"d/m/Y H:i" }}
+
+    · <b>Finalización:</b>
+    {% if trekking.finished_at %}
+        {{ trekking.finished_at|date:"d/m/Y H:i" }}
+    {% else %}
+        Sin finalizar
+    {% endif %}
+</p>
+
+<!-- =====================================
+     MAPA DEL TREKKING
+===================================== -->
+<section>
+    <h2>Mapa del trekking</h2>
+
+    <p class="subtle">
+        Visualización de la ruta oficial del sendero,
+        recorrido GPS recibido y checkpoints físicos.
+
+        Los estados QR corresponden únicamente a
+        eventos sincronizados y almacenados en Django.
+    </p>
+
+    {% if route_geojson or map_points or map_checkpoints %}
+
+        <!-- LEYENDA DE RUTAS -->
+        <div class="map-legend">
+            {% if route_geojson %}
+            <div class="map-legend-item">
+                <span class="map-legend-line official"></span>
+                <span>Ruta oficial</span>
+            </div>
+            {% endif %}
+
+            {% if map_points %}
+            <div class="map-legend-item">
+                <span class="map-legend-line gps"></span>
+                <span>Recorrido GPS</span>
+            </div>
+
+            <div class="map-legend-item">
+                <span class="map-legend-dot start"></span>
+                <span>Primer punto GPS</span>
+            </div>
+
+            <div class="map-legend-item">
+                <span class="map-legend-dot last"></span>
+                <span>Última ubicación GPS</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- LEYENDA DE CHECKPOINTS -->
+        {% if map_checkpoints %}
+        <div class="map-legend">
+            <div class="map-legend-item">
+                <span class="map-legend-dot pending"></span>
+                <span>Sin escanear</span>
+            </div>
+
+            <div class="map-legend-item">
+                <span class="map-legend-dot outbound"></span>
+                <span>Ida registrada</span>
+            </div>
+
+            <div class="map-legend-item">
+                <span class="map-legend-dot return"></span>
+                <span>Regreso registrado</span>
+            </div>
+
+            <div class="map-legend-item">
+                <span class="map-legend-dot complete"></span>
+                <span>Ambos escaneos</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- MAPA -->
+        <div
+            id="map"
+            aria-label="Mapa del trekking"
+        ></div>
+
+        <p id="map-status" class="map-warning"></p>
+
+        <p class="map-note">
+            Azul discontinuo: ruta oficial del sendero.
+            Verde lima: recorrido GPS sincronizado.
+
+            Los marcadores de checkpoints indican
+            registros QR recibidos, no posiciones GPS.
+        </p>
+
+    {% else %}
+        <p>
+            Este trekking todavía no tiene ruta oficial,
+            puntos GPS ni checkpoints georreferenciados
+            disponibles.
+        </p>
+    {% endif %}
+</section>
+
+<!-- =====================================
+     ACOMPAÑANTES
+===================================== -->
+<section>
+    <h2>Acompañantes ({{ companions.count }})</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Contacto de emergencia</th>
+                    <th>Teléfono</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for companion in companions %}
+                <tr>
+                    <td>
+                        {{ companion.first_name }}
+                        {{ companion.last_name }}
+                    </td>
+
+                    <td>
+                        {{ companion.emergency_contact_name }}
+                    </td>
+
+                    <td>
+                        {{ companion.emergency_contact_phone }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">
+                        No hay acompañantes registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- =====================================
+     HISTORIAL QR OFFLINE
+===================================== -->
+<section>
+    <h2>Historial de checkpoints QR</h2>
+
+    <p class="subtle">
+        Eventos QR registrados por el excursionista,
+        ordenados según la fecha real del escaneo.
+
+        La recepción en Django puede producirse
+        posteriormente si el dispositivo estaba offline.
+    </p>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Checkpoint</th>
+                    <th>Evento</th>
+                    <th>Fecha del escaneo</th>
+                    <th>Recibido en Django</th>
+                    <th>Identificador QR</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for event in qr_events %}
+                <tr>
+                    <td>
+                        {{ event.checkpoint.name }}
+                    </td>
+
+                    <td>
+                        {{ event.get_event_type_display }}
+                    </td>
+
+                    <td>
+                        {{ event.occurred_at|date:"d/m/Y H:i:s" }}
+                    </td>
+
+                    <td>
+                        {{ event.received_at|date:"d/m/Y H:i:s" }}
+                    </td>
+
+                    <td>
+                        <code>{{ event.qr_identifier }}</code>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        No existen eventos QR offline
+                        sincronizados para este trekking.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- =====================================
+     CHECKPOINT RECORD TRADICIONAL
+===================================== -->
+{% if checkpoints %}
+<section>
+    <h2>Otros registros de checkpoints</h2>
+
+    <p class="subtle">
+        Registros almacenados en CheckpointRecord.
+
+        Se muestran por separado de los eventos QR
+        offline para mantener la trazabilidad.
+    </p>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Checkpoint</th>
+                    <th>Fecha y hora</th>
+                    <th>Latitud</th>
+                    <th>Longitud</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for checkpoint in checkpoints %}
+                <tr>
+                    <td>
+                        {{ checkpoint.checkpoint.name }}
+                    </td>
+
+                    <td>
+                        {{ checkpoint.registered_at|date:"d/m/Y H:i:s" }}
+                    </td>
+
+                    <td>
+                        {{ checkpoint.latitude }}
+                    </td>
+
+                    <td>
+                        {{ checkpoint.longitude }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<!-- =====================================
+     INCIDENTES
+===================================== -->
+<section>
+    <h2>Incidentes del trekking</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Fecha</th>
+                    <th>Fotografía</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for incident in incidents %}
+                <tr>
+                    <td>
+                        {{ incident.get_incident_type_display }}
+                    </td>
+
+                    <td>
+                        {{ incident.description }}
+                    </td>
+
+                    <td>
+                        {{ incident.registered_at|date:"d/m/Y H:i" }}
+                    </td>
+
+                    <td>
+                        {% if incident.photo %}
+                        <a
+                            href="{{ incident.photo.url }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Ver fotografía
+                        </a>
+                        {% else %}
+                        Sin fotografía
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        No hay incidentes registrados
+                        en este trekking.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- =====================================
+     RESCATES
+===================================== -->
+<section>
+    <h2>Solicitudes de rescate</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th>Inicio</th>
+                    <th>Cierre</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for rescue in rescues %}
+                <tr>
+                    <td>
+                        {{ rescue.get_status_display }}
+                    </td>
+
+                    <td>
+                        {{ rescue.started_at|date:"d/m/Y H:i" }}
+                    </td>
+
+                    <td>
+                        {% if rescue.finished_at %}
+                            {{ rescue.finished_at|date:"d/m/Y H:i" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ rescue.notes|default:"—" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        No existen solicitudes de rescate
+                        para este trekking.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- =====================================
+     DATOS PARA JAVASCRIPT
+===================================== -->
+{{ map_points|json_script:"gps-data" }}
+{{ route_geojson|json_script:"official-route-data" }}
+{{ map_checkpoints|json_script:"checkpoint-map-data" }}
+
+{% endblock %}
+
+{% block scripts %}
+{% if route_geojson or map_points or map_checkpoints %}
+
+<!-- LEAFLET JAVASCRIPT -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // =====================================
+    // ELEMENTOS
+    // =====================================
+    const mapElement = document.getElementById("map");
+    const mapStatus = document.getElementById("map-status");
+    const gpsElement = document.getElementById("gps-data");
+
+    const routeElement = document.getElementById(
+        "official-route-data"
+    );
+
+    const checkpointElement = document.getElementById(
+        "checkpoint-map-data"
+    );
+
+    if (!mapElement) {
+        return;
+    }
+
+    if (typeof L === "undefined") {
+        if (mapStatus) {
+            mapStatus.textContent =
+                "No se pudo cargar la biblioteca Leaflet.";
+        }
+        return;
+    }
+
+    // =====================================
+    // LECTURA SEGURA DE JSON
+    // =====================================
+    function readJSON(element, fallback) {
+        if (!element) {
+            return fallback;
+        }
+
+        try {
+            const result = JSON.parse(
+                element.textContent
+            );
+
+            return result === null
+                ? fallback
+                : result;
+
+        } catch (error) {
+            console.error(
+                "No se pudieron interpretar datos del mapa:",
+                error
+            );
+
+            return fallback;
+        }
+    }
+
+    const rawGPS = readJSON(gpsElement, []);
+
+    const officialGeoJSON = readJSON(
+        routeElement,
+        null
+    );
+
+    const rawCheckpoints = readJSON(
+        checkpointElement,
+        []
+    );
+
+    // =====================================
+    // VALIDACIÓN DE COORDENADAS
+    // =====================================
+    function validCoordinate(lat, lng) {
+        return (
+            Number.isFinite(lat) &&
+            Number.isFinite(lng) &&
+            lat >= -90 &&
+            lat <= 90 &&
+            lng >= -180 &&
+            lng <= 180
+        );
+    }
+
+    const points = (
+        Array.isArray(rawGPS)
+            ? rawGPS
+            : []
+    )
+    .filter(function (point) {
+        return (
+            point &&
+            point.lat !== null &&
+            point.lat !== undefined &&
+            point.lng !== null &&
+            point.lng !== undefined &&
+            point.lat !== "" &&
+            point.lng !== ""
+        );
+    })
+    .map(function (point) {
+        return {
+            lat: Number(point.lat),
+            lng: Number(point.lng),
+            time: point.time,
+            accuracy: point.accuracy
+        };
+    })
+    .filter(function (point) {
+        return validCoordinate(
+            point.lat,
+            point.lng
+        );
+    });
+
+    const checkpoints = (
+        Array.isArray(rawCheckpoints)
+            ? rawCheckpoints
+            : []
+    )
+    .filter(function (checkpoint) {
+        return (
+            checkpoint &&
+            checkpoint.lat !== null &&
+            checkpoint.lat !== undefined &&
+            checkpoint.lng !== null &&
+            checkpoint.lng !== undefined &&
+            checkpoint.lat !== "" &&
+            checkpoint.lng !== ""
+        );
+    })
+    .map(function (checkpoint) {
+        return {
+            ...checkpoint,
+            lat: Number(checkpoint.lat),
+            lng: Number(checkpoint.lng)
+        };
+    })
+    .filter(function (checkpoint) {
+        return validCoordinate(
+            checkpoint.lat,
+            checkpoint.lng
+        );
+    });
+
+    // =====================================
+    // CREAR MAPA LEAFLET
+    // =====================================
+    const map = L.map("map", {
+        zoomControl: true,
+        scrollWheelZoom: true
+    });
+
+    // =====================================
+    // CAPA BASE OPENSTREETMAP
+    // =====================================
+    const tileLayer = L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors",
+            referrerPolicy: "strict-origin-when-cross-origin"
+        }
+    );
+
+    let tileErrorReported = false;
+
+    tileLayer.on("tileerror", function () {
+        if (!tileErrorReported && mapStatus) {
+            tileErrorReported = true;
+
+            mapStatus.textContent =
+                "Algunas imágenes del mapa no pudieron cargarse. " +
+                "Los datos geográficos siguen disponibles.";
+        }
+    });
+
+    tileLayer.addTo(map);
+
+    // =====================================
+    // CAPAS DEL MAPA
+    // =====================================
+    const officialRouteGroup = L.layerGroup().addTo(map);
+    const gpsRouteGroup = L.layerGroup().addTo(map);
+    const checkpointGroup = L.layerGroup().addTo(map);
+
+    // =====================================
+    // RUTA OFICIAL DEL SENDERO
+    // =====================================
+    let officialRouteLayer = null;
+
+    if (
+        officialGeoJSON &&
+        typeof officialGeoJSON === "object"
+    ) {
+        try {
+            officialRouteLayer = L.geoJSON(
+                officialGeoJSON,
+                {
+                    style: {
+                        color: "#368BFA",
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: "10, 7"
+                    }
+                }
+            );
+
+            const bounds = officialRouteLayer.getBounds();
+
+            if (bounds.isValid()) {
+                officialRouteLayer.addTo(officialRouteGroup);
+
+                officialRouteLayer.bindPopup(
+                    "Ruta oficial del sendero"
+                );
+            } else {
+                officialRouteLayer = null;
+            }
+
+        } catch (error) {
+            console.error(
+                "Error al representar GeoJSON:",
+                error
+            );
+
+            officialRouteLayer = null;
+
+            if (mapStatus) {
+                mapStatus.textContent =
+                    "No se pudo representar la ruta oficial.";
+            }
+        }
+    }
+
+    // =====================================
+    // RECORRIDO GPS — FILTRO DE PRECISIÓN
+    // =====================================
+
+    // Todos los puntos originales se conservan.
+    // Los marcadores de inicio y última posición
+    // siguen utilizando el historial completo.
+    const coordinates = points.map(function (point) {
+        return [point.lat, point.lng];
+    });
+
+    // Umbral provisional utilizado únicamente
+    // para visualizar la línea del recorrido.
+    const MAX_GPS_ACCURACY = 50;
+
+    const gpsSegments = [];
+    let currentSegment = [];
+
+    points.forEach(function (point) {
+        const accuracy = Number(point.accuracy);
+
+        const validAccuracy =
+            point.accuracy !== null &&
+            point.accuracy !== undefined &&
+            point.accuracy !== "" &&
+            Number.isFinite(accuracy) &&
+            accuracy >= 0 &&
+            accuracy <= MAX_GPS_ACCURACY;
+
+        if (validAccuracy) {
+            currentSegment.push([
+                point.lat,
+                point.lng
+            ]);
+        } else {
+            // Un punto impreciso interrumpe el tramo.
+            // No se dibuja una línea que atraviese
+            // automáticamente ubicaciones descartadas.
+            if (currentSegment.length >= 2) {
+                gpsSegments.push(currentSegment);
+            }
+
+            currentSegment = [];
+        }
+    });
+
+    // Conservar el último tramo si contiene
+    // al menos dos posiciones aceptables.
+    if (currentSegment.length >= 2) {
+        gpsSegments.push(currentSegment);
+    }
+
+    // Dibujar cada tramo por separado.
+    gpsSegments.forEach(function (segment) {
+        L.polyline(
+            segment,
+            {
+                color: "#B3E853",
+                weight: 4,
+                opacity: 0.95
+            }
+        ).addTo(gpsRouteGroup);
+    });
+
+    // =====================================
+    // PRIMER PUNTO GPS
+    // =====================================
+    if (coordinates.length > 0) {
+        L.circleMarker(
+            coordinates[0],
+            {
+                radius: 7,
+                color: "#65C0FF",
+                fillColor: "#65C0FF",
+                fillOpacity: 1,
+                weight: 2
+            }
+        )
+        .addTo(gpsRouteGroup)
+        .bindPopup("Primer punto GPS registrado");
+    }
+
+    // =====================================
+    // ÚLTIMA UBICACIÓN RECIBIDA
+    // =====================================
+    if (coordinates.length > 0) {
+        const lastPoint = points[
+            points.length - 1
+        ];
+
+        const lastMarker = L.circleMarker(
+            coordinates[
+                coordinates.length - 1
+            ],
+            {
+                radius: 8,
+                color: "#F0B94B",
+                fillColor: "#F0B94B",
+                fillOpacity: 1,
+                weight: 2
+            }
+        ).addTo(gpsRouteGroup);
+
+        const popup = document.createElement("div");
+        const title = document.createElement("strong");
+
+        title.textContent =
+            "Última ubicación GPS recibida";
+
+        popup.appendChild(title);
+
+        if (lastPoint.time) {
+            const dateLine = document.createElement("p");
+
+            dateLine.textContent =
+                "Registro: " + lastPoint.time;
+
+            popup.appendChild(dateLine);
+        }
+
+        if (
+            lastPoint.accuracy !== null &&
+            lastPoint.accuracy !== undefined &&
+            lastPoint.accuracy !== ""
+        ) {
+            const accuracyLine = document.createElement("p");
+
+            accuracyLine.textContent =
+                "Precisión: " +
+                lastPoint.accuracy +
+                " m";
+
+            popup.appendChild(accuracyLine);
+        }
+
+        lastMarker.bindPopup(popup);
+    }
+
+    // =====================================
+    // ESTADOS DE CHECKPOINTS
+    // =====================================
+    const checkpointColors = {
+        PENDING: "#8B98A5",
+        OUTBOUND: "#368BFA",
+        RETURN: "#F0B94B",
+        COMPLETE: "#A8E647"
+    };
+
+    const checkpointLabels = {
+        PENDING: "Sin escaneos registrados",
+        OUTBOUND: "Escaneo de ida registrado",
+        RETURN: "Escaneo de regreso registrado",
+        COMPLETE: "Escaneos requeridos registrados"
+    };
+
+    // =====================================
+    // MARCADORES DE CHECKPOINTS
+    // =====================================
+    checkpoints.forEach(function (checkpoint) {
+        const status = checkpoint.status || "PENDING";
+
+        const color =
+            checkpointColors[status] ||
+            checkpointColors.PENDING;
+
+        const marker = L.circleMarker(
+            [checkpoint.lat, checkpoint.lng],
+            {
+                radius: 10,
+                color: "#FFFFFF",
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 1
+            }
+        );
+
+        marker.addTo(checkpointGroup);
+
+        // =================================
+        // POPUP DEL CHECKPOINT
+        // =================================
+        const popup = document.createElement("div");
+        popup.className = "hito-checkpoint-popup";
+
+        const title = document.createElement("strong");
+
+        title.textContent =
+            checkpoint.sequence +
+            ". " +
+            checkpoint.name;
+
+        popup.appendChild(title);
+
+        // Estado actual
+        const statusLine = document.createElement("p");
+
+        statusLine.textContent =
+            checkpointLabels[status] ||
+            "Estado desconocido";
+
+        popup.appendChild(statusLine);
+
+        // Tipo de checkpoint
+        const typeLine = document.createElement("p");
+        let typeLabel = "Checkpoint intermedio";
+
+        if (checkpoint.type === "ENTRY") {
+            typeLabel = "Portería / acceso";
+        } else if (checkpoint.type === "EXIT") {
+            typeLabel = "Salida";
+        } else if (checkpoint.is_summit) {
+            typeLabel = "Cima";
+        } else if (checkpoint.type === "REST") {
+            typeLabel = "Zona de descanso";
+        } else if (checkpoint.type === "VIEWPOINT") {
+            typeLabel = "Mirador";
+        }
+
+        typeLine.textContent =
+            "Tipo: " + typeLabel;
+
+        popup.appendChild(typeLine);
+
+        // =================================
+        // EVENTOS QR SINCRONIZADOS
+        // =================================
+        const events = Array.isArray(
+            checkpoint.events
+        )
+            ? checkpoint.events
+            : [];
+
+        if (events.length > 0) {
+            const eventTitle = document.createElement("p");
+
+            eventTitle.textContent =
+                "Escaneos recibidos:";
+
+            popup.appendChild(eventTitle);
+
+            const eventList = document.createElement("ul");
+
+            events.forEach(function (event) {
+                const item = document.createElement("li");
+
+                const eventName =
+                    document.createElement("span");
+
+                eventName.textContent =
+                    event.label || event.type;
+
+                item.appendChild(eventName);
+
+                const date = document.createElement("small");
+
+                date.textContent =
+                    " — " + event.occurred_at;
+
+                item.appendChild(date);
+                eventList.appendChild(item);
+            });
+
+            popup.appendChild(eventList);
+
+        } else {
+            const noEvents = document.createElement("p");
+
+            noEvents.textContent =
+                "No existen escaneos QR " +
+                "sincronizados para este checkpoint.";
+
+            popup.appendChild(noEvents);
+        }
+
+        // =================================
+        // UBICACIÓN DEL CHECKPOINT
+        // =================================
+        const position = document.createElement("small");
+
+        position.textContent =
+            "Coordenadas: " +
+            checkpoint.lat.toFixed(6) +
+            ", " +
+            checkpoint.lng.toFixed(6);
+
+        popup.appendChild(position);
+
+        marker.bindPopup(popup, {
+            maxWidth: 320
+        });
+    });
+
+    // =====================================
+    // BOTONES DE NAVEGACIÓN
+    // =====================================
+    const navigationControl = L.control({
+        position: "topleft"
+    });
+
+    navigationControl.onAdd = function () {
+        const container = L.DomUtil.create(
+            "div",
+            "hito-map-navigation"
+        );
+
+        L.DomEvent.disableClickPropagation(
+            container
+        );
+
+        L.DomEvent.disableScrollPropagation(
+            container
+        );
+
+        function createButton(label, callback) {
+            const button = L.DomUtil.create(
+                "button",
+                "",
+                container
+            );
+
+            button.type = "button";
+            button.textContent = label;
+
+            L.DomEvent.on(
+                button,
+                "click",
+                callback
+            );
+
+            return button;
+        }
+
+        // =================================
+        // IR A RUTA OFICIAL
+        // =================================
+        const officialButton = createButton(
+            "Ver ruta oficial",
+            function () {
+                if (!officialRouteLayer) {
+                    return;
+                }
+
+                const bounds =
+                    officialRouteLayer.getBounds();
+
+                if (!bounds.isValid()) {
+                    return;
+                }
+
+                if (!map.hasLayer(officialRouteGroup)) {
+                    map.addLayer(officialRouteGroup);
+                }
+
+                if (!map.hasLayer(checkpointGroup)) {
+                    map.addLayer(checkpointGroup);
+                }
+
+                map.fitBounds(bounds, {
+                    padding: [35, 35],
+                    maxZoom: 16
+                });
+            }
+        );
+
+        // =================================
+        // IR AL GPS
+        // =================================
+        const gpsButton = createButton(
+            "Ver recorrido GPS",
+            function () {
+                if (coordinates.length === 0) {
+                    return;
+                }
+
+                if (!map.hasLayer(gpsRouteGroup)) {
+                    map.addLayer(gpsRouteGroup);
+                }
+
+                if (coordinates.length > 1) {
+                    map.fitBounds(
+                        L.latLngBounds(coordinates),
+                        {
+                            padding: [35, 35],
+                            maxZoom: 17
+                        }
+                    );
+                } else {
+                    map.setView(
+                        coordinates[0],
+                        16
+                    );
+                }
+            }
+        );
+
+        // =================================
+        // IR A CHECKPOINTS
+        // =================================
+        const checkpointsButton = createButton(
+            "Ver checkpoints",
+            function () {
+                if (checkpoints.length === 0) {
+                    return;
+                }
+
+                if (!map.hasLayer(checkpointGroup)) {
+                    map.addLayer(checkpointGroup);
+                }
+
+                const bounds = L.latLngBounds(
+                    checkpoints.map(function (cp) {
+                        return [cp.lat, cp.lng];
+                    })
+                );
+
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, {
+                        padding: [35, 35],
+                        maxZoom: 16
+                    });
+                }
+            }
+        );
+
+        // Deshabilitar opciones sin datos
+        if (!officialRouteLayer) {
+            officialButton.disabled = true;
+            officialButton.title =
+                "No hay ruta oficial disponible";
+        }
+
+        if (coordinates.length === 0) {
+            gpsButton.disabled = true;
+            gpsButton.title =
+                "No hay puntos GPS recibidos";
+        }
+
+        if (checkpoints.length === 0) {
+            checkpointsButton.disabled = true;
+            checkpointsButton.title =
+                "No hay checkpoints disponibles";
+        }
+
+        return container;
+    };
+
+    navigationControl.addTo(map);
+
+    // =====================================
+    // SELECTOR DE CAPAS
+    // =====================================
+    L.control.layers(
+        null,
+        {
+            "Ruta oficial del sendero": officialRouteGroup,
+            "Recorrido GPS del excursionista": gpsRouteGroup,
+            "Checkpoints QR": checkpointGroup
+        },
+        {
+            collapsed: false,
+            position: "topright"
+        }
+    ).addTo(map);
+
+    // =====================================
+    // ENCUADRE INICIAL
+    // =====================================
+    const officialBounds = officialRouteLayer
+        ? officialRouteLayer.getBounds()
+        : null;
+
+    if (
+        officialBounds &&
+        officialBounds.isValid()
+    ) {
+        // Priorizar el sendero oficial al abrir.
+        // Evita mostrar Talca y la cordillera
+        // demasiado alejadas en la misma vista.
+        map.fitBounds(
+            officialBounds,
+            {
+                padding: [35, 35],
+                maxZoom: 16
+            }
+        );
+
+    } else if (checkpoints.length > 0) {
+        const checkpointBounds = L.latLngBounds(
+            checkpoints.map(function (cp) {
+                return [cp.lat, cp.lng];
+            })
+        );
+
+        map.fitBounds(
+            checkpointBounds,
+            {
+                padding: [35, 35],
+                maxZoom: 16
+            }
+        );
+
+    } else if (coordinates.length > 1) {
+        map.fitBounds(
+            L.latLngBounds(coordinates),
+            {
+                padding: [35, 35],
+                maxZoom: 16
+            }
+        );
+
+    } else if (coordinates.length === 1) {
+        map.setView(
+            coordinates[0],
+            16
+        );
+
+    } else {
+        map.setView(
+            [-35.6, -71.0],
+            10
+        );
+    }
+
+    // =====================================
+    // ACTUALIZAR DIMENSIONES
+    // =====================================
+    requestAnimationFrame(function () {
+        map.invalidateSize();
+    });
+
+    window.addEventListener(
+        "resize",
+        function () {
+            map.invalidateSize();
+        }
+    );
+});
+</script>
+
+{% endif %}
+{% endblock %}

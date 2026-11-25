@@ -11,20 +11,23 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useIncidents } from "@/features/incidents/hooks/useIncidents";
+
 import type { IncidentType } from "@/features/incidents/types";
 
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
 // HITO — DESIGN SYSTEM
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
 
 const COLORS = {
   bg: "#0B0C0D",
@@ -41,9 +44,9 @@ const COLORS = {
   black: "#0B0C0D",
 };
 
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
 // TIPOS DE INCIDENTES
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
 
 const incidentTypes: {
   value: IncidentType;
@@ -92,9 +95,14 @@ const incidentTypes: {
   },
 ];
 
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
 // COMPONENTE: VOLVER
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
+
+
+ // ---------------------------------------------------------
+ // COMPONENTE: VOLVER AL TREKKING EN CURSO
+ // ---------------------------------------------------------
 
 function BackButton() {
   return (
@@ -103,10 +111,10 @@ function BackButton() {
         styles.backButton,
         pressed && styles.pressed,
       ]}
-      onPress={() => router.back()}
+      onPress={() => router.replace("/trekking")}
       hitSlop={8}
       accessibilityRole="button"
-      accessibilityLabel="Volver"
+      accessibilityLabel="Volver al trekking en curso"
     >
       <Ionicons
         name="chevron-back"
@@ -117,12 +125,23 @@ function BackButton() {
   );
 }
 
-// ─────────────────────────────────────────
+
+// ---------------------------------------------------------
 // PANTALLA PRINCIPAL
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
 
 export default function IncidentScreen() {
-  const { activeTrekking } = useAuth();
+  const {
+    activeTrekking,
+    activeLocalTrekking,
+  } = useAuth();
+
+  const localTrekking =
+    activeLocalTrekking?.trekking.status === "IN_PROGRESS"
+      ? activeLocalTrekking.trekking
+      : null;
+
+  const isLocalTrekking = Boolean(localTrekking);
 
   const insets = useSafeAreaInsets();
 
@@ -137,49 +156,93 @@ export default function IncidentScreen() {
     pickPhoto,
     removePhoto,
     submitIncident,
+    submitLocalIncident,
   } = useIncidents();
 
-  // ───────────────────────────────────────
-  // LÓGICA ORIGINAL — SIN MODIFICACIONES
-  // ───────────────────────────────────────
+  // -------------------------------------------------------
+  // ASOCIAR EXCURSIÓN Y OBTENER UBICACIÓN
+  // -------------------------------------------------------
 
   useEffect(() => {
-    if (activeTrekking) {
-      setField("trekking", activeTrekking.id);
-      getCurrentLocation();
-    }
-  }, [activeTrekking]);
+    if (isLocalTrekking) {
+      // El trekking local usa UUID de SQLite.
+      // No enviamos ese UUID a la API antigua de Django.
 
-  const handleSubmit = async () => {
-    const createdIncident = await submitIncident();
-
-    if (!createdIncident && !error) {
+      void getCurrentLocation();
       return;
     }
 
-    if (error && !error.includes("Sin conexión")) {
+    if (activeTrekking) {
+      setField("trekking", activeTrekking.id);
+      void getCurrentLocation();
+    }
+  }, [
+    isLocalTrekking,
+    activeTrekking?.id,
+  ]);
+
+  // -------------------------------------------------------
+  // ENVIAR INCIDENTE
+  // -------------------------------------------------------
+
+  const handleSubmit = async () => {
+    if (loading || locationLoading) {
+      return;
+    }
+
+    // TREKKING INICIADO MEDIANTE QR:
+    // guardar primero en SQLite.
+
+    if (isLocalTrekking) {
+      const saved = await submitLocalIncident();
+
+      if (!saved) {
+        return;
+      }
+
+      Alert.alert(
+        "Incidente guardado",
+        "El incidente quedó registrado en este dispositivo.\n\nEstá pendiente de sincronización y todavía no ha sido recibido por los guardaparques.",
+        [
+          {
+            text: "Aceptar",
+            onPress: () => router.back(),
+          },
+        ],
+        {
+          cancelable: false,
+        },
+      );
+
+      return;
+    }
+
+    // SISTEMA ANTERIOR:
+    // mantener integración con Django y su cola offline.
+
+    const createdIncident = await submitIncident();
+
+    if (!createdIncident) {
       return;
     }
 
     Alert.alert(
-      "Incidente reportado",
-      error && error.includes("Sin conexión")
-        ? error
-        : "El incidente fue registrado correctamente.",
+      "Incidente registrado",
+      "El servidor confirmó el registro del incidente.",
       [
         {
           text: "Aceptar",
           onPress: () => router.back(),
         },
-      ]
+      ],
     );
   };
 
-  // ───────────────────────────────────────
+  // -------------------------------------------------------
   // SIN TREKKING ACTIVO
-  // ───────────────────────────────────────
+  // -------------------------------------------------------
 
-  if (!activeTrekking) {
+  if (!isLocalTrekking && !activeTrekking) {
     return (
       <SafeAreaView
         style={styles.center}
@@ -213,22 +276,28 @@ export default function IncidentScreen() {
     );
   }
 
-  // ───────────────────────────────────────
-  // VALIDACIÓN ORIGINAL DE UBICACIÓN
-  // ───────────────────────────────────────
+  // -------------------------------------------------------
+  // VALIDACIÓN DE UBICACIÓN
+  // -------------------------------------------------------
 
   const lat = Number(form.latitude);
   const lon = Number(form.longitude);
 
   const hasValidLocation =
-    !Number.isNaN(lat) &&
-    !Number.isNaN(lon) &&
-    form.latitude !== null &&
-    form.longitude !== null;
+    typeof form.latitude === "string" &&
+    typeof form.longitude === "string" &&
+    form.latitude.trim().length > 0 &&
+    form.longitude.trim().length > 0 &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180;
 
-  // ───────────────────────────────────────
+  // -------------------------------------------------------
   // INTERFAZ
-  // ───────────────────────────────────────
+  // -------------------------------------------------------
 
   return (
     <SafeAreaView
@@ -245,7 +314,7 @@ export default function IncidentScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ───────── HEADER ───────── */}
+        {/* HEADER */}
 
         <View style={styles.headerContainer}>
           <View style={styles.topRow}>
@@ -265,11 +334,13 @@ export default function IncidentScreen() {
           </Text>
 
           <Text style={styles.subtitle}>
-            Expedición activa #{activeTrekking.id}
+            {isLocalTrekking
+              ? `Excursión local · ${localTrekking?.local_id.slice(0, 8)}`
+              : `Expedición activa #${activeTrekking?.id}`}
           </Text>
         </View>
 
-        {/* ───────── UBICACIÓN GPS ───────── */}
+        {/* UBICACIÓN GPS */}
 
         <View style={styles.locationContainer}>
           <View style={styles.locationHeader}>
@@ -334,7 +405,9 @@ export default function IncidentScreen() {
                   styles.retryLocationButton,
                   pressed && styles.pressed,
                 ]}
-                onPress={getCurrentLocation}
+                onPress={() => {
+                  void getCurrentLocation();
+                }}
               >
                 <Ionicons
                   name="refresh-outline"
@@ -350,7 +423,7 @@ export default function IncidentScreen() {
           )}
         </View>
 
-        {/* ───────── TIPO DE INCIDENTE ───────── */}
+        {/* TIPO DE INCIDENTE */}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
@@ -418,7 +491,7 @@ export default function IncidentScreen() {
           })}
         </View>
 
-        {/* ───────── DESCRIPCIÓN ───────── */}
+        {/* DESCRIPCIÓN */}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
@@ -440,7 +513,7 @@ export default function IncidentScreen() {
           accessibilityLabel="Descripción del incidente"
         />
 
-        {/* ───────── EVIDENCIA FOTOGRÁFICA ───────── */}
+        {/* EVIDENCIA FOTOGRÁFICA */}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
@@ -481,7 +554,9 @@ export default function IncidentScreen() {
                 styles.photoActionButton,
                 pressed && styles.pressed,
               ]}
-              onPress={takePhoto}
+              onPress={() => {
+                void takePhoto();
+              }}
             >
               <Ionicons
                 name="camera-outline"
@@ -499,7 +574,9 @@ export default function IncidentScreen() {
                 styles.photoActionButton,
                 pressed && styles.pressed,
               ]}
-              onPress={pickPhoto}
+              onPress={() => {
+                void pickPhoto();
+              }}
             >
               <Ionicons
                 name="images-outline"
@@ -514,7 +591,7 @@ export default function IncidentScreen() {
           </View>
         )}
 
-        {/* ───────── ERRORES ───────── */}
+        {/* ERRORES */}
 
         {error && (
           <View style={styles.errorContainer}>
@@ -530,7 +607,25 @@ export default function IncidentScreen() {
           </View>
         )}
 
-        {/* ───────── ACCIONES ───────── */}
+        {/* ESTADO OFFLINE */}
+
+        {isLocalTrekking && (
+          <View style={styles.offlineNotice}>
+            <Ionicons
+              name="cloud-offline-outline"
+              size={17}
+              color={COLORS.lime}
+            />
+
+            <Text style={styles.offlineNoticeText}>
+              El reporte se guardará en este dispositivo.
+              Los guardaparques podrán recibirlo cuando
+              se implemente y complete la sincronización.
+            </Text>
+          </View>
+        )}
+
+        {/* ACCIONES */}
 
         <View style={styles.footerActions}>
           <Pressable
@@ -543,7 +638,9 @@ export default function IncidentScreen() {
                 !locationLoading &&
                 styles.pressed,
             ]}
-            onPress={handleSubmit}
+            onPress={() => {
+              void handleSubmit();
+            }}
             disabled={loading || locationLoading}
             accessibilityRole="button"
             accessibilityLabel="Reportar incidente"
@@ -568,7 +665,9 @@ export default function IncidentScreen() {
                 ? "Registrando..."
                 : locationLoading
                   ? "Obteniendo ubicación..."
-                  : "Reportar incidente"}
+                  : isLocalTrekking
+                    ? "Guardar incidente"
+                    : "Reportar incidente"}
             </Text>
           </Pressable>
 
@@ -587,13 +686,11 @@ export default function IncidentScreen() {
   );
 }
 
-// ─────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────
+// ---------------------------------------------------------
+// ESTILOS
+// ---------------------------------------------------------
 
 const styles = StyleSheet.create({
-  // ───────── SCREEN ─────────
-
   safeContainer: {
     flex: 1,
     backgroundColor: COLORS.bg,
@@ -607,8 +704,6 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.78,
   },
-
-  // ───────── HEADER ─────────
 
   headerContainer: {
     marginBottom: 25,
@@ -658,8 +753,6 @@ const styles = StyleSheet.create({
     marginTop: 7,
     fontWeight: "400",
   },
-
-  // ───────── GPS ─────────
 
   locationContainer: {
     backgroundColor: COLORS.surface,
@@ -753,8 +846,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ───────── SECTIONS ─────────
-
   sectionHeader: {
     marginBottom: 13,
   },
@@ -771,8 +862,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 5,
   },
-
-  // ───────── INCIDENT TYPES ─────────
 
   gridContainer: {
     flexDirection: "row",
@@ -817,8 +906,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ───────── DESCRIPTION ─────────
-
   textArea: {
     backgroundColor: COLORS.surface,
     minHeight: 120,
@@ -831,8 +918,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 29,
   },
-
-  // ───────── PHOTOS ─────────
 
   photoActions: {
     flexDirection: "row",
@@ -890,8 +975,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ───────── ERRORS ─────────
-
   errorContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -912,7 +995,24 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // ───────── ACTIONS ─────────
+  offlineNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: COLORS.limeDim,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: COLORS.limeBorder,
+    padding: 13,
+    marginBottom: 18,
+  },
+
+  offlineNoticeText: {
+    flex: 1,
+    color: COLORS.inkSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
 
   footerActions: {
     marginTop: 8,
@@ -955,8 +1055,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: COLORS.inkSecondary,
   },
-
-  // ───────── EMPTY STATE ─────────
 
   center: {
     flex: 1,

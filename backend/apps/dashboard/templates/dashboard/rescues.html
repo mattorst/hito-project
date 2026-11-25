@@ -1,0 +1,125 @@
+
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Rescates | Hito
+{% endblock %}
+
+{% block content %}
+
+<h1>Solicitudes de rescate</h1>
+
+<p class="subtle">
+    Solicitudes SOS recibidas desde Hito Mobile.
+    El personal autorizado puede consultar
+    la información y gestionar su cierre.
+</p>
+
+<div class="table-wrap">
+
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Excursionista</th>
+                <th>Parque / sendero</th>
+                <th>Estado</th>
+                <th>Ubicación SOS</th>
+                <th>Fecha de cierre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for rescue in page %}
+
+            <tr>
+                <td>
+                    {{ rescue.started_at|date:"d/m/Y H:i" }}
+                </td>
+
+                <td>
+                    {{ rescue.trekking.user.username }}
+                </td>
+
+                <td>
+                    {{ rescue.trekking.trail.park.name }}
+
+                    <br>
+
+                    <small class="subtle">
+                        {{ rescue.trekking.trail.name }}
+                    </small>
+                </td>
+
+                <td>
+                    {% if rescue.status == "ACTIVE" %}
+                        <strong style="color:#f08080;">
+                            SOS activo
+                        </strong>
+
+                    {% elif rescue.status == "COMPLETED" %}
+                        <strong style="color:#b3e853;">
+                            Completado
+                        </strong>
+
+                    {% elif rescue.status == "CANCELLED" %}
+                        <strong style="color:#f0b94b;">
+                            Cancelado
+                        </strong>
+
+                    {% else %}
+                        {{ rescue.get_status_display }}
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if rescue.latitude != None and rescue.longitude != None %}
+                        {{ rescue.latitude }},
+                        {{ rescue.longitude }}
+                    {% else %}
+                        No registrada
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if rescue.finished_at %}
+                        {{ rescue.finished_at|date:"d/m/Y H:i" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+
+                <td>
+                    <a href="{% url 'dashboard:rescue_detail' rescue.pk %}">
+                        Gestionar rescate
+                    </a>
+
+                    <br>
+
+                    <a href="{% url 'dashboard:trekking_detail' rescue.trekking_id %}">
+                        Ver trekking #{{ rescue.trekking_id }}
+                    </a>
+                </td>
+            </tr>
+
+            {% empty %}
+
+            <tr>
+                <td colspan="7">
+                    No hay solicitudes de rescate
+                    sincronizadas.
+                </td>
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+    </table>
+
+</div>
+
+{% include "dashboard/pagination.html" %}
+
+{% endblock %}

@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.conf import settings
+from django.views.generic import RedirectView
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
@@ -44,7 +45,13 @@ urlpatterns = [
         name="token_refresh",
     ),
 
+    
+
     # Endpoints de las aplicaciones
+    path(
+        "api/",
+        include("apps.accounts.urls"),
+    ),
     path(
         "api/",
         include("apps.parks.urls"),
@@ -90,6 +97,15 @@ urlpatterns = [
         ),
         name="redoc",
     ),
+
+    path(
+    "",
+    RedirectView.as_view(
+        pattern_name="dashboard:home",
+        permanent=False,
+    ),
+    ),
+    path("dashboard/", include("apps.dashboard.urls")),
 ]
 
 if settings.DEBUG:

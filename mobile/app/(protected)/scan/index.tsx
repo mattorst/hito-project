@@ -1,5 +1,6 @@
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+
 import {
   ActivityIndicator,
   Pressable,
@@ -8,12 +9,19 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { router } from "expo-router";
+
+import {
+  router,
+  useFocusEffect,
+} from "expo-router";
+
 import { Ionicons } from "@expo/vector-icons";
+
 import {
   CameraView,
   type BarcodeScanningResult,
@@ -39,7 +47,7 @@ const COLORS = {
 };
 
 // --------------------------------------------------
-// COMPONENTES VISUALES
+// BOTÓN VOLVER
 // --------------------------------------------------
 
 function BackButton() {
@@ -63,7 +71,15 @@ function BackButton() {
   );
 }
 
-function ScannerFrame({ size }: { size: number }) {
+// --------------------------------------------------
+// MARCO VISUAL DEL ESCÁNER
+// --------------------------------------------------
+
+function ScannerFrame({
+  size,
+}: {
+  size: number;
+}) {
   return (
     <View
       style={[
@@ -75,10 +91,33 @@ function ScannerFrame({ size }: { size: number }) {
       ]}
       pointerEvents="none"
     >
-      <View style={[styles.corner, styles.topLeft]} />
-      <View style={[styles.corner, styles.topRight]} />
-      <View style={[styles.corner, styles.bottomLeft]} />
-      <View style={[styles.corner, styles.bottomRight]} />
+      <View
+        style={[
+          styles.corner,
+          styles.topLeft,
+        ]}
+      />
+
+      <View
+        style={[
+          styles.corner,
+          styles.topRight,
+        ]}
+      />
+
+      <View
+        style={[
+          styles.corner,
+          styles.bottomLeft,
+        ]}
+      />
+
+      <View
+        style={[
+          styles.corner,
+          styles.bottomRight,
+        ]}
+      />
 
       <View style={styles.scanLine} />
 
@@ -101,14 +140,63 @@ export default function ScanScreen() {
   const [permission, requestPermission] =
     useCameraPermissions();
 
-  const [isScanning, setIsScanning] = useState(true);
+  const [isScanning, setIsScanning] =
+    useState(true);
+
+  const [isFocused, setIsFocused] =
+    useState(false);
+
+  // Bloqueo síncrono para impedir que dos callbacks
+  // registren el mismo código antes de que React
+  // actualice el estado isScanning.
+
+  const scanLockRef = useRef(false);
 
   const { setScannedQr } = useScan();
 
-  const { width, height } = useWindowDimensions();
+  const { width, height } =
+    useWindowDimensions();
+
   const insets = useSafeAreaInsets();
 
-  // Tamaño adaptable según el espacio real disponible.
+  // --------------------------------------------------
+  // REACTIVAR ESCÁNER AL REGRESAR A LA PANTALLA
+  // --------------------------------------------------
+
+  useFocusEffect(
+    useCallback(() => {
+      // Cada vez que Expo Router enfoca esta pantalla,
+      // habilitamos una nueva lectura QR.
+
+      scanLockRef.current = false;
+
+      setIsScanning(true);
+      setIsFocused(true);
+
+      console.log(
+        "[Hito Scanner] Escáner activado.",
+      );
+
+      // Al salir hacia Trekking en curso, Check-In
+      // o cualquier otra pantalla, pausamos la cámara.
+
+      return () => {
+        scanLockRef.current = true;
+
+        setIsScanning(false);
+        setIsFocused(false);
+
+        console.log(
+          "[Hito Scanner] Escáner desactivado.",
+        );
+      };
+    }, []),
+  );
+
+  // --------------------------------------------------
+  // RESPONSIVIDAD
+  // --------------------------------------------------
+
   const availableHeight =
     height - insets.top - insets.bottom;
 
@@ -119,30 +207,73 @@ export default function ScanScreen() {
     140,
     Math.min(
       width - 76,
-      availableHeight * (isVeryCompact ? 0.25 : 0.32),
+      availableHeight *
+        (isVeryCompact ? 0.25 : 0.32),
       290,
     ),
   );
 
   // --------------------------------------------------
-  // LÓGICA ORIGINAL — SIN MODIFICACIONES
+  // PROCESAR LECTURA QR
   // --------------------------------------------------
 
   const handleBarcodeScanned = useCallback(
     (result: BarcodeScanningResult) => {
-      if (!isScanning) {
+      // No aceptamos una segunda lectura mientras
+      // la primera se está procesando.
+
+      if (scanLockRef.current) {
         return;
       }
 
-      setIsScanning(false);
-      setScannedQr(result.data);
+      const qrData =
+        result.data?.trim() ?? "";
 
-      console.log("QR leído:", result.data);
+      if (!qrData) {
+        console.warn(
+          "[Hito Scanner] Se ignoró un QR vacío.",
+        );
+        return;
+      }
+
+      // Bloquear inmediatamente, antes de navegar.
+
+      scanLockRef.current = true;
+      setIsScanning(false);
+
+      // Entregar el QR al ScanContext.
+      // El controlador del trekking se encarga
+      // de validar y guardar el evento en SQLite.
+
+      setScannedQr(qrData);
+
+      console.log(
+        "[Hito Scanner] QR leído:",
+        qrData,
+      );
+
+      // Regresar a la pantalla anterior.
+      // Allí se ejecutará useLocalCheckpointQr.
 
       router.back();
     },
-    [isScanning, setScannedQr],
+    [setScannedQr],
   );
+
+  // --------------------------------------------------
+  // ABRIR CHECK-IN DE TREKKING
+  // --------------------------------------------------
+
+  const handleOpenCheckIn = () => {
+    // Evitar que se lea un QR mientras navegamos.
+
+    scanLockRef.current = true;
+    setIsScanning(false);
+
+    router.push(
+      "/(protected)/trekking/check-in",
+    );
+  };
 
   // --------------------------------------------------
   // CARGA DE PERMISOS
@@ -152,7 +283,12 @@ export default function ScanScreen() {
     return (
       <SafeAreaView
         style={styles.center}
-        edges={["top", "left", "right", "bottom"]}
+        edges={[
+          "top",
+          "left",
+          "right",
+          "bottom",
+        ]}
       >
         <View style={styles.loadingIcon}>
           <Ionicons
@@ -182,7 +318,12 @@ export default function ScanScreen() {
     return (
       <SafeAreaView
         style={styles.permissionContainer}
-        edges={["top", "left", "right", "bottom"]}
+        edges={[
+          "top",
+          "left",
+          "right",
+          "bottom",
+        ]}
       >
         <View style={styles.permissionTop}>
           <BackButton />
@@ -210,8 +351,8 @@ export default function ScanScreen() {
           </Text>
 
           <Text style={styles.permissionMessage}>
-            Hito necesita acceso a la cámara para
-            escanear códigos QR.
+            Hito necesita acceso a la cámara
+            para escanear códigos QR.
           </Text>
 
           <View style={styles.permissionInfo}>
@@ -222,8 +363,8 @@ export default function ScanScreen() {
             />
 
             <Text style={styles.permissionInfoText}>
-              Utilizaremos la cámara para leer los
-              códigos de los checkpoints.
+              Utilizaremos la cámara para leer
+              los códigos de los checkpoints.
             </Text>
           </View>
         </View>
@@ -231,7 +372,9 @@ export default function ScanScreen() {
         <View
           style={[
             styles.permissionActions,
-            { paddingBottom: 16 },
+            {
+              paddingBottom: 16,
+            },
           ]}
         >
           <Pressable
@@ -288,11 +431,14 @@ export default function ScanScreen() {
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
+        active={isFocused}
         barcodeScannerSettings={{
           barcodeTypes: ["qr"],
         }}
         onBarcodeScanned={
-          isScanning ? handleBarcodeScanned : undefined
+          isFocused && isScanning
+            ? handleBarcodeScanned
+            : undefined
         }
       />
 
@@ -308,8 +454,11 @@ export default function ScanScreen() {
           style={[
             styles.header,
             {
-              paddingTop: insets.top + 16,
-              paddingBottom: isCompact ? 14 : 20,
+              paddingTop:
+                insets.top + 16,
+
+              paddingBottom:
+                isCompact ? 14 : 20,
             },
           ]}
         >
@@ -317,7 +466,8 @@ export default function ScanScreen() {
             style={[
               styles.headerTop,
               {
-                marginBottom: isCompact ? 12 : 20,
+                marginBottom:
+                  isCompact ? 12 : 20,
               },
             ]}
           >
@@ -345,7 +495,8 @@ export default function ScanScreen() {
               style={[
                 styles.headerTitle,
                 {
-                  fontSize: isCompact ? 25 : 29,
+                  fontSize:
+                    isCompact ? 25 : 29,
                 },
               ]}
             >
@@ -365,7 +516,8 @@ export default function ScanScreen() {
           style={[
             styles.scannerArea,
             {
-              paddingVertical: isCompact ? 6 : 12,
+              paddingVertical:
+                isCompact ? 6 : 12,
             },
           ]}
         >
@@ -373,20 +525,29 @@ export default function ScanScreen() {
             style={[
               styles.scannerCenter,
               {
-                gap: isCompact ? 12 : 18,
+                gap:
+                  isCompact ? 12 : 18,
               },
             ]}
           >
-            <ScannerFrame size={frameSize} />
+            <ScannerFrame
+              size={frameSize}
+            />
 
-            <View style={styles.scannerInstructions}>
+            <View
+              style={styles.scannerInstructions}
+            >
               <Ionicons
                 name="scan-outline"
                 size={16}
                 color={COLORS.lime}
               />
 
-              <Text style={styles.scannerInstructionsText}>
+              <Text
+                style={
+                  styles.scannerInstructionsText
+                }
+              >
                 Coloca el QR dentro del marco
               </Text>
             </View>
@@ -399,9 +560,17 @@ export default function ScanScreen() {
           style={[
             styles.bottomPanel,
             {
-              paddingTop: isCompact ? 13 : 18,
-              paddingBottom: Math.max(insets.bottom, 16) + 12,
-              gap: isCompact ? 12 : 18,
+              paddingTop:
+                isCompact ? 13 : 18,
+
+              paddingBottom:
+                Math.max(
+                  insets.bottom,
+                  16,
+                ) + 12,
+
+              gap:
+                isCompact ? 10 : 14,
             },
           ]}
         >
@@ -421,11 +590,42 @@ export default function ScanScreen() {
                 </Text>
 
                 <Text style={styles.securitySubtitle}>
-                  El escaneo se realiza automáticamente.
+                  El escaneo se realiza
+                  automáticamente.
                 </Text>
               </View>
             </View>
           )}
+
+          {/* BOTÓN CHECK-IN ORIGINAL */}
+
+          <Pressable
+            onPress={handleOpenCheckIn}
+            accessibilityRole="button"
+            accessibilityLabel="Iniciar trekking con QR"
+            style={({ pressed }) => [
+              styles.checkInButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              name="trail-sign-outline"
+              size={20}
+              color={COLORS.bg}
+            />
+
+            <Text style={styles.checkInButtonText}>
+              Iniciar trekking con QR
+            </Text>
+
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color={COLORS.bg}
+            />
+          </Pressable>
+
+          {/* BOTÓN CANCELAR ORIGINAL */}
 
           <Pressable
             onPress={() => router.back()}
@@ -451,7 +651,7 @@ export default function ScanScreen() {
 }
 
 // --------------------------------------------------
-// ESTILOS
+// ESTILOS ORIGINALES — CONSERVADOS
 // --------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -496,7 +696,8 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "rgba(20,21,23,0.85)",
+    backgroundColor:
+      "rgba(20,21,23,0.85)",
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: "center",
@@ -568,7 +769,6 @@ const styles = StyleSheet.create({
 
   permissionInfo: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 12,
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -576,6 +776,7 @@ const styles = StyleSheet.create({
     marginTop: 27,
     borderWidth: 1,
     borderColor: COLORS.border,
+    alignItems: "center",
   },
 
   permissionInfoText: {
@@ -679,7 +880,7 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
 
-  // SCANNER
+  // ESCÁNER
 
   scannerArea: {
     flex: 1,
@@ -695,7 +896,8 @@ const styles = StyleSheet.create({
   scannerFrame: {
     position: "relative",
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.025)",
+    backgroundColor:
+      "rgba(255,255,255,0.025)",
   },
 
   corner: {
@@ -735,6 +937,7 @@ const styles = StyleSheet.create({
     right: 0,
     borderLeftWidth: 0,
     borderTopWidth: 0,
+    borderBottomWidth: 0,
     borderBottomRightRadius: 22,
   },
 
@@ -767,7 +970,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
-    backgroundColor: "rgba(11,12,13,0.80)",
+    backgroundColor:
+      "rgba(11,12,13,0.80)",
     borderRadius: 25,
     paddingHorizontal: 15,
     paddingVertical: 10,
@@ -817,6 +1021,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
   },
+
+  // CHECK-IN
+
+  checkInButton: {
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: COLORS.lime,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+  },
+
+  checkInButtonText: {
+    color: COLORS.bg,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  // CANCELAR
 
   cancelButton: {
     minHeight: 51,
