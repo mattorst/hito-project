@@ -1,71 +1,586 @@
-
 {% extends "dashboard/base.html" %}
-
-{% block title %}
-Trekking #{{ trekking.pk }} | Hito
-{% endblock %}
-
+{% load static %}
+{% block title %}Trekking #{{ trekking.pk }} | Hito{% endblock %}
 {% block head %}
-<!-- LEAFLET CSS -->
-<link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
->
-
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
-    /* =====================================
-       MAPA
-       ===================================== */
-    #map {
+    /* CONFIGURACIÓN GENERAL */
+    .trek-detail {
         width: 100%;
-        height: 500px;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid #344035;
-        border-radius: 12px;
-        background: #18211c;
-        z-index: 0;
+        min-width: 0;
     }
-
+    .trek-detail .trek-icon {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+    }
+    /* ENCABEZADO */
+    .trek-header {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 190px;
+        margin: -30px -30px 24px;
+        padding: 25px 30px;
+        overflow: hidden;
+        background: #090e11;
+        border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .trek-landscape {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(65%, 1000px);
+        z-index: -2;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .trek-landscape img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 60%;
+        opacity: .85;
+        filter: brightness(.70) saturate(.55);
+        image-rendering: auto;
+    }
+    .trek-landscape::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.80) 25%,rgba(9,14,17,.45) 50%,rgba(9,14,17,.15) 75%,rgba(9,14,17,.05) 100%),linear-gradient(to top,rgba(9,14,17,.90),transparent 65%);
+        pointer-events: none;
+    }
+    .trek-header::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.95) 18%,rgba(9,14,17,.70) 35%,rgba(9,14,17,.20) 65%,transparent 90%);
+        pointer-events: none;
+    }
+    .trek-header-content {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+    }
+    .trek-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 15px;
+        padding: 7px 11px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 500;
+        transition: background .2s,border-color .2s;
+    }
+    .trek-back .trek-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .trek-back:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    .trek-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 8px;
+        color: #62d36b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+    }
+    .trek-eyebrow .trek-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    .trek-header h1 {
+        margin: 0 0 8px;
+        color: #e1e8ed;
+        font-size: clamp(27px,2.8vw,40px);
+        font-weight: 700;
+        letter-spacing: -.8px;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+    }
+    .trek-header-description {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        color: #9ca9b0;
+        font-size: 13px;
+    }
+    .trek-header-description .trek-icon {
+        width: 16px;
+        height: 16px;
+        color: #c084fc;
+    }
+    .trek-header-status {
+        position: relative;
+        z-index: 1;
+        flex-shrink: 0;
+    }
+    /* ESTADOS */
+    .trek-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        background: #19252a;
+        border: 1px solid #344349;
+        border-radius: 7px;
+        color: #b7c6ce;
+        font-size: 11px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+    .trek-badge::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        flex-shrink: 0;
+        background: currentColor;
+        border-radius: 50%;
+    }
+    .trek-badge.active {
+        color: #70b7ff;
+        background: rgba(65,159,255,.10);
+        border-color: rgba(65,159,255,.22);
+    }
+    .trek-badge.completed {
+        color: #73dc7d;
+        background: rgba(89,214,107,.10);
+        border-color: rgba(89,214,107,.22);
+    }
+    .trek-badge.cancelled {
+        color: #facc20;
+        background: rgba(250,204,32,.08);
+        border-color: rgba(250,204,32,.20);
+    }
+    .trek-badge.rescue {
+        color: #ff8a98;
+        background: rgba(255,100,120,.10);
+        border-color: rgba(255,100,120,.25);
+    }
+    /* TARJETAS DE INFORMACIÓN - COLORES ORIGINALES */
+    .trek-detail-stats {
+        display: grid;
+        grid-template-columns: repeat(6,minmax(0,1fr));
+        gap: 13px;
+        margin-bottom: 20px;
+    }
+    .trek-detail-stat {
+        --trek-color: #59d66b;
+        --trek-glow: rgba(89,214,107,.12);
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: 0;
+        min-height: 155px;
+        padding: 17px 16px 23px;
+        overflow: hidden;
+        background: radial-gradient(ellipse at 0% 0%,var(--trek-glow),transparent 70%),linear-gradient(145deg,#172226,#11181d);
+        border: 1px solid #29373c;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.17);
+        transition: transform .2s,border-color .2s;
+    }
+    .trek-detail-stat:nth-child(2) {
+        --trek-color: #419fff;
+        --trek-glow: rgba(65,159,255,.12);
+    }
+    .trek-detail-stat:nth-child(3) {
+        --trek-color: #ce91f7;
+        --trek-glow: rgba(206,145,247,.12);
+    }
+    .trek-detail-stat:nth-child(4) {
+        --trek-color: #b3e853;
+        --trek-glow: rgba(179,232,83,.12);
+    }
+    .trek-detail-stat:nth-child(5) {
+        --trek-color: #facc20;
+        --trek-glow: rgba(250,204,32,.12);
+    }
+    .trek-detail-stat:nth-child(6) {
+        --trek-color: #ff794d;
+        --trek-glow: rgba(255,121,77,.12);
+    }
+    .trek-detail-stat::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 35px;
+        z-index: -1;
+        background: linear-gradient(to top,var(--trek-glow),transparent);
+    }
+    .trek-detail-stat::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        background: linear-gradient(90deg,transparent,var(--trek-color),transparent);
+        opacity: .75;
+    }
+    .trek-detail-stat:hover {
+        transform: translateY(-3px);
+        border-color: color-mix(in srgb,var(--trek-color) 40%,#29373c);
+    }
+    .trek-stat-icon {
+        display: grid;
+        place-items: center;
+        width: 39px;
+        height: 39px;
+        margin-bottom: 11px;
+        background: var(--trek-glow);
+        color: var(--trek-color);
+        border-radius: 11px;
+    }
+    .trek-detail .trek-detail-stat .trek-stat-icon .trek-icon {
+        width: 23px;
+        height: 23px;
+        color: var(--trek-color) !important;
+    }
+    .trek-stat-label {
+        margin-bottom: 6px;
+        color: #9ca9b0;
+        font-size: 11px;
+        font-weight: 550;
+        line-height: 1.5;
+    }
+    .trek-stat-value {
+        color: #f0f4f6;
+        font-size: 16px;
+        font-weight: 650;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+    .trek-stat-value.number {
+        font-size: 34px;
+        font-weight: 750;
+        letter-spacing: -.8px;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+    /* FECHAS DEL TREKKING - COLORES ORIGINALES */
+    .trek-timeline {
+        display: grid;
+        grid-template-columns: repeat(3,minmax(0,1fr));
+        gap: 15px;
+        padding: 17px 20px;
+        margin-bottom: 20px;
+        background: linear-gradient(150deg,#151f23,#11181c);
+        border: 1px solid #29373c;
+        border-radius: 12px;
+    }
+    .trek-timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .trek-timeline-item + .trek-timeline-item {
+        padding-left: 20px;
+        border-left: 1px solid #29373c;
+    }
+    .trek-detail .trek-timeline .trek-timeline-icon {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        background: rgba(89,214,107,.10);
+        color: #73dc7d;
+        border: 0;
+        border-radius: 10px;
+    }
+    .trek-detail .trek-timeline-item:nth-child(2) .trek-timeline-icon {
+        background: rgba(250,204,32,.10);
+        color: #facc20;
+    }
+    .trek-detail .trek-timeline-item:nth-child(3) .trek-timeline-icon {
+        background: rgba(65,159,255,.10);
+        color: #70b7ff;
+    }
+    .trek-detail .trek-timeline .trek-timeline-icon svg {
+        color: inherit !important;
+    }
+    .trek-timeline-copy {
+        min-width: 0;
+    }
+    .trek-timeline-copy small {
+        display: block;
+        margin-bottom: 4px;
+        color: #91a3ad;
+        font-size: 11px;
+    }
+    .trek-timeline-copy strong {
+        color: #e3eaee;
+        font-size: 13px;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+    /* PANELES GENERALES */
+    .trek-section {
+        min-width: 0;
+        margin-bottom: 20px;
+        background: linear-gradient(150deg,#151f23,#11181c);
+        border: 1px solid #29373c;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0,0,0,.17);
+        overflow: hidden;
+    }
+    .trek-section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 18px 20px;
+    }
+    .trek-section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .trek-section-icon {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        background: #090e11;
+        color: #ffffff;
+        border: 1px solid #34454d;
+        border-radius: 11px;
+    }
+    .trek-section-icon.blue {
+        background: #090e11;
+        color: #c084fc;
+    }
+    .trek-section-icon.purple {
+        background: #090e11;
+        color: #ffffff;
+    }
+    .trek-section-icon.orange {
+        background: #090e11;
+        color: #facc15;
+    }
+    .trek-section-icon.red {
+        background: #090e11;
+        color: #ff453a;
+    }
+    .trek-section-icon .trek-icon {
+        width: 23px;
+        height: 23px;
+    }
+    .trek-section-copy {
+        min-width: 0;
+    }
+    .trek-section-copy h2 {
+        margin: 0 0 3px;
+        color: #e8eef1;
+        font-size: 17px;
+        font-weight: 650;
+        letter-spacing: -.25px;
+    }
+    .trek-section-copy p {
+        margin: 0;
+        color: #9ca9b0;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+    .trek-section-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 11px;
+        background: #19262c;
+        border: 1px solid #344349;
+        border-radius: 7px;
+        color: #a9b8c0;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .trek-section-count strong {
+        color: #e5edf0;
+        font-weight: 650;
+    }
+    .trek-section-body {
+        padding: 0 18px 18px;
+        min-width: 0;
+    }
+    /* MAPA LEAFLET - DISEÑO ORIGINAL */
+    .trek-detail #map,
+    .trek-detail #map.leaflet-container {
+        position: relative;
+        isolation: isolate;
+        width: 100%;
+        height: 560px;
+        overflow: hidden;
+        background: #182820;
+        border: 1px solid #344349;
+        border-radius: 11px;
+        z-index: 0;
+        color-scheme: light;
+    }
     #map .leaflet-tile,
     #map .leaflet-pane img {
         max-width: none !important;
         max-height: none !important;
     }
-
+    #map .leaflet-control-zoom {
+        border: 1px solid #344349;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    #map .leaflet-control-zoom a {
+        background: #142126;
+        color: #e2ece8;
+        border-bottom-color: #344349;
+    }
+    #map .leaflet-control-zoom a:hover {
+        background: #24372e;
+    }
+    #map .leaflet-control-layers {
+        padding: 10px 12px;
+        background: rgba(17,27,31,.96);
+        border: 1px solid #344349;
+        border-radius: 8px;
+        color: #d5e0e5;
+        box-shadow: 0 3px 12px rgba(0,0,0,.20);
+        font-size: 12px;
+    }
+    #map .leaflet-control-layers label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 5px 0;
+        cursor: pointer;
+    }
+    #map .leaflet-control-layers input {
+        accent-color: #62d36b;
+    }
+    #map .leaflet-popup-content-wrapper,
+    #map .leaflet-popup-tip {
+        background: #172329;
+        color: #e3eaee;
+    }
     #map .leaflet-popup-content {
-        color: #202820;
-        line-height: 1.5;
+        color: #e3eaee;
+        font-size: 12px;
+        line-height: 1.6;
         min-width: 180px;
     }
-
+    #map .leaflet-popup-content strong {
+        color: #edf3f5;
+        font-size: 14px;
+    }
     #map .leaflet-popup-content p {
         margin: 6px 0;
+        color: #b6c4cb;
     }
-
-    #map .leaflet-control-zoom a {
-        color: #222;
+    #map .leaflet-popup-close-button {
+        color: #bac9d0;
     }
-
-    /* =====================================
-       LEYENDA
-       ===================================== */
+    #map .leaflet-control-attribution {
+        background: rgba(13,23,27,.90);
+        color: #b6c4cb;
+        font-size: 9px;
+    }
+    #map .leaflet-control-attribution a {
+        color: #9cdaa0;
+    }
+    /* CONTROLES DE NAVEGACIÓN */
+    .hito-map-navigation {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 8px;
+        background: rgba(17,27,31,.96);
+        border: 1px solid #344349;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    }
+    .hito-map-navigation button {
+        width: 155px;
+        padding: 10px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+        transition: background .2s,border-color .2s;
+    }
+    .hito-map-navigation button:hover:not(:disabled) {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    .hito-map-navigation button:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+    }
+    /* LEYENDA DEL MAPA - COLORES ORIGINALES */
+    .trek-legends {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 14px;
+        margin-bottom: 14px;
+        background: #0e171b;
+        border: 1px solid #29373c;
+        border-radius: 9px;
+    }
     .map-legend {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 16px;
-        margin: 14px 0;
-        font-size: 13px;
-        color: #cbd5cb;
+        gap: 12px 20px;
+        margin: 0;
+        color: #b3c1c9;
+        font-size: 11px;
     }
-
+    .map-legend-title {
+        color: #dfe7eb;
+        font-size: 11px;
+        font-weight: 650;
+    }
     .map-legend-item {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 7px;
     }
-
     .map-legend-line {
         display: inline-block;
         width: 28px;
@@ -73,662 +588,1150 @@ Trekking #{{ trekking.pk }} | Hito
         border-top: 4px solid;
         border-radius: 4px;
     }
-
     .map-legend-line.official {
         border-color: #368bfa;
         border-top-style: dashed;
     }
-
     .map-legend-line.gps {
         border-color: #b3e853;
     }
-
     .map-legend-dot {
         display: inline-block;
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
         flex-shrink: 0;
         border-radius: 50%;
-        border: 1px solid rgba(255,255,255,0.5);
+        border: 1px solid rgba(255,255,255,.60);
     }
-
     .map-legend-dot.start {
         background: #65c0ff;
     }
-
     .map-legend-dot.last {
         background: #f0b94b;
     }
-
     .map-legend-dot.pending {
         background: #8b98a5;
     }
-
     .map-legend-dot.outbound {
         background: #368bfa;
     }
-
     .map-legend-dot.return {
         background: #f0b94b;
     }
-
     .map-legend-dot.complete {
         background: #a8e647;
     }
-
-    /* =====================================
-       NAVEGACIÓN LEAFLET
-       ===================================== */
-    .hito-map-navigation {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-        padding: 9px;
-        background: #18211c;
-        border: 1px solid #344035;
-        border-radius: 10px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    }
-
-    .hito-map-navigation button {
-        width: 145px;
-        padding: 10px;
-        border: 1px solid #4d5d4d;
-        border-radius: 7px;
-        background: #283229;
-        color: #fff;
-        font-family: inherit;
-        font-size: 12px;
-        text-align: center;
-        cursor: pointer;
-    }
-
-    .hito-map-navigation button:hover:not(:disabled) {
-        background: #374738;
-    }
-
-    .hito-map-navigation button:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-
-    /* =====================================
-       POPUPS DE CHECKPOINTS
-       ===================================== */
+    /* POPUPS DE CHECKPOINTS */
     .hito-checkpoint-popup {
         min-width: 200px;
     }
-
     .hito-checkpoint-popup strong {
         display: block;
-        margin-bottom: 7px;
+        margin-bottom: 8px;
+        color: #e3eaee;
         font-size: 14px;
     }
-
     .hito-checkpoint-popup ul {
         margin: 9px 0 0;
         padding-left: 18px;
     }
-
     .hito-checkpoint-popup li {
         margin-bottom: 7px;
         overflow-wrap: anywhere;
     }
-
     .hito-checkpoint-popup small {
-        color: #4e5c50;
+        color: #9caeb8;
     }
-
     .map-warning {
+        margin: 10px 0 0;
         color: #f0b94b;
-        margin-top: 10px;
+        font-size: 12px;
     }
-
+    .map-warning:empty {
+        display: none;
+    }
     .map-note {
-        color: #acb6ab;
-        font-size: 13px;
-        margin-top: 12px;
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        margin: 14px 0 0;
+        padding: 12px 14px;
+        background: rgba(65,159,255,.055);
+        border: 1px solid rgba(65,159,255,.14);
+        border-radius: 8px;
+        color: #a5bdcf;
+        font-size: 11px;
+        line-height: 1.7;
     }
-
-    /* =====================================
-       RESPONSIVE
-       ===================================== */
+    .map-note .trek-icon {
+        width: 17px;
+        height: 17px;
+        color: #ffffff;
+    }
+    /* TABLAS */
+    .trek-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+    }
+    .trek-table {
+        width: 100%;
+        min-width: 680px;
+        border-collapse: collapse;
+    }
+    .trek-table th {
+        padding: 14px 18px;
+        background: #10191e;
+        color: #a5b4bd;
+        border-top: 1px solid #29373c;
+        border-bottom: 1px solid #29373c;
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: .6px;
+        text-transform: uppercase;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .trek-table td {
+        padding: 15px 18px;
+        color: #cbd7de;
+        border-bottom: 1px solid #243034;
+        font-size: 12px;
+        line-height: 1.7;
+        vertical-align: middle;
+        overflow-wrap: anywhere;
+    }
+    .trek-table tbody tr:hover {
+        background: rgba(255,255,255,.027);
+    }
+    .trek-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+    .trek-qr-table {
+        min-width: 850px;
+    }
+    /* USUARIOS */
+    .trek-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .trek-user-avatar {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 50%;
+        color: #c084fc;
+        font-size: 12px;
+        font-weight: 650;
+    }
+    .trek-user-name {
+        color: #e1e8ed;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .trek-table-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .trek-table-item .trek-icon {
+        width: 17px;
+        height: 17px;
+        color: #ffffff;
+    }
+    .trek-date {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        white-space: nowrap;
+    }
+    .trek-date strong {
+        color: #e2e9ed;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .trek-date small {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #93a3ad;
+        font-size: 11px;
+    }
+    .trek-date small .trek-icon {
+        width: 13px;
+        height: 13px;
+        color: #ffffff;
+    }
+    /* REGISTROS QR */
+    .trek-qr-code {
+        display: inline-block;
+        padding: 5px 9px;
+        background: rgba(206,145,247,.08);
+        border: 1px solid rgba(206,145,247,.18);
+        border-radius: 6px;
+        color: #d5b1f3;
+        font-size: 11px;
+        overflow-wrap: anywhere;
+    }
+    .trek-qr-event {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        background: rgba(65,159,255,.08);
+        border: 1px solid rgba(65,159,255,.18);
+        border-radius: 6px;
+        color: #9ecbff;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .trek-qr-event .trek-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .trek-coordinate {
+        display: inline-block;
+        padding: 5px 8px;
+        background: #0e171b;
+        border: 1px solid #29373c;
+        border-radius: 6px;
+        color: #b9cbd4;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+    }
+    /* INCIDENTES */
+    .trek-incident-type {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #facc15;
+        font-size: 12px;
+        font-weight: 550;
+    }
+    .trek-incident-type .trek-icon {
+        width: 16px;
+        height: 16px;
+        color: #facc15;
+    }
+    .trek-description-cell {
+        min-width: 180px;
+        max-width: 450px;
+        color: #aab8c0 !important;
+        white-space: pre-wrap;
+    }
+    .trek-photo-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 11px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 550;
+        white-space: nowrap;
+        transition: background .2s,color .2s,border-color .2s;
+    }
+    .trek-photo-link .trek-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .trek-photo-link:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    .trek-muted {
+        color: #879ba6;
+        font-size: 11px;
+    }
+    .trek-row-active {
+        background: rgba(255,100,120,.04);
+    }
+    .trek-row-active td:first-child {
+        box-shadow: inset 3px 0 #ff6478;
+    }
+    /* ESTADOS VACÍOS */
+    .trek-empty-cell {
+        padding: 0 !important;
+    }
+    .trek-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 170px;
+        padding: 25px;
+        text-align: center;
+    }
+    .trek-empty.map-empty {
+        min-height: 350px;
+        background: #0e171b;
+        border: 1px dashed #344349;
+        border-radius: 10px;
+    }
+    .trek-empty-icon {
+        display: grid;
+        place-items: center;
+        width: 55px;
+        height: 55px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 16px;
+        color: #ffffff;
+    }
+    .trek-empty-icon .trek-icon {
+        width: 28px;
+        height: 28px;
+    }
+    .trek-empty h3 {
+        margin: 0;
+        color: #e1e8ed;
+        font-size: 14px;
+        font-weight: 650;
+    }
+    .trek-empty p {
+        max-width: 420px;
+        margin: 0;
+        color: #91a3ad;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+    /* PIE DE PÁGINA */
+    .trek-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 22px;
+        padding-top: 15px;
+        border-top: 1px solid #202c30;
+        color: #788b95;
+        font-size: 11px;
+    }
+    .trek-footer-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .trek-footer-info .trek-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    /* ICONOS GENERALES - EXCLUYE INDICADORES Y MAPA */
+    .trek-detail svg.trek-icon:not(:is(.trek-detail-stat *,.trek-timeline *,.leaflet-container *)) {
+        color: #ffffff;
+    }
+    .trek-detail svg.trek-icon:has(use[href="#td-icon-user"]):not(.trek-detail-stat *),
+    .trek-detail svg.trek-icon:has(use[href="#td-icon-users"]):not(.trek-detail-stat *) {
+        color: #c084fc;
+    }
+    .trek-detail svg.trek-icon:has(use[href="#icon-alert"]):not(.trek-detail-stat *) {
+        color: #facc15;
+    }
+    .trek-detail svg.trek-icon:has(use[href="#icon-rescue"]):not(.trek-detail-stat *),
+    .trek-detail svg.trek-icon:has(use[href="#icon-sos"]):not(.trek-detail-stat *) {
+        color: #ff453a;
+    }
+    /* RESPONSIVE */
+    @media (min-width: 1600px) {
+        .trek-detail-stat {
+            min-height: 175px;
+            padding: 20px;
+        }
+        .trek-stat-value {
+            font-size: 19px;
+        }
+        .trek-stat-value.number {
+            font-size: 40px;
+        }
+        .trek-detail #map,
+        .trek-detail #map.leaflet-container {
+            height: 640px;
+        }
+    }
+    @media (max-width: 1300px) {
+        .trek-detail-stats {
+            grid-template-columns: repeat(3,minmax(0,1fr));
+        }
+    }
+    @media (max-width: 1150px) {
+        .trek-header {
+            min-height: 165px;
+        }
+        .trek-detail #map,
+        .trek-detail #map.leaflet-container {
+            height: 500px;
+        }
+    }
+    @media (max-width: 850px) {
+        .trek-header {
+            margin: -20px -20px 20px;
+            padding: 24px 20px;
+            flex-wrap: wrap;
+        }
+        .trek-landscape {
+            width: 80%;
+            opacity: .75;
+        }
+        .trek-section-heading {
+            padding: 16px;
+        }
+        .trek-section-body {
+            padding: 0 13px 13px;
+        }
+        .trek-timeline {
+            grid-template-columns: 1fr;
+            gap: 13px;
+        }
+        .trek-timeline-item + .trek-timeline-item {
+            padding: 13px 0 0;
+            border-left: 0;
+            border-top: 1px solid #29373c;
+        }
+    }
     @media (max-width: 700px) {
-        #map {
-            height: 380px;
+        .trek-detail #map,
+        .trek-detail #map.leaflet-container {
+            height: 430px;
         }
-
         .map-legend {
-            gap: 12px;
+            gap: 10px 14px;
         }
-
         .hito-map-navigation {
             padding: 6px;
         }
-
         .hito-map-navigation button {
             width: 120px;
-            font-size: 11px;
+            font-size: 10px;
             padding: 8px;
+        }
+        #map .leaflet-control-layers {
+            max-width: 175px;
+            padding: 6px;
+            font-size: 10px;
+        }
+    }
+    @media (max-width: 550px) {
+        .trek-header {
+            min-height: 190px;
+        }
+        .trek-landscape {
+            width: 100%;
+            opacity: .45;
+        }
+        .trek-header h1 {
+            font-size: 27px;
+        }
+        .trek-detail-stats {
+            grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 10px;
+        }
+        .trek-detail-stat {
+            min-height: 140px;
+            padding: 14px;
+        }
+        .trek-stat-value {
+            font-size: 15px;
+        }
+        .trek-stat-value.number {
+            font-size: 29px;
+        }
+        .trek-section-copy h2 {
+            font-size: 15px;
+        }
+        .trek-detail #map,
+        .trek-detail #map.leaflet-container {
+            height: 380px;
+        }
+        .map-legend-title {
+            width: 100%;
+        }
+        .trek-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+    @media (max-width: 350px) {
+        .trek-detail-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .trek-detail *,
+        .trek-detail *::before,
+        .trek-detail *::after {
+            animation: none !important;
+            transition: none !important;
         }
     }
 </style>
 {% endblock %}
-
 {% block content %}
-
-<!-- =====================================
-     VOLVER
-===================================== -->
-<p>
-    <a href="{% url 'dashboard:trekkings' %}">
-        ← Volver a trekkings
-    </a>
-</p>
-
-<!-- =====================================
-     INFORMACIÓN GENERAL
-===================================== -->
-<h1>
-    Trekking #{{ trekking.pk }} — {{ trekking.user.username }}
-</h1>
-
-<div class="stats">
-    <article>
-        <small>Estado</small>
-        <strong>{{ trekking.get_status_display }}</strong>
-    </article>
-
-    <article>
-        <small>Parque</small>
-        <strong>{{ trekking.trail.park.name }}</strong>
-    </article>
-
-    <article>
-        <small>Sendero</small>
-        <strong>{{ trekking.trail.name }}</strong>
-    </article>
-
-    <article>
-        <small>Puntos GPS recibidos</small>
-        <strong>{{ gps_count }}</strong>
-    </article>
-
-    <article>
-        <small>Checkpoints del sendero</small>
-        <strong>{{ map_checkpoints|length }}</strong>
-    </article>
-
-    <article>
-        <small>Eventos QR recibidos</small>
-        <strong>{{ qr_events|length }}</strong>
-    </article>
+<div class="trek-detail">
+    <!-- ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="td-icon-back" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </symbol>
+            <symbol id="td-icon-user" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21v-2a8 8 0 0 1 16 0v2"/>
+            </symbol>
+            <symbol id="td-icon-users" viewBox="0 0 24 24">
+                <circle cx="9" cy="7" r="3"/>
+                <path d="M2 21v-3a7 7 0 0 1 14 0v3M17 4a3 3 0 0 1 0 6M18 13a5 5 0 0 1 4 5v3"/>
+            </symbol>
+            <symbol id="td-icon-trail" viewBox="0 0 24 24">
+                <circle cx="5" cy="19" r="2"/>
+                <circle cx="19" cy="5" r="2"/>
+                <path d="M7 19h7a4 4 0 0 0 0-8h-4a3 3 0 0 1 0-6h7"/>
+            </symbol>
+            <symbol id="td-icon-gps" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7"/>
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </symbol>
+            <symbol id="td-icon-qr" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <path d="M14 14h3v3h4v4h-7z"/>
+            </symbol>
+            <symbol id="td-icon-flag" viewBox="0 0 24 24">
+                <path d="M5 21V3M5 4c5-5 10 5 15 0v11c-5 5-10-5-15 0"/>
+            </symbol>
+            <symbol id="td-icon-check" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M8 12l3 3 5-6"/>
+            </symbol>
+            <symbol id="td-icon-phone" viewBox="0 0 24 24">
+                <path d="M5 3h4l2 5-3 2a15 15 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-2z"/>
+            </symbol>
+            <symbol id="td-icon-camera" viewBox="0 0 24 24">
+                <path d="M4 6h4l2-3h4l2 3h4a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
+                <circle cx="12" cy="13" r="4"/>
+            </symbol>
+            <symbol id="td-icon-info" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 7h.01"/>
+            </symbol>
+            <symbol id="td-icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+            </symbol>
+            <symbol id="td-icon-inbox" viewBox="0 0 24 24">
+                <path d="M4 4h16l2 10v6H2v-6L4 4zM2 14h6l2 3h4l2-3h6"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- ENCABEZADO -->
+    <section class="trek-header">
+        <div class="trek-landscape" aria-hidden="true">
+            <img src="{% static 'dashboard/images/mountain-header.jpg' %}" alt="" decoding="async">
+        </div>
+        <div class="trek-header-content">
+            <a href="{% url 'dashboard:trekkings' %}" class="trek-back">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-back"/></svg>
+                Volver a trekkings
+            </a>
+            <span class="trek-eyebrow">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+                EXPLORACIÓN Y TRAZABILIDAD
+            </span>
+            <h1>Trekking #{{ trekking.pk }}</h1>
+            <p class="trek-header-description">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-user"/></svg>
+                Excursionista: {{ trekking.user.username }}
+            </p>
+        </div>
+        <div class="trek-header-status">
+            {% if trekking.status == "ACTIVE" or trekking.status == "IN_PROGRESS" %}
+                <span class="trek-badge active">{{ trekking.get_status_display }}</span>
+            {% elif trekking.status == "COMPLETED" %}
+                <span class="trek-badge completed">{{ trekking.get_status_display }}</span>
+            {% elif trekking.status == "CANCELLED" %}
+                <span class="trek-badge cancelled">{{ trekking.get_status_display }}</span>
+            {% elif trekking.status == "RESCUE" %}
+                <span class="trek-badge rescue">{{ trekking.get_status_display }}</span>
+            {% else %}
+                <span class="trek-badge">{{ trekking.get_status_display }}</span>
+            {% endif %}
+        </div>
+    </section>
+    <!-- INFORMACIÓN GENERAL - TARJETAS ORIGINALES -->
+    <section class="trek-detail-stats" aria-label="Información general del trekking">
+        <article class="trek-detail-stat">
+            <div class="trek-stat-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-activity"/></svg>
+            </div>
+            <span class="trek-stat-label">Estado del trekking</span>
+            <strong class="trek-stat-value">{{ trekking.get_status_display }}</strong>
+        </article>
+        <article class="trek-detail-stat">
+            <div class="trek-stat-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+            </div>
+            <span class="trek-stat-label">Parque</span>
+            <strong class="trek-stat-value">{{ trekking.trail.park.name }}</strong>
+        </article>
+        <article class="trek-detail-stat">
+            <div class="trek-stat-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-trail"/></svg>
+            </div>
+            <span class="trek-stat-label">Sendero</span>
+            <strong class="trek-stat-value">{{ trekking.trail.name }}</strong>
+        </article>
+        <article class="trek-detail-stat">
+            <div class="trek-stat-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-gps"/></svg>
+            </div>
+            <span class="trek-stat-label">Puntos GPS recibidos</span>
+            <strong class="trek-stat-value number">{{ gps_count }}</strong>
+        </article>
+        <article class="trek-detail-stat">
+            <div class="trek-stat-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+            </div>
+            <span class="trek-stat-label">Checkpoints del sendero</span>
+            <strong class="trek-stat-value number">{{ map_checkpoints|length }}</strong>
+        </article>
+        <article class="trek-detail-stat">
+            <div class="trek-stat-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-qr"/></svg>
+            </div>
+            <span class="trek-stat-label">Eventos QR recibidos</span>
+            <strong class="trek-stat-value number">{{ qr_events|length }}</strong>
+        </article>
+    </section>
+    <!-- FECHAS DEL TREKKING -->
+    <section class="trek-timeline" aria-label="Fechas de la excursión">
+        <div class="trek-timeline-item">
+            <div class="trek-timeline-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-flag"/></svg>
+            </div>
+            <div class="trek-timeline-copy">
+                <small>Inicio de excursión</small>
+                <strong>{{ trekking.started_at|date:"d/m/Y H:i" }}</strong>
+            </div>
+        </div>
+        <div class="trek-timeline-item">
+            <div class="trek-timeline-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+            </div>
+            <div class="trek-timeline-copy">
+                <small>Regreso estimado</small>
+                <strong>{{ trekking.estimated_return_time|date:"d/m/Y H:i"|default:"Sin definir" }}</strong>
+            </div>
+        </div>
+        <div class="trek-timeline-item">
+            <div class="trek-timeline-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-check"/></svg>
+            </div>
+            <div class="trek-timeline-copy">
+                <small>Finalización</small>
+                <strong>{% if trekking.finished_at %}{{ trekking.finished_at|date:"d/m/Y H:i" }}{% else %}Sin finalizar{% endif %}</strong>
+            </div>
+        </div>
+    </section>
+    <!-- MAPA DEL TREKKING -->
+    <section class="trek-section">
+        <div class="trek-section-heading">
+            <div class="trek-section-title">
+                <div class="trek-section-icon">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-map"/></svg>
+                </div>
+                <div class="trek-section-copy">
+                    <h2>Mapa del trekking</h2>
+                    <p>Visualización de la ruta oficial del sendero, recorrido GPS recibido y checkpoints físicos.</p>
+                </div>
+            </div>
+            <span class="trek-section-count">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-gps"/></svg>
+                Datos sincronizados
+            </span>
+        </div>
+        <div class="trek-section-body">
+            {% if route_geojson or map_points or map_checkpoints %}
+                <div class="trek-legends">
+                    <div class="map-legend">
+                        <span class="map-legend-title">Recorrido:</span>
+                        {% if route_geojson %}
+                            <div class="map-legend-item">
+                                <span class="map-legend-line official"></span>
+                                <span>Ruta oficial</span>
+                            </div>
+                        {% endif %}
+                        {% if map_points %}
+                            <div class="map-legend-item">
+                                <span class="map-legend-line gps"></span>
+                                <span>Recorrido GPS</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="map-legend-dot start"></span>
+                                <span>Primer punto GPS</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="map-legend-dot last"></span>
+                                <span>Última ubicación GPS</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if map_checkpoints %}
+                        <div class="map-legend">
+                            <span class="map-legend-title">Checkpoints:</span>
+                            <div class="map-legend-item">
+                                <span class="map-legend-dot pending"></span>
+                                <span>Sin escanear</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="map-legend-dot outbound"></span>
+                                <span>Ida registrada</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="map-legend-dot return"></span>
+                                <span>Regreso registrado</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="map-legend-dot complete"></span>
+                                <span>Ambos escaneos</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div id="map" aria-label="Mapa del trekking" role="region"></div>
+                <p id="map-status" class="map-warning" role="status"></p>
+                <div class="map-note">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-info"/></svg>
+                    <span>Azul discontinuo: ruta oficial del sendero. Verde lima: recorrido GPS sincronizado. Los marcadores de checkpoints indican registros QR recibidos y almacenados en Django, no posiciones GPS en tiempo real.</span>
+                </div>
+            {% else %}
+                <div class="trek-empty map-empty">
+                    <div class="trek-empty-icon">
+                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-map"/></svg>
+                    </div>
+                    <h3>No hay información geográfica disponible</h3>
+                    <p>Este trekking todavía no tiene ruta oficial, puntos GPS ni checkpoints georreferenciados disponibles.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+    <!-- ACOMPAÑANTES -->
+    <section class="trek-section">
+        <div class="trek-section-heading">
+            <div class="trek-section-title">
+                <div class="trek-section-icon blue">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-users"/></svg>
+                </div>
+                <div class="trek-section-copy">
+                    <h2>Acompañantes</h2>
+                    <p>Personas asociadas a la excursión y sus contactos de emergencia.</p>
+                </div>
+            </div>
+            <span class="trek-section-count">
+                <strong>{{ companions.count }}</strong> acompañantes
+            </span>
+        </div>
+        <div class="table-wrap trek-table-wrap">
+            <table class="trek-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">Contacto de emergencia</th>
+                        <th scope="col">Teléfono</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for companion in companions %}
+                        <tr>
+                            <td>
+                                <div class="trek-user">
+                                    <span class="trek-user-avatar">{{ companion.first_name|slice:":1"|upper }}</span>
+                                    <span class="trek-user-name">{{ companion.first_name }} {{ companion.last_name }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="trek-table-item">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-user"/></svg>
+                                    {{ companion.emergency_contact_name }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="trek-table-item">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-phone"/></svg>
+                                    {{ companion.emergency_contact_phone }}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3" class="trek-empty-cell">
+                                <div class="trek-empty">
+                                    <div class="trek-empty-icon">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-users"/></svg>
+                                    </div>
+                                    <h3>No hay acompañantes registrados</h3>
+                                    <p>No existen acompañantes asociados a este trekking.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <!-- HISTORIAL QR OFFLINE -->
+    <section class="trek-section">
+        <div class="trek-section-heading">
+            <div class="trek-section-title">
+                <div class="trek-section-icon purple">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-qr"/></svg>
+                </div>
+                <div class="trek-section-copy">
+                    <h2>Historial de checkpoints QR</h2>
+                    <p>Eventos QR ordenados según la fecha real del escaneo.</p>
+                </div>
+            </div>
+            <span class="trek-section-count">
+                <strong>{{ qr_events|length }}</strong> eventos registrados
+            </span>
+        </div>
+        <div class="trek-section-body">
+            <div class="map-note" style="margin-top:0;">
+                <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-info"/></svg>
+                <span>La recepción en Django puede producirse posteriormente si el dispositivo estaba offline. La fecha del escaneo corresponde al momento en que ocurrió el evento.</span>
+            </div>
+        </div>
+        <div class="table-wrap trek-table-wrap">
+            <table class="trek-table trek-qr-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Checkpoint</th>
+                        <th scope="col">Evento</th>
+                        <th scope="col">Fecha del escaneo</th>
+                        <th scope="col">Recibido en Django</th>
+                        <th scope="col">Identificador QR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in qr_events %}
+                        <tr>
+                            <td>
+                                <div class="trek-table-item">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                                    {{ event.checkpoint.name }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="trek-qr-event">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-qr"/></svg>
+                                    {{ event.get_event_type_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="trek-date">
+                                    <strong>{{ event.occurred_at|date:"d/m/Y" }}</strong>
+                                    <small>
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                                        {{ event.occurred_at|date:"H:i:s" }}
+                                    </small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="trek-date">
+                                    <strong>{{ event.received_at|date:"d/m/Y" }}</strong>
+                                    <small>
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                                        {{ event.received_at|date:"H:i:s" }}
+                                    </small>
+                                </div>
+                            </td>
+                            <td>
+                                <code class="trek-qr-code">{{ event.qr_identifier }}</code>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="trek-empty-cell">
+                                <div class="trek-empty">
+                                    <div class="trek-empty-icon">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-qr"/></svg>
+                                    </div>
+                                    <h3>No hay eventos QR registrados</h3>
+                                    <p>No existen escaneos QR sincronizados para este trekking.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <!-- REGISTROS DE CHECKPOINT -->
+    {% if checkpoints %}
+        <section class="trek-section">
+            <div class="trek-section-heading">
+                <div class="trek-section-title">
+                    <div class="trek-section-icon">
+                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                    </div>
+                    <div class="trek-section-copy">
+                        <h2>Registros de checkpoint</h2>
+                        <p>Registros almacenados en el modelo CheckpointRecord.</p>
+                    </div>
+                </div>
+                <span class="trek-section-count">
+                    <strong>{{ checkpoints|length }}</strong> registros
+                </span>
+            </div>
+            <div class="table-wrap trek-table-wrap">
+                <table class="trek-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Checkpoint</th>
+                            <th scope="col">Fecha y hora</th>
+                            <th scope="col">Latitud</th>
+                            <th scope="col">Longitud</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for checkpoint in checkpoints %}
+                            <tr>
+                                <td>
+                                    <div class="trek-table-item">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                                        {{ checkpoint.checkpoint.name }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="trek-date">
+                                        <strong>{{ checkpoint.registered_at|date:"d/m/Y" }}</strong>
+                                        <small>{{ checkpoint.registered_at|date:"H:i:s" }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="trek-coordinate">{{ checkpoint.latitude }}</span>
+                                </td>
+                                <td>
+                                    <span class="trek-coordinate">{{ checkpoint.longitude }}</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+    <!-- INCIDENTES DEL TREKKING -->
+    <section class="trek-section">
+        <div class="trek-section-heading">
+            <div class="trek-section-title">
+                <div class="trek-section-icon orange">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-alert"/></svg>
+                </div>
+                <div class="trek-section-copy">
+                    <h2>Incidentes del trekking</h2>
+                    <p>Reportes y registros visuales enviados durante la excursión.</p>
+                </div>
+            </div>
+            <span class="trek-section-count">
+                <strong>{{ incidents|length }}</strong> incidentes
+            </span>
+        </div>
+        <div class="table-wrap trek-table-wrap">
+            <table class="trek-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Tipo de incidente</th>
+                        <th scope="col">Descripción</th>
+                        <th scope="col">Fecha</th>
+                        <th scope="col">Fotografía</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for incident in incidents %}
+                        <tr>
+                            <td>
+                                <span class="trek-incident-type">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-alert"/></svg>
+                                    {{ incident.get_incident_type_display }}
+                                </span>
+                            </td>
+                            <td class="trek-description-cell">{{ incident.description }}</td>
+                            <td>
+                                <div class="trek-date">
+                                    <strong>{{ incident.registered_at|date:"d/m/Y" }}</strong>
+                                    <small>{{ incident.registered_at|date:"H:i" }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if incident.photo %}
+                                    <a href="{{ incident.photo.url }}" target="_blank" rel="noopener noreferrer" class="trek-photo-link">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-camera"/></svg>
+                                        Ver fotografía
+                                    </a>
+                                {% else %}
+                                    <span class="trek-muted">Sin fotografía</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="trek-empty-cell">
+                                <div class="trek-empty">
+                                    <div class="trek-empty-icon">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-shield"/></svg>
+                                    </div>
+                                    <h3>No hay incidentes registrados</h3>
+                                    <p>No existen reportes de incidentes asociados a este trekking.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <!-- SOLICITUDES DE RESCATE -->
+    <section class="trek-section">
+        <div class="trek-section-heading">
+            <div class="trek-section-title">
+                <div class="trek-section-icon red">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-rescue"/></svg>
+                </div>
+                <div class="trek-section-copy">
+                    <h2>Solicitudes de rescate</h2>
+                    <p>Historial de solicitudes SOS asociadas a la excursión.</p>
+                </div>
+            </div>
+            <span class="trek-section-count">
+                <strong>{{ rescues|length }}</strong> solicitudes
+            </span>
+        </div>
+        <div class="table-wrap trek-table-wrap">
+            <table class="trek-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Inicio</th>
+                        <th scope="col">Cierre</th>
+                        <th scope="col">Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rescue in rescues %}
+                        <tr class="{% if rescue.status == 'ACTIVE' %}trek-row-active{% endif %}">
+                            <td>
+                                {% if rescue.status == "ACTIVE" %}
+                                    <span class="trek-badge rescue">{{ rescue.get_status_display }}</span>
+                                {% elif rescue.status == "COMPLETED" %}
+                                    <span class="trek-badge completed">{{ rescue.get_status_display }}</span>
+                                {% elif rescue.status == "CANCELLED" %}
+                                    <span class="trek-badge cancelled">{{ rescue.get_status_display }}</span>
+                                {% else %}
+                                    <span class="trek-badge">{{ rescue.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="trek-date">
+                                    <strong>{{ rescue.started_at|date:"d/m/Y" }}</strong>
+                                    <small>{{ rescue.started_at|date:"H:i" }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if rescue.finished_at %}
+                                    <div class="trek-date">
+                                        <strong>{{ rescue.finished_at|date:"d/m/Y" }}</strong>
+                                        <small>{{ rescue.finished_at|date:"H:i" }}</small>
+                                    </div>
+                                {% else %}
+                                    <span class="trek-muted">Sin cierre registrado</span>
+                                {% endif %}
+                            </td>
+                            <td class="trek-description-cell">{{ rescue.notes|default:"—" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="trek-empty-cell">
+                                <div class="trek-empty">
+                                    <div class="trek-empty-icon">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-rescue"/></svg>
+                                    </div>
+                                    <h3>No hay solicitudes de rescate</h3>
+                                    <p>No existen solicitudes SOS registradas para este trekking.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <!-- PIE DE PÁGINA -->
+    <footer class="trek-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span class="trek-footer-info">
+            <svg class="trek-icon" aria-hidden="true"><use href="#td-icon-shield"/></svg>
+            Información basada en registros sincronizados
+        </span>
+    </footer>
 </div>
-
-<p>
-    <b>Inicio:</b>
-    {{ trekking.started_at|date:"d/m/Y H:i" }}
-
-    · <b>Regreso estimado:</b>
-    {{ trekking.estimated_return_time|date:"d/m/Y H:i" }}
-
-    · <b>Finalización:</b>
-    {% if trekking.finished_at %}
-        {{ trekking.finished_at|date:"d/m/Y H:i" }}
-    {% else %}
-        Sin finalizar
-    {% endif %}
-</p>
-
-<!-- =====================================
-     MAPA DEL TREKKING
-===================================== -->
-<section>
-    <h2>Mapa del trekking</h2>
-
-    <p class="subtle">
-        Visualización de la ruta oficial del sendero,
-        recorrido GPS recibido y checkpoints físicos.
-
-        Los estados QR corresponden únicamente a
-        eventos sincronizados y almacenados en Django.
-    </p>
-
-    {% if route_geojson or map_points or map_checkpoints %}
-
-        <!-- LEYENDA DE RUTAS -->
-        <div class="map-legend">
-            {% if route_geojson %}
-            <div class="map-legend-item">
-                <span class="map-legend-line official"></span>
-                <span>Ruta oficial</span>
-            </div>
-            {% endif %}
-
-            {% if map_points %}
-            <div class="map-legend-item">
-                <span class="map-legend-line gps"></span>
-                <span>Recorrido GPS</span>
-            </div>
-
-            <div class="map-legend-item">
-                <span class="map-legend-dot start"></span>
-                <span>Primer punto GPS</span>
-            </div>
-
-            <div class="map-legend-item">
-                <span class="map-legend-dot last"></span>
-                <span>Última ubicación GPS</span>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- LEYENDA DE CHECKPOINTS -->
-        {% if map_checkpoints %}
-        <div class="map-legend">
-            <div class="map-legend-item">
-                <span class="map-legend-dot pending"></span>
-                <span>Sin escanear</span>
-            </div>
-
-            <div class="map-legend-item">
-                <span class="map-legend-dot outbound"></span>
-                <span>Ida registrada</span>
-            </div>
-
-            <div class="map-legend-item">
-                <span class="map-legend-dot return"></span>
-                <span>Regreso registrado</span>
-            </div>
-
-            <div class="map-legend-item">
-                <span class="map-legend-dot complete"></span>
-                <span>Ambos escaneos</span>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- MAPA -->
-        <div
-            id="map"
-            aria-label="Mapa del trekking"
-        ></div>
-
-        <p id="map-status" class="map-warning"></p>
-
-        <p class="map-note">
-            Azul discontinuo: ruta oficial del sendero.
-            Verde lima: recorrido GPS sincronizado.
-
-            Los marcadores de checkpoints indican
-            registros QR recibidos, no posiciones GPS.
-        </p>
-
-    {% else %}
-        <p>
-            Este trekking todavía no tiene ruta oficial,
-            puntos GPS ni checkpoints georreferenciados
-            disponibles.
-        </p>
-    {% endif %}
-</section>
-
-<!-- =====================================
-     ACOMPAÑANTES
-===================================== -->
-<section>
-    <h2>Acompañantes ({{ companions.count }})</h2>
-
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Contacto de emergencia</th>
-                    <th>Teléfono</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for companion in companions %}
-                <tr>
-                    <td>
-                        {{ companion.first_name }}
-                        {{ companion.last_name }}
-                    </td>
-
-                    <td>
-                        {{ companion.emergency_contact_name }}
-                    </td>
-
-                    <td>
-                        {{ companion.emergency_contact_phone }}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3">
-                        No hay acompañantes registrados.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<!-- =====================================
-     HISTORIAL QR OFFLINE
-===================================== -->
-<section>
-    <h2>Historial de checkpoints QR</h2>
-
-    <p class="subtle">
-        Eventos QR registrados por el excursionista,
-        ordenados según la fecha real del escaneo.
-
-        La recepción en Django puede producirse
-        posteriormente si el dispositivo estaba offline.
-    </p>
-
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Checkpoint</th>
-                    <th>Evento</th>
-                    <th>Fecha del escaneo</th>
-                    <th>Recibido en Django</th>
-                    <th>Identificador QR</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for event in qr_events %}
-                <tr>
-                    <td>
-                        {{ event.checkpoint.name }}
-                    </td>
-
-                    <td>
-                        {{ event.get_event_type_display }}
-                    </td>
-
-                    <td>
-                        {{ event.occurred_at|date:"d/m/Y H:i:s" }}
-                    </td>
-
-                    <td>
-                        {{ event.received_at|date:"d/m/Y H:i:s" }}
-                    </td>
-
-                    <td>
-                        <code>{{ event.qr_identifier }}</code>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5">
-                        No existen eventos QR offline
-                        sincronizados para este trekking.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<!-- =====================================
-     CHECKPOINT RECORD TRADICIONAL
-===================================== -->
-{% if checkpoints %}
-<section>
-    <h2>Otros registros de checkpoints</h2>
-
-    <p class="subtle">
-        Registros almacenados en CheckpointRecord.
-
-        Se muestran por separado de los eventos QR
-        offline para mantener la trazabilidad.
-    </p>
-
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Checkpoint</th>
-                    <th>Fecha y hora</th>
-                    <th>Latitud</th>
-                    <th>Longitud</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for checkpoint in checkpoints %}
-                <tr>
-                    <td>
-                        {{ checkpoint.checkpoint.name }}
-                    </td>
-
-                    <td>
-                        {{ checkpoint.registered_at|date:"d/m/Y H:i:s" }}
-                    </td>
-
-                    <td>
-                        {{ checkpoint.latitude }}
-                    </td>
-
-                    <td>
-                        {{ checkpoint.longitude }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
-{% endif %}
-
-<!-- =====================================
-     INCIDENTES
-===================================== -->
-<section>
-    <h2>Incidentes del trekking</h2>
-
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Tipo</th>
-                    <th>Descripción</th>
-                    <th>Fecha</th>
-                    <th>Fotografía</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for incident in incidents %}
-                <tr>
-                    <td>
-                        {{ incident.get_incident_type_display }}
-                    </td>
-
-                    <td>
-                        {{ incident.description }}
-                    </td>
-
-                    <td>
-                        {{ incident.registered_at|date:"d/m/Y H:i" }}
-                    </td>
-
-                    <td>
-                        {% if incident.photo %}
-                        <a
-                            href="{{ incident.photo.url }}"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Ver fotografía
-                        </a>
-                        {% else %}
-                        Sin fotografía
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4">
-                        No hay incidentes registrados
-                        en este trekking.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<!-- =====================================
-     RESCATES
-===================================== -->
-<section>
-    <h2>Solicitudes de rescate</h2>
-
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Estado</th>
-                    <th>Inicio</th>
-                    <th>Cierre</th>
-                    <th>Observaciones</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for rescue in rescues %}
-                <tr>
-                    <td>
-                        {{ rescue.get_status_display }}
-                    </td>
-
-                    <td>
-                        {{ rescue.started_at|date:"d/m/Y H:i" }}
-                    </td>
-
-                    <td>
-                        {% if rescue.finished_at %}
-                            {{ rescue.finished_at|date:"d/m/Y H:i" }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        {{ rescue.notes|default:"—" }}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4">
-                        No existen solicitudes de rescate
-                        para este trekking.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<!-- =====================================
-     DATOS PARA JAVASCRIPT
-===================================== -->
+<!-- DATOS PARA JAVASCRIPT -->
 {{ map_points|json_script:"gps-data" }}
 {{ route_geojson|json_script:"official-route-data" }}
 {{ map_checkpoints|json_script:"checkpoint-map-data" }}
-
 {% endblock %}
-
 {% block scripts %}
 {% if route_geojson or map_points or map_checkpoints %}
-
-<!-- LEAFLET JAVASCRIPT -->
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-
-    // =====================================
-    // ELEMENTOS
-    // =====================================
+    // ELEMENTOS DEL MAPA
     const mapElement = document.getElementById("map");
-    const mapStatus = document.getElementById("map-status");
     const gpsElement = document.getElementById("gps-data");
-
-    const routeElement = document.getElementById(
-        "official-route-data"
-    );
-
-    const checkpointElement = document.getElementById(
-        "checkpoint-map-data"
-    );
-
+    const routeElement = document.getElementById("official-route-data");
+    const checkpointElement = document.getElementById("checkpoint-map-data");
+    const mapStatus = document.getElementById("map-status");
     if (!mapElement) {
         return;
     }
-
     if (typeof L === "undefined") {
         if (mapStatus) {
-            mapStatus.textContent =
-                "No se pudo cargar la biblioteca Leaflet.";
+            mapStatus.textContent = "No se pudo cargar la biblioteca Leaflet.";
         }
         return;
     }
-
-    // =====================================
     // LECTURA SEGURA DE JSON
-    // =====================================
     function readJSON(element, fallback) {
         if (!element) {
             return fallback;
         }
-
         try {
-            const result = JSON.parse(
-                element.textContent
-            );
-
-            return result === null
-                ? fallback
-                : result;
-
+            const result = JSON.parse(element.textContent);
+            return result === null ? fallback : result;
         } catch (error) {
-            console.error(
-                "No se pudieron interpretar datos del mapa:",
-                error
-            );
-
+            console.error("No se pudieron interpretar datos del mapa:", error);
             return fallback;
         }
     }
-
     const rawGPS = readJSON(gpsElement, []);
-
-    const officialGeoJSON = readJSON(
-        routeElement,
-        null
-    );
-
-    const rawCheckpoints = readJSON(
-        checkpointElement,
-        []
-    );
-
-    // =====================================
+    const officialGeoJSON = readJSON(routeElement, null);
+    const rawCheckpoints = readJSON(checkpointElement, []);
     // VALIDACIÓN DE COORDENADAS
-    // =====================================
     function validCoordinate(lat, lng) {
         return (
             Number.isFinite(lat) &&
@@ -739,179 +1742,110 @@ document.addEventListener("DOMContentLoaded", function () {
             lng <= 180
         );
     }
-
-    const points = (
-        Array.isArray(rawGPS)
-            ? rawGPS
-            : []
-    )
-    .filter(function (point) {
-        return (
-            point &&
-            point.lat !== null &&
-            point.lat !== undefined &&
-            point.lng !== null &&
-            point.lng !== undefined &&
-            point.lat !== "" &&
-            point.lng !== ""
-        );
-    })
-    .map(function (point) {
-        return {
-            lat: Number(point.lat),
-            lng: Number(point.lng),
-            time: point.time,
-            accuracy: point.accuracy
-        };
-    })
-    .filter(function (point) {
-        return validCoordinate(
-            point.lat,
-            point.lng
-        );
-    });
-
-    const checkpoints = (
-        Array.isArray(rawCheckpoints)
-            ? rawCheckpoints
-            : []
-    )
-    .filter(function (checkpoint) {
-        return (
-            checkpoint &&
-            checkpoint.lat !== null &&
-            checkpoint.lat !== undefined &&
-            checkpoint.lng !== null &&
-            checkpoint.lng !== undefined &&
-            checkpoint.lat !== "" &&
-            checkpoint.lng !== ""
-        );
-    })
-    .map(function (checkpoint) {
-        return {
-            ...checkpoint,
-            lat: Number(checkpoint.lat),
-            lng: Number(checkpoint.lng)
-        };
-    })
-    .filter(function (checkpoint) {
-        return validCoordinate(
-            checkpoint.lat,
-            checkpoint.lng
-        );
-    });
-
-    // =====================================
+    const points = (Array.isArray(rawGPS) ? rawGPS : [])
+        .filter(function (point) {
+            return (
+                point &&
+                point.lat !== null &&
+                point.lat !== undefined &&
+                point.lng !== null &&
+                point.lng !== undefined &&
+                point.lat !== "" &&
+                point.lng !== ""
+            );
+        })
+        .map(function (point) {
+            return {
+                lat: Number(point.lat),
+                lng: Number(point.lng),
+                time: point.time,
+                accuracy: point.accuracy
+            };
+        })
+        .filter(function (point) {
+            return validCoordinate(point.lat, point.lng);
+        });
+    const checkpoints = (Array.isArray(rawCheckpoints) ? rawCheckpoints : [])
+        .filter(function (checkpoint) {
+            return (
+                checkpoint &&
+                checkpoint.lat !== null &&
+                checkpoint.lat !== undefined &&
+                checkpoint.lng !== null &&
+                checkpoint.lng !== undefined &&
+                checkpoint.lat !== "" &&
+                checkpoint.lng !== ""
+            );
+        })
+        .map(function (checkpoint) {
+            return {
+                ...checkpoint,
+                lat: Number(checkpoint.lat),
+                lng: Number(checkpoint.lng)
+            };
+        })
+        .filter(function (checkpoint) {
+            return validCoordinate(checkpoint.lat, checkpoint.lng);
+        });
     // CREAR MAPA LEAFLET
-    // =====================================
     const map = L.map("map", {
         zoomControl: true,
         scrollWheelZoom: true
     });
-
-    // =====================================
     // CAPA BASE OPENSTREETMAP
-    // =====================================
-    const tileLayer = L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-            maxZoom: 19,
-            attribution: "&copy; OpenStreetMap contributors",
-            referrerPolicy: "strict-origin-when-cross-origin"
-        }
-    );
-
+    const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors",
+        referrerPolicy: "strict-origin-when-cross-origin"
+    });
     let tileErrorReported = false;
-
     tileLayer.on("tileerror", function () {
         if (!tileErrorReported && mapStatus) {
             tileErrorReported = true;
-
-            mapStatus.textContent =
-                "Algunas imágenes del mapa no pudieron cargarse. " +
-                "Los datos geográficos siguen disponibles.";
+            mapStatus.textContent = "Algunas imágenes del mapa no pudieron cargarse. Los datos geográficos siguen disponibles.";
         }
     });
-
     tileLayer.addTo(map);
-
-    // =====================================
     // CAPAS DEL MAPA
-    // =====================================
     const officialRouteGroup = L.layerGroup().addTo(map);
     const gpsRouteGroup = L.layerGroup().addTo(map);
     const checkpointGroup = L.layerGroup().addTo(map);
-
-    // =====================================
     // RUTA OFICIAL DEL SENDERO
-    // =====================================
     let officialRouteLayer = null;
-
-    if (
-        officialGeoJSON &&
-        typeof officialGeoJSON === "object"
-    ) {
+    if (officialGeoJSON && typeof officialGeoJSON === "object") {
         try {
-            officialRouteLayer = L.geoJSON(
-                officialGeoJSON,
-                {
-                    style: {
-                        color: "#368BFA",
-                        weight: 5,
-                        opacity: 0.9,
-                        dashArray: "10, 7"
-                    }
+            officialRouteLayer = L.geoJSON(officialGeoJSON, {
+                style: {
+                    color: "#368BFA",
+                    weight: 5,
+                    opacity: 0.9,
+                    dashArray: "10, 7"
                 }
-            );
-
+            });
             const bounds = officialRouteLayer.getBounds();
-
             if (bounds.isValid()) {
                 officialRouteLayer.addTo(officialRouteGroup);
-
-                officialRouteLayer.bindPopup(
-                    "Ruta oficial del sendero"
-                );
+                officialRouteLayer.bindPopup("Ruta oficial del sendero");
             } else {
                 officialRouteLayer = null;
             }
-
         } catch (error) {
-            console.error(
-                "Error al representar GeoJSON:",
-                error
-            );
-
+            console.error("Error al representar GeoJSON:", error);
             officialRouteLayer = null;
-
             if (mapStatus) {
-                mapStatus.textContent =
-                    "No se pudo representar la ruta oficial.";
+                mapStatus.textContent = "No se pudo representar la ruta oficial.";
             }
         }
     }
-
-    // =====================================
-    // RECORRIDO GPS — FILTRO DE PRECISIÓN
-    // =====================================
-
-    // Todos los puntos originales se conservan.
-    // Los marcadores de inicio y última posición
-    // siguen utilizando el historial completo.
+    // RECORRIDO GPS Y FILTRO DE PRECISIÓN
     const coordinates = points.map(function (point) {
         return [point.lat, point.lng];
     });
-
-    // Umbral provisional utilizado únicamente
-    // para visualizar la línea del recorrido.
     const MAX_GPS_ACCURACY = 50;
-
     const gpsSegments = [];
     let currentSegment = [];
-
     points.forEach(function (point) {
         const accuracy = Number(point.accuracy);
-
         const validAccuracy =
             point.accuracy !== null &&
             point.accuracy !== undefined &&
@@ -919,184 +1853,104 @@ document.addEventListener("DOMContentLoaded", function () {
             Number.isFinite(accuracy) &&
             accuracy >= 0 &&
             accuracy <= MAX_GPS_ACCURACY;
-
         if (validAccuracy) {
-            currentSegment.push([
-                point.lat,
-                point.lng
-            ]);
+            currentSegment.push([point.lat, point.lng]);
         } else {
-            // Un punto impreciso interrumpe el tramo.
-            // No se dibuja una línea que atraviese
-            // automáticamente ubicaciones descartadas.
             if (currentSegment.length >= 2) {
                 gpsSegments.push(currentSegment);
             }
-
             currentSegment = [];
         }
     });
-
-    // Conservar el último tramo si contiene
-    // al menos dos posiciones aceptables.
     if (currentSegment.length >= 2) {
         gpsSegments.push(currentSegment);
     }
-
-    // Dibujar cada tramo por separado.
     gpsSegments.forEach(function (segment) {
-        L.polyline(
-            segment,
-            {
-                color: "#B3E853",
-                weight: 4,
-                opacity: 0.95
-            }
-        ).addTo(gpsRouteGroup);
+        L.polyline(segment, {
+            color: "#B3E853",
+            weight: 4,
+            opacity: 0.95
+        }).addTo(gpsRouteGroup);
     });
-
-    // =====================================
     // PRIMER PUNTO GPS
-    // =====================================
     if (coordinates.length > 0) {
-        L.circleMarker(
-            coordinates[0],
-            {
-                radius: 7,
-                color: "#65C0FF",
-                fillColor: "#65C0FF",
-                fillOpacity: 1,
-                weight: 2
-            }
-        )
+        L.circleMarker(coordinates[0], {
+            radius: 7,
+            color: "#65C0FF",
+            fillColor: "#65C0FF",
+            fillOpacity: 1,
+            weight: 2
+        })
         .addTo(gpsRouteGroup)
         .bindPopup("Primer punto GPS registrado");
     }
-
-    // =====================================
-    // ÚLTIMA UBICACIÓN RECIBIDA
-    // =====================================
+    // ÚLTIMA UBICACIÓN GPS RECIBIDA
     if (coordinates.length > 0) {
-        const lastPoint = points[
-            points.length - 1
-        ];
-
-        const lastMarker = L.circleMarker(
-            coordinates[
-                coordinates.length - 1
-            ],
-            {
-                radius: 8,
-                color: "#F0B94B",
-                fillColor: "#F0B94B",
-                fillOpacity: 1,
-                weight: 2
-            }
-        ).addTo(gpsRouteGroup);
-
+        const lastPoint = points[points.length - 1];
+        const lastMarker = L.circleMarker(coordinates[coordinates.length - 1], {
+            radius: 8,
+            color: "#F0B94B",
+            fillColor: "#F0B94B",
+            fillOpacity: 1,
+            weight: 2
+        }).addTo(gpsRouteGroup);
         const popup = document.createElement("div");
         const title = document.createElement("strong");
-
-        title.textContent =
-            "Última ubicación GPS recibida";
-
+        title.textContent = "Última ubicación GPS recibida";
         popup.appendChild(title);
-
         if (lastPoint.time) {
             const dateLine = document.createElement("p");
-
-            dateLine.textContent =
-                "Registro: " + lastPoint.time;
-
+            dateLine.textContent = "Registro: " + lastPoint.time;
             popup.appendChild(dateLine);
         }
-
         if (
             lastPoint.accuracy !== null &&
             lastPoint.accuracy !== undefined &&
             lastPoint.accuracy !== ""
         ) {
             const accuracyLine = document.createElement("p");
-
-            accuracyLine.textContent =
-                "Precisión: " +
-                lastPoint.accuracy +
-                " m";
-
+            accuracyLine.textContent = "Precisión: " + lastPoint.accuracy + " m";
             popup.appendChild(accuracyLine);
         }
-
         lastMarker.bindPopup(popup);
     }
-
-    // =====================================
-    // ESTADOS DE CHECKPOINTS
-    // =====================================
+    // ESTADOS DE CHECKPOINTS - COLORES ORIGINALES
     const checkpointColors = {
         PENDING: "#8B98A5",
         OUTBOUND: "#368BFA",
         RETURN: "#F0B94B",
         COMPLETE: "#A8E647"
     };
-
     const checkpointLabels = {
         PENDING: "Sin escaneos registrados",
         OUTBOUND: "Escaneo de ida registrado",
         RETURN: "Escaneo de regreso registrado",
         COMPLETE: "Escaneos requeridos registrados"
     };
-
-    // =====================================
     // MARCADORES DE CHECKPOINTS
-    // =====================================
     checkpoints.forEach(function (checkpoint) {
         const status = checkpoint.status || "PENDING";
-
-        const color =
-            checkpointColors[status] ||
-            checkpointColors.PENDING;
-
-        const marker = L.circleMarker(
-            [checkpoint.lat, checkpoint.lng],
-            {
-                radius: 10,
-                color: "#FFFFFF",
-                weight: 2,
-                fillColor: color,
-                fillOpacity: 1
-            }
-        );
-
+        const color = checkpointColors[status] || checkpointColors.PENDING;
+        const marker = L.circleMarker([checkpoint.lat, checkpoint.lng], {
+            radius: 10,
+            color: "#FFFFFF",
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 1
+        });
         marker.addTo(checkpointGroup);
-
-        // =================================
         // POPUP DEL CHECKPOINT
-        // =================================
         const popup = document.createElement("div");
         popup.className = "hito-checkpoint-popup";
-
         const title = document.createElement("strong");
-
-        title.textContent =
-            checkpoint.sequence +
-            ". " +
-            checkpoint.name;
-
+        title.textContent = checkpoint.sequence + ". " + checkpoint.name;
         popup.appendChild(title);
-
-        // Estado actual
         const statusLine = document.createElement("p");
-
-        statusLine.textContent =
-            checkpointLabels[status] ||
-            "Estado desconocido";
-
+        statusLine.textContent = checkpointLabels[status] || "Estado desconocido";
         popup.appendChild(statusLine);
-
-        // Tipo de checkpoint
+        // TIPO DE CHECKPOINT
         const typeLine = document.createElement("p");
         let typeLabel = "Checkpoint intermedio";
-
         if (checkpoint.type === "ENTRY") {
             typeLabel = "Portería / acceso";
         } else if (checkpoint.type === "EXIT") {
@@ -1108,327 +1962,174 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (checkpoint.type === "VIEWPOINT") {
             typeLabel = "Mirador";
         }
-
-        typeLine.textContent =
-            "Tipo: " + typeLabel;
-
+        typeLine.textContent = "Tipo: " + typeLabel;
         popup.appendChild(typeLine);
-
-        // =================================
         // EVENTOS QR SINCRONIZADOS
-        // =================================
-        const events = Array.isArray(
-            checkpoint.events
-        )
-            ? checkpoint.events
-            : [];
-
+        const events = Array.isArray(checkpoint.events) ? checkpoint.events : [];
         if (events.length > 0) {
             const eventTitle = document.createElement("p");
-
-            eventTitle.textContent =
-                "Escaneos recibidos:";
-
+            eventTitle.textContent = "Escaneos recibidos:";
             popup.appendChild(eventTitle);
-
             const eventList = document.createElement("ul");
-
             events.forEach(function (event) {
                 const item = document.createElement("li");
-
-                const eventName =
-                    document.createElement("span");
-
-                eventName.textContent =
-                    event.label || event.type;
-
+                const eventName = document.createElement("span");
+                eventName.textContent = event.label || event.type;
                 item.appendChild(eventName);
-
                 const date = document.createElement("small");
-
-                date.textContent =
-                    " — " + event.occurred_at;
-
+                date.textContent = " — " + event.occurred_at;
                 item.appendChild(date);
                 eventList.appendChild(item);
             });
-
             popup.appendChild(eventList);
-
         } else {
             const noEvents = document.createElement("p");
-
-            noEvents.textContent =
-                "No existen escaneos QR " +
-                "sincronizados para este checkpoint.";
-
+            noEvents.textContent = "No existen escaneos QR sincronizados para este checkpoint.";
             popup.appendChild(noEvents);
         }
-
-        // =================================
-        // UBICACIÓN DEL CHECKPOINT
-        // =================================
+        // COORDENADAS DEL CHECKPOINT
         const position = document.createElement("small");
-
-        position.textContent =
-            "Coordenadas: " +
-            checkpoint.lat.toFixed(6) +
-            ", " +
-            checkpoint.lng.toFixed(6);
-
+        position.textContent = "Coordenadas: " + checkpoint.lat.toFixed(6) + ", " + checkpoint.lng.toFixed(6);
         popup.appendChild(position);
-
         marker.bindPopup(popup, {
             maxWidth: 320
         });
     });
-
-    // =====================================
     // BOTONES DE NAVEGACIÓN
-    // =====================================
     const navigationControl = L.control({
         position: "topleft"
     });
-
     navigationControl.onAdd = function () {
-        const container = L.DomUtil.create(
-            "div",
-            "hito-map-navigation"
-        );
-
-        L.DomEvent.disableClickPropagation(
-            container
-        );
-
-        L.DomEvent.disableScrollPropagation(
-            container
-        );
-
+        const container = L.DomUtil.create("div", "hito-map-navigation");
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
         function createButton(label, callback) {
-            const button = L.DomUtil.create(
-                "button",
-                "",
-                container
-            );
-
+            const button = L.DomUtil.create("button", "", container);
             button.type = "button";
             button.textContent = label;
-
-            L.DomEvent.on(
-                button,
-                "click",
-                callback
-            );
-
+            L.DomEvent.on(button, "click", callback);
             return button;
         }
-
-        // =================================
-        // IR A RUTA OFICIAL
-        // =================================
-        const officialButton = createButton(
-            "Ver ruta oficial",
-            function () {
-                if (!officialRouteLayer) {
-                    return;
-                }
-
-                const bounds =
-                    officialRouteLayer.getBounds();
-
-                if (!bounds.isValid()) {
-                    return;
-                }
-
-                if (!map.hasLayer(officialRouteGroup)) {
-                    map.addLayer(officialRouteGroup);
-                }
-
-                if (!map.hasLayer(checkpointGroup)) {
-                    map.addLayer(checkpointGroup);
-                }
-
+        // VER RUTA OFICIAL
+        const officialButton = createButton("Ver ruta oficial", function () {
+            if (!officialRouteLayer) {
+                return;
+            }
+            const bounds = officialRouteLayer.getBounds();
+            if (!bounds.isValid()) {
+                return;
+            }
+            if (!map.hasLayer(officialRouteGroup)) {
+                map.addLayer(officialRouteGroup);
+            }
+            if (!map.hasLayer(checkpointGroup)) {
+                map.addLayer(checkpointGroup);
+            }
+            map.fitBounds(bounds, {
+                padding: [35, 35],
+                maxZoom: 16
+            });
+        });
+        // VER RECORRIDO GPS
+        const gpsButton = createButton("Ver recorrido GPS", function () {
+            if (coordinates.length === 0) {
+                return;
+            }
+            if (!map.hasLayer(gpsRouteGroup)) {
+                map.addLayer(gpsRouteGroup);
+            }
+            if (coordinates.length > 1) {
+                map.fitBounds(L.latLngBounds(coordinates), {
+                    padding: [35, 35],
+                    maxZoom: 17
+                });
+            } else {
+                map.setView(coordinates[0], 16);
+            }
+        });
+        // VER CHECKPOINTS
+        const checkpointsButton = createButton("Ver checkpoints", function () {
+            if (checkpoints.length === 0) {
+                return;
+            }
+            if (!map.hasLayer(checkpointGroup)) {
+                map.addLayer(checkpointGroup);
+            }
+            const bounds = L.latLngBounds(checkpoints.map(function (cp) {
+                return [cp.lat, cp.lng];
+            }));
+            if (bounds.isValid()) {
                 map.fitBounds(bounds, {
                     padding: [35, 35],
                     maxZoom: 16
                 });
             }
-        );
-
-        // =================================
-        // IR AL GPS
-        // =================================
-        const gpsButton = createButton(
-            "Ver recorrido GPS",
-            function () {
-                if (coordinates.length === 0) {
-                    return;
-                }
-
-                if (!map.hasLayer(gpsRouteGroup)) {
-                    map.addLayer(gpsRouteGroup);
-                }
-
-                if (coordinates.length > 1) {
-                    map.fitBounds(
-                        L.latLngBounds(coordinates),
-                        {
-                            padding: [35, 35],
-                            maxZoom: 17
-                        }
-                    );
-                } else {
-                    map.setView(
-                        coordinates[0],
-                        16
-                    );
-                }
-            }
-        );
-
-        // =================================
-        // IR A CHECKPOINTS
-        // =================================
-        const checkpointsButton = createButton(
-            "Ver checkpoints",
-            function () {
-                if (checkpoints.length === 0) {
-                    return;
-                }
-
-                if (!map.hasLayer(checkpointGroup)) {
-                    map.addLayer(checkpointGroup);
-                }
-
-                const bounds = L.latLngBounds(
-                    checkpoints.map(function (cp) {
-                        return [cp.lat, cp.lng];
-                    })
-                );
-
-                if (bounds.isValid()) {
-                    map.fitBounds(bounds, {
-                        padding: [35, 35],
-                        maxZoom: 16
-                    });
-                }
-            }
-        );
-
-        // Deshabilitar opciones sin datos
+        });
+        // DESHABILITAR OPCIONES SIN DATOS
         if (!officialRouteLayer) {
             officialButton.disabled = true;
-            officialButton.title =
-                "No hay ruta oficial disponible";
+            officialButton.title = "No hay ruta oficial disponible";
         }
-
         if (coordinates.length === 0) {
             gpsButton.disabled = true;
-            gpsButton.title =
-                "No hay puntos GPS recibidos";
+            gpsButton.title = "No hay puntos GPS recibidos";
         }
-
         if (checkpoints.length === 0) {
             checkpointsButton.disabled = true;
-            checkpointsButton.title =
-                "No hay checkpoints disponibles";
+            checkpointsButton.title = "No hay checkpoints disponibles";
         }
-
         return container;
     };
-
     navigationControl.addTo(map);
-
-    // =====================================
     // SELECTOR DE CAPAS
-    // =====================================
-    L.control.layers(
-        null,
-        {
-            "Ruta oficial del sendero": officialRouteGroup,
-            "Recorrido GPS del excursionista": gpsRouteGroup,
-            "Checkpoints QR": checkpointGroup
-        },
-        {
-            collapsed: false,
-            position: "topright"
-        }
-    ).addTo(map);
-
-    // =====================================
+    L.control.layers(null, {
+        "Ruta oficial del sendero": officialRouteGroup,
+        "Recorrido GPS del excursionista": gpsRouteGroup,
+        "Checkpoints QR": checkpointGroup
+    }, {
+        collapsed: false,
+        position: "topright"
+    }).addTo(map);
     // ENCUADRE INICIAL
-    // =====================================
-    const officialBounds = officialRouteLayer
-        ? officialRouteLayer.getBounds()
-        : null;
-
-    if (
-        officialBounds &&
-        officialBounds.isValid()
-    ) {
-        // Priorizar el sendero oficial al abrir.
-        // Evita mostrar Talca y la cordillera
-        // demasiado alejadas en la misma vista.
-        map.fitBounds(
-            officialBounds,
-            {
-                padding: [35, 35],
-                maxZoom: 16
-            }
-        );
-
+    const officialBounds = officialRouteLayer ? officialRouteLayer.getBounds() : null;
+    if (officialBounds && officialBounds.isValid()) {
+        map.fitBounds(officialBounds, {
+            padding: [35, 35],
+            maxZoom: 16
+        });
     } else if (checkpoints.length > 0) {
-        const checkpointBounds = L.latLngBounds(
-            checkpoints.map(function (cp) {
-                return [cp.lat, cp.lng];
-            })
-        );
-
-        map.fitBounds(
-            checkpointBounds,
-            {
-                padding: [35, 35],
-                maxZoom: 16
-            }
-        );
-
+        const checkpointBounds = L.latLngBounds(checkpoints.map(function (cp) {
+            return [cp.lat, cp.lng];
+        }));
+        map.fitBounds(checkpointBounds, {
+            padding: [35, 35],
+            maxZoom: 16
+        });
     } else if (coordinates.length > 1) {
-        map.fitBounds(
-            L.latLngBounds(coordinates),
-            {
-                padding: [35, 35],
-                maxZoom: 16
-            }
-        );
-
+        map.fitBounds(L.latLngBounds(coordinates), {
+            padding: [35, 35],
+            maxZoom: 16
+        });
     } else if (coordinates.length === 1) {
-        map.setView(
-            coordinates[0],
-            16
-        );
-
+        map.setView(coordinates[0], 16);
     } else {
-        map.setView(
-            [-35.6, -71.0],
-            10
-        );
+        map.setView([-35.6, -71.0], 10);
     }
-
-    // =====================================
-    // ACTUALIZAR DIMENSIONES
-    // =====================================
+    // ACTUALIZAR DIMENSIONES DEL MAPA
     requestAnimationFrame(function () {
         map.invalidateSize();
     });
-
-    window.addEventListener(
-        "resize",
-        function () {
+    window.addEventListener("resize", function () {
+        map.invalidateSize();
+    });
+    // AJUSTAR MAPA AL ABRIR O CERRAR EL MENÚ LATERAL
+    if (typeof ResizeObserver !== "undefined") {
+        const observer = new ResizeObserver(function () {
             map.invalidateSize();
-        }
-    );
+        });
+        observer.observe(mapElement);
+    }
 });
 </script>
-
 {% endif %}
 {% endblock %}

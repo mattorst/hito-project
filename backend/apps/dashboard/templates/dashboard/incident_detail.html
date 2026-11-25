@@ -1,686 +1,700 @@
-
 {% extends "dashboard/base.html" %}
-
-{% block title %}
-Incidente #{{ incident.pk }} | Hito
-{% endblock %}
-
+{% load static %}
+{% block title %}Incidente #{{ incident.pk }} | Hito{% endblock %}
 {% block head %}
-
-<link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
->
-
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
-    .incident-section {
-        margin-top: 20px;
-        padding: 20px;
-        background: #19211c;
-        border: 1px solid #354336;
-        border-radius: 12px;
+    /* CONFIGURACIÓN GENERAL */
+    .incident-detail {width:100%;min-width:0;}
+    .incident-detail .detail-icon {width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+    .incident-detail .svg-library {position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;}
+    /* ENCABEZADO PRINCIPAL */
+    .detail-header {position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:190px;margin:-30px -30px 24px;padding:25px 30px;overflow:hidden;background:#090e11;border-bottom:1px solid rgba(255,255,255,.04);}
+    .detail-landscape {position:absolute;top:0;right:0;bottom:0;width:min(65%,1000px);z-index:-2;overflow:hidden;pointer-events:none;}
+    .detail-landscape img {display:block;width:100%;height:100%;object-fit:cover;object-position:center 60%;opacity:.85;filter:brightness(.70) saturate(.55);image-rendering:auto;}
+    .detail-landscape::after {content:"";position:absolute;inset:0;background:linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.80) 25%,rgba(9,14,17,.45) 50%,rgba(9,14,17,.15) 75%,rgba(9,14,17,.05) 100%),linear-gradient(to top,rgba(9,14,17,.90),transparent 65%);pointer-events:none;}
+    .detail-header::after {content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.95) 18%,rgba(9,14,17,.70) 35%,rgba(9,14,17,.20) 65%,transparent 90%);pointer-events:none;}
+    .detail-header-content {position:relative;z-index:1;min-width:0;}
+    .detail-back {display:inline-flex;align-items:center;gap:7px;margin-bottom:15px;color:#a3b3bc;font-size:12px;font-weight:500;transition:color .2s;}
+    .detail-back .detail-icon {width:15px;height:15px;}
+    .detail-back:hover {color:#83df83;}
+    .detail-eyebrow {display:flex;align-items:center;gap:7px;margin-bottom:7px;color:#62d36b;font-size:11px;font-weight:700;letter-spacing:1.5px;}
+    .detail-eyebrow .detail-icon {width:15px;height:15px;}
+    .detail-header h1 {margin:0 0 7px;color:#e1e8ed;font-size:clamp(27px,2.8vw,40px);font-weight:700;letter-spacing:-.8px;line-height:1.15;}
+    .detail-header-description {margin:0;color:#9ca9b0;font-size:13px;line-height:1.6;}
+    .detail-header-status {position:relative;z-index:1;flex-shrink:0;}
+    /* ESTADOS DE ATENCIÓN */
+    .incident-badge {display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #344349;border-radius:7px;background:#19252a;color:#b7c6ce;font-size:11px;font-weight:650;white-space:nowrap;}
+    .incident-badge::before {content:"";width:7px;height:7px;flex-shrink:0;background:currentColor;border-radius:50%;}
+    .incident-badge.pending {color:#facc20;border-color:rgba(250,204,32,.25);background:rgba(47,42,24,.92);}
+    .incident-badge.reviewing {color:#70b7ff;border-color:rgba(65,159,255,.25);background:rgba(24,43,59,.92);}
+    .incident-badge.resolved {color:#73dc7d;border-color:rgba(89,214,107,.25);background:rgba(28,52,36,.92);}
+    /* MENSAJES DE DJANGO */
+    .incident-message {display:flex;align-items:center;gap:10px;padding:13px 16px;margin-bottom:16px;border:1px solid rgba(98,211,107,.22);border-radius:9px;background:#182c20;color:#a9e6ad;font-size:13px;}
+    .incident-message.error {background:#342020;border-color:rgba(255,118,81,.28);color:#ffaaaa;}
+    .incident-message.warning {background:#302a1b;border-color:rgba(250,204,32,.25);color:#f1cb71;}
+    /* TARJETAS DE INFORMACIÓN - COLORES ORIGINALES */
+    .detail-stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:22px;}
+    .detail-stat {--detail-color:#59d66b;--detail-glow:rgba(89,214,107,.12);position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:145px;padding:18px 20px 23px;overflow:hidden;background:radial-gradient(ellipse at 0% 0%,var(--detail-glow),transparent 70%),linear-gradient(145deg,#172226,#11181d);border:1px solid #29373c;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.17),inset 0 1px rgba(255,255,255,.025);transition:transform .2s,border-color .2s;}
+    .detail-stat:nth-child(2) {--detail-color:#ff794d;--detail-glow:rgba(255,121,77,.12);}
+    .detail-stat:nth-child(3) {--detail-color:#419fff;--detail-glow:rgba(65,159,255,.12);}
+    .detail-stat:nth-child(4) {--detail-color:#ce91f7;--detail-glow:rgba(206,145,247,.12);}
+    .detail-stat::after {content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,transparent,var(--detail-color),transparent);opacity:.75;}
+    .detail-stat::before {content:"";position:absolute;left:0;right:0;bottom:0;height:35px;z-index:-1;background:linear-gradient(to top,var(--detail-glow),transparent);}
+    .detail-stat:hover {transform:translateY(-3px);border-color:color-mix(in srgb,var(--detail-color) 40%,#29373c);}
+    .detail-stat-icon {display:grid;place-items:center;width:39px;height:39px;margin-bottom:12px;background:var(--detail-glow);color:var(--detail-color);border-radius:11px;}
+    .detail-stat-icon .detail-icon {width:23px;height:23px;}
+    .detail-stat-label {margin-bottom:5px;color:#9ca9b0;font-size:12px;font-weight:500;}
+    .detail-stat-value {color:#f0f4f6;font-size:18px;font-weight:650;line-height:1.4;overflow-wrap:anywhere;}
+    .detail-stat-value.date {font-size:15px;font-variant-numeric:tabular-nums;}
+    /* DISTRIBUCIÓN DE PANELES */
+    .detail-grid {display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;margin-bottom:20px;align-items:stretch;}
+    .incident-section {display:flex;flex-direction:column;min-width:0;background:linear-gradient(150deg,#151f23,#11181c);border:1px solid #29373c;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,.17);overflow:hidden;}
+    .detail-section-heading {display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.05);}
+    .detail-section-icon {display:grid;place-items:center;width:40px;height:40px;flex-shrink:0;background:#090e11;color:#ffffff;border-radius:11px;border:1px solid #34454d;}
+    .detail-section-icon .detail-icon {width:22px;height:22px;}
+    .detail-section-copy {flex:1;min-width:0;}
+    .detail-section-copy h2 {margin:0 0 3px;color:#e8eef1;font-size:17px;font-weight:650;letter-spacing:-.25px;}
+    .detail-section-copy p {margin:0;color:#9ca9b0;font-size:11px;}
+    .detail-section-body {flex:1;min-width:0;padding:20px;}
+    /* REPORTE ORIGINAL */
+    .detail-information {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+    .detail-field {min-width:0;padding:13px 14px;background:rgba(8,16,19,.40);border:1px solid #29373c;border-radius:8px;}
+    .detail-field small {display:block;margin-bottom:6px;color:#91a2ac;font-size:11px;}
+    .detail-field strong {display:block;color:#dfe7eb;font-size:13px;font-weight:550;overflow-wrap:anywhere;}
+    .detail-field a {display:inline-flex;align-items:center;gap:6px;color:#ffffff;font-size:13px;font-weight:600;}
+    .detail-field a .detail-icon {width:14px;height:14px;}
+    .detail-field a:hover {color:#ffffff;}
+    .detail-field.full {grid-column:1 / -1;}
+    .detail-description-label {display:flex;align-items:center;gap:7px;margin:20px 0 9px;color:#dbe4e8;font-size:13px;font-weight:600;}
+    .detail-description-label .detail-icon {width:16px;height:16px;color:#ffffff;}
+    .incident-description {min-height:95px;padding:15px;border:1px solid #29373c;border-radius:9px;background:#0e171b;color:#c9d5dc;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
+    .incident-muted {color:#9ca9b0;font-size:12px;line-height:1.6;}
+    .detail-protected {display:flex;align-items:flex-start;gap:9px;padding:12px;margin-top:16px;background:rgba(98,211,107,.055);border:1px solid rgba(98,211,107,.12);border-radius:8px;color:#9fc9a3;font-size:11px;line-height:1.6;}
+    .detail-protected .detail-icon {width:17px;height:17px;color:#ffffff;}
+    /* FOTOGRAFÍA DEL INCIDENTE */
+    .detail-photo-link {position:relative;display:flex;align-items:center;justify-content:center;min-height:180px;background:#090e11;border:1px solid #29373c;border-radius:11px;overflow:hidden;}
+    .incident-photo {display:block;width:100%;max-width:100%;max-height:420px;object-fit:contain;image-rendering:auto;transition:opacity .2s;}
+    .detail-photo-link:hover .incident-photo {opacity:.85;}
+    .detail-photo-expand {position:absolute;top:12px;right:12px;display:grid;place-items:center;width:34px;height:34px;border:1px solid #34454d;border-radius:8px;background:#090e11;color:#ffffff;}
+    .detail-photo-expand .detail-icon {width:17px;height:17px;}
+    .detail-photo-caption {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;}
+    .detail-photo-caption p {margin:0;}
+    .detail-text-link {display:inline-flex;align-items:center;gap:5px;color:#ffffff;font-size:11px;font-weight:600;white-space:nowrap;}
+    .detail-text-link .detail-icon {width:14px;height:14px;}
+    .detail-text-link:hover {color:#ffffff;}
+    /* ESTADOS VACÍOS */
+    .detail-empty {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:230px;padding:24px;border:1px dashed #344349;border-radius:10px;background:#0e171b;text-align:center;}
+    .detail-empty-icon {display:grid;place-items:center;width:58px;height:58px;margin-bottom:4px;color:#ffffff;background:#090e11;border:1px solid #34454d;border-radius:16px;}
+    .detail-empty-icon .detail-icon {width:28px;height:28px;}
+    .detail-empty h3 {margin:0;color:#dce6eb;font-size:15px;font-weight:600;}
+    .detail-empty p {max-width:300px;margin:0;color:#92a3ad;font-size:12px;line-height:1.7;}
+    /* MAPA LEAFLET - DISEÑO ORIGINAL */
+    #incident-map {position:relative;isolation:isolate;width:100%;height:370px;border:1px solid #344349;border-radius:10px;overflow:hidden;z-index:0;background:#172820;color-scheme:light;}
+    #incident-map .leaflet-tile,#incident-map .leaflet-pane img {max-width:none!important;max-height:none!important;}
+    #incident-map .leaflet-control-zoom {border:1px solid #344349;border-radius:7px;overflow:hidden;}
+    #incident-map .leaflet-control-zoom a {background:#142126;color:#e2ece8;border-bottom-color:#344349;}
+    #incident-map .leaflet-control-zoom a:hover {background:#24372e;}
+    #incident-map .leaflet-popup-content-wrapper,#incident-map .leaflet-popup-tip {background:#172329;color:#e3eaee;}
+    #incident-map .leaflet-popup-content {color:#e3eaee;font-size:12px;line-height:1.6;}
+    #incident-map .leaflet-popup-content p {margin:7px 0 0;color:#b6c4cb;}
+    #incident-map .leaflet-control-attribution {color:#b6c4cb;background:rgba(13,23,27,.88);font-size:9px;}
+    #incident-map .leaflet-control-attribution a {color:#9cdaa0;}
+    .detail-coordinates {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}
+    .detail-coordinate {padding:10px 13px;border:1px solid #29373c;border-radius:8px;background:#0e171b;}
+    .detail-coordinate small {display:block;margin-bottom:4px;color:#8fa2ad;font-size:10px;}
+    .detail-coordinate strong {color:#dfe9ed;font-size:13px;font-weight:550;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+    .detail-map-notice {display:flex;align-items:flex-start;gap:8px;margin-top:13px;color:#9ca9b0;font-size:11px;line-height:1.6;}
+    .detail-map-notice .detail-icon {width:16px;height:16px;color:#8faab8;}
+    .incident-warning {color:#f0c76a;font-size:12px;line-height:1.6;}
+    .incident-warning:empty {display:none;}
+    /* FORMULARIO DE SEGUIMIENTO */
+    .detail-form-intro {margin:0 0 20px;color:#a5b3bb;font-size:12px;line-height:1.7;}
+    .detail-form {display:flex;flex-direction:column;gap:18px;}
+    .detail-form-field {display:flex;flex-direction:column;gap:8px;min-width:0;}
+    .detail-form-field label {display:flex;align-items:center;gap:7px;color:#dce5ea;font-size:13px;font-weight:600;}
+    .detail-form-field label .detail-icon {width:16px;height:16px;color:#ffffff;}
+    .detail-form-field select,.detail-form-field textarea {width:100%;max-width:100%;padding:12px 13px;border:1px solid #344349;border-radius:8px;background:#0e171b;color:#e3eaee;font:inherit;transition:border-color .2s,box-shadow .2s;}
+    .detail-form-field select {min-height:44px;cursor:pointer;}
+    .detail-form-field textarea {min-height:180px;resize:vertical;line-height:1.7;}
+    .detail-form-field select:hover,.detail-form-field textarea:hover {border-color:#52626a;}
+    .detail-form-field select:focus,.detail-form-field textarea:focus {outline:none;border-color:#62d36b;box-shadow:0 0 0 3px rgba(98,211,107,.08);}
+    .detail-form-field textarea::placeholder {color:#71848f;}
+    .incident-error {margin:0;padding:8px 10px;background:rgba(255,118,81,.08);border:1px solid rgba(255,118,81,.16);border-radius:6px;color:#ffaaaa;font-size:12px;}
+    .detail-save {display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;width:100%;padding:12px 18px;background:#090e11;border:1px solid #34454d;border-radius:8px;color:#ffffff;font-size:13px;font-weight:650;cursor:pointer;transition:background .2s,border-color .2s,box-shadow .2s;}
+    .detail-save .detail-icon {width:18px;height:18px;}
+    .detail-save:hover {background:#263238;border-color:#526269;box-shadow:none;}
+    /* ÚLTIMA MODIFICACIÓN */
+    .detail-last-update {display:flex;align-items:flex-start;gap:10px;padding:13px;margin-top:18px;border:1px solid #29373c;border-radius:8px;background:rgba(8,16,19,.40);}
+    .detail-last-update .detail-icon {width:18px;height:18px;margin-top:2px;color:#ffffff;}
+    .detail-last-update strong {display:block;margin-bottom:4px;color:#d1dce2;font-size:12px;font-weight:600;}
+    .detail-last-update p {margin:0;color:#91a3ad;font-size:11px;line-height:1.6;}
+    /* HISTORIAL DE AUDITORÍA */
+    .detail-audit {margin-bottom:20px;}
+    .detail-audit .detail-section-body {padding:0;}
+    .detail-audit-table-wrap {width:100%;overflow-x:auto;border:0;border-radius:0;background:transparent;}
+    .incident-audit-table {width:100%;min-width:750px;border-collapse:collapse;}
+    .incident-audit-table th {padding:14px 18px;background:#10191e;border-bottom:1px solid #29373c;color:#a5b4bd;font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.6px;text-align:left;white-space:nowrap;}
+    .incident-audit-table td {padding:15px 18px;border-bottom:1px solid #243034;color:#cbd7de;font-size:12px;text-align:left;vertical-align:top;}
+    .incident-audit-table tbody tr:hover {background:rgba(255,255,255,.025);}
+    .incident-audit-table tbody tr:last-child td {border-bottom:0;}
+    .detail-audit-date {display:flex;flex-direction:column;gap:3px;white-space:nowrap;}
+    .detail-audit-date strong {color:#e1e8ed;font-size:12px;font-weight:550;}
+    .detail-audit-date small {color:#91a3ad;font-size:11px;}
+    .detail-audit-user {display:flex;align-items:center;gap:9px;}
+    .detail-audit-avatar {display:grid;place-items:center;width:30px;height:30px;border-radius:50%;flex-shrink:0;background:#090e11;border:1px solid #34454d;color:#c084fc;font-size:11px;font-weight:650;}
+    .incident-audit-table .incident-badge {padding:5px 8px;font-size:10px;}
+    .incident-audit-table details {min-width:150px;margin:0;}
+    .incident-audit-table summary {padding:7px 10px;border:1px solid #34454d;border-radius:7px;background:#090e11;color:#ffffff;font-size:11px;font-weight:550;cursor:pointer;transition:background .2s,border-color .2s;}
+    .incident-audit-table summary:hover {background:#263238;border-color:#526269;}
+    .incident-audit-table details[open] summary {background:#303a3e;border-color:#526269;}
+    .incident-audit-content {min-width:180px;max-width:400px;margin-top:10px;padding:12px;border:1px solid #29373c;border-radius:8px;background:#0e171b;overflow-wrap:anywhere;}
+    .incident-audit-content strong {display:block;margin-bottom:5px;color:#a5b6be;font-size:11px;font-weight:600;}
+    .incident-audit-content p {margin:0 0 12px;color:#d0dce2;font-size:12px;line-height:1.6;}
+    .incident-audit-content p:last-child {margin-bottom:0;}
+    .detail-audit-empty {padding:35px 20px!important;color:#94a5af!important;text-align:center!important;}
+    .detail-audit-empty .detail-icon {display:block;width:30px;height:30px;margin:0 auto 10px;color:#ffffff;}
+    /* PIE DE PÁGINA */
+    .detail-footer {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:15px;margin-top:22px;border-top:1px solid #202c30;color:#788b95;font-size:11px;}
+    .detail-footer-info {display:inline-flex;align-items:center;gap:7px;}
+    .detail-footer-info .detail-icon {width:15px;height:15px;color:#ffffff;}
+    /* PROTECCIÓN DE LOS COLORES ORIGINALES */
+    .incident-detail .detail-stat .detail-stat-icon svg {color:var(--detail-color)!important;}
+    .incident-detail svg.detail-icon:where(:not(.detail-stat *,.leaflet-container *,.incident-message *,.detail-map-notice *)) {color:#ffffff!important;}
+    .incident-detail svg.detail-icon:has(> use[href="#detail-icon-user"]):not(.detail-stat *) {color:#c084fc!important;}
+    .incident-detail svg.detail-icon:has(> use[href="#icon-alert"]):not(.detail-stat *) {color:#facc15!important;}
+    .incident-detail :is(.detail-section-icon,.detail-empty-icon) {background:#090e11;border:1px solid #34454d;color:#ffffff;box-shadow:none;}
+    .incident-detail .detail-audit-avatar {background:#090e11;border:1px solid #34454d;color:#c084fc;}
+    .incident-detail :is(.detail-back,.detail-field a,.detail-text-link,.detail-save,.detail-photo-expand) {background:#090e11!important;color:#ffffff!important;border:1px solid #34454d!important;box-shadow:none;}
+    .incident-detail :is(.detail-back,.detail-field a,.detail-text-link) {padding:7px 10px;border-radius:7px;}
+    .incident-detail :is(.detail-back,.detail-field a,.detail-text-link,.detail-save,.detail-photo-link:hover .detail-photo-expand):hover {background:#263238!important;border-color:#526269!important;color:#ffffff!important;}
+    /* RESPONSIVE */
+    @media (min-width:1600px) {
+        .detail-stat {min-height:165px;padding:22px;}
+        .detail-stat-value {font-size:21px;}
+        #incident-map {height:420px;}
     }
-
-    .incident-section h2 {
-        margin-top: 0;
+    @media (max-width:1150px) {
+        .detail-stats {grid-template-columns:repeat(2,minmax(0,1fr));}
+        .detail-grid {grid-template-columns:1fr;}
+        .detail-header {min-height:165px;}
+        .incident-photo {max-height:480px;}
     }
-
-    .incident-description {
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-        line-height: 1.7;
+    @media (max-width:850px) {
+        .detail-header {margin:-20px -20px 20px;padding:24px 20px;}
+        .detail-landscape {width:80%;opacity:.75;}
+        .detail-section-heading {padding:16px;}
+        .detail-section-body {padding:16px;}
     }
-
-    .incident-muted {
-        color: #aab8ac;
-        font-size: 0.9rem;
+    @media (max-width:550px) {
+        .detail-header {flex-wrap:wrap;min-height:190px;}
+        .detail-landscape {width:100%;opacity:.45;}
+        .detail-header h1 {font-size:27px;}
+        .detail-header-description {font-size:12px;}
+        .detail-stats {gap:10px;}
+        .detail-stat {min-height:140px;padding:14px;}
+        .detail-stat-value {font-size:15px;}
+        .detail-stat-value.date {font-size:13px;}
+        .detail-information {grid-template-columns:1fr;}
+        .detail-grid {gap:14px;}
+        .detail-section-copy h2 {font-size:15px;}
+        .detail-photo-caption {flex-wrap:wrap;}
+        #incident-map {height:310px;}
+        .detail-footer {flex-direction:column;align-items:flex-start;}
     }
-
-    .incident-badge {
-        display: inline-block;
-        padding: 6px 11px;
-        border-radius: 7px;
-        border: 1px solid #53634f;
-        background: #253022;
-        color: #b3e853;
-        font-weight: 700;
-        font-size: 0.85rem;
+    @media (max-width:350px) {
+        .detail-stats,.detail-coordinates {grid-template-columns:1fr;}
     }
-
-    .incident-badge.pending {
-        color: #eac36a;
-        border-color: #7f6b3b;
-        background: #312b1e;
-    }
-
-    .incident-badge.reviewing {
-        color: #99c8f6;
-        border-color: #4e7290;
-        background: #1b2b38;
-    }
-
-    .incident-badge.resolved {
-        color: #b3e853;
-        border-color: #526d39;
-    }
-
-    .incident-section label {
-        display: block;
-        margin: 12px 0 8px;
-        font-weight: 600;
-    }
-
-    .incident-section textarea,
-    .incident-section select {
-        width: 100%;
-        max-width: 750px;
-        box-sizing: border-box;
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #526052;
-        background: #0e1511;
-        color: #eff4ef;
-        font: inherit;
-    }
-
-    .incident-section textarea:focus,
-    .incident-section select:focus {
-        outline: 2px solid #b3e853;
-        outline-offset: 2px;
-    }
-
-    .incident-section button {
-        margin-top: 15px;
-    }
-
-    .incident-error {
-        color: #ff9191;
-    }
-
-    .incident-photo {
-        max-width: 100%;
-        max-height: 480px;
-        object-fit: contain;
-        border-radius: 10px;
-        background: #101611;
-        border: 1px solid #354336;
-    }
-
-    #incident-map {
-        width: 100%;
-        height: 370px;
-        border-radius: 10px;
-        overflow: hidden;
-        position: relative;
-        z-index: 0;
-        background: #17211b;
-    }
-
-    #incident-map .leaflet-tile,
-    #incident-map .leaflet-pane img {
-        max-width: none !important;
-        max-height: none !important;
-    }
-
-    .incident-warning {
-        color: #f0b94b;
-    }
-
-    .incident-message {
-        margin: 12px 0;
-        padding: 12px;
-        border: 1px solid #526d39;
-        background: #223025;
-        border-radius: 8px;
-    }
-
-    .incident-audit-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .incident-audit-table th,
-    .incident-audit-table td {
-        padding: 12px;
-        text-align: left;
-        vertical-align: top;
-        border-bottom: 1px solid #354336;
-    }
-
-    .incident-audit-table details {
-        margin-top: 6px;
-    }
-
-    .incident-audit-table summary {
-        color: #b3e853;
-        cursor: pointer;
-    }
-
-    .incident-audit-content {
-        margin-top: 10px;
-        padding: 12px;
-        background: #0e1511;
-        border: 1px solid #354336;
-        border-radius: 8px;
-        overflow-wrap: anywhere;
-    }
-
-    @media (max-width: 700px) {
-        .incident-section {
-            padding: 14px;
-        }
-
-        #incident-map {
-            height: 310px;
-        }
-
-        .incident-audit-table {
-            min-width: 650px;
-        }
+    @media (prefers-reduced-motion:reduce) {
+        .incident-detail *,.incident-detail *::before,.incident-detail *::after {animation:none!important;transition:none!important;}
     }
 </style>
-
 {% endblock %}
-
-
 {% block content %}
-
-<p>
-    <a href="{% url 'dashboard:incidents' %}">
-        ← Volver a incidentes
-    </a>
-</p>
-
-<h1>
-    Reporte de incidente #{{ incident.pk }}
-</h1>
-
-<p>
-    {% if current_status == "PENDING" %}
-        <span class="incident-badge pending">
-            Pendiente
-        </span>
-
-    {% elif current_status == "REVIEWING" %}
-        <span class="incident-badge reviewing">
-            En revisión
-        </span>
-
-    {% elif current_status == "RESOLVED" %}
-        <span class="incident-badge resolved">
-            Atendido
-        </span>
-    {% endif %}
-</p>
-
-
-<!-- MENSAJES -->
-
-{% if messages %}
-
-    {% for message in messages %}
-        <div class="incident-message" role="status">
-            {{ message }}
+<div class="incident-detail">
+    <!-- ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="detail-icon-back" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </symbol>
+            <symbol id="detail-icon-user" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21v-2a8 8 0 0 1 16 0v2"/>
+            </symbol>
+            <symbol id="detail-icon-document" viewBox="0 0 24 24">
+                <path d="M6 3h8l5 5v13H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+                <path d="M14 3v6h5M8 13h7M8 17h7"/>
+            </symbol>
+            <symbol id="detail-icon-camera" viewBox="0 0 24 24">
+                <path d="M4 6h4l2-3h4l2 3h4a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
+                <circle cx="12" cy="13" r="4"/>
+            </symbol>
+            <symbol id="detail-icon-image" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8" cy="8" r="1.5"/>
+                <path d="M3 18l6-6 4 4 3-3 5 5"/>
+            </symbol>
+            <symbol id="detail-icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+            </symbol>
+            <symbol id="detail-icon-expand" viewBox="0 0 24 24">
+                <path d="M14 3h7v7M21 3l-7 7M10 21H3v-7M3 21l7-7"/>
+            </symbol>
+            <symbol id="detail-icon-edit" viewBox="0 0 24 24">
+                <path d="M12 20H4v-8L16 0" transform="translate(0 2)"/>
+                <path d="M14 6l4 4M16 4a2.8 2.8 0 0 1 4 4L8 20H4v-4z"/>
+            </symbol>
+            <symbol id="detail-icon-save" viewBox="0 0 24 24">
+                <path d="M5 3h12l4 4v14H3V3z"/>
+                <path d="M7 3v7h10V3M7 21v-7h10v7"/>
+            </symbol>
+            <symbol id="detail-icon-history" viewBox="0 0 24 24">
+                <path d="M3 12a9 9 0 1 1 3 6.7M3 5v7h7M12 7v5l4 2"/>
+            </symbol>
+            <symbol id="detail-icon-info" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 7h.01"/>
+            </symbol>
+            <symbol id="detail-icon-check" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M8 12l3 3 5-6"/>
+            </symbol>
+            <symbol id="detail-icon-inbox" viewBox="0 0 24 24">
+                <path d="M4 4h16l2 10v6H2v-6L4 4z"/>
+                <path d="M2 14h6l2 3h4l2-3h6"/>
+            </symbol>
+            <symbol id="detail-icon-list" viewBox="0 0 24 24">
+                <rect x="5" y="3" width="14" height="18" rx="2"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- ENCABEZADO -->
+    <section class="detail-header">
+        <div class="detail-landscape" aria-hidden="true">
+            <img src="{% static 'dashboard/images/mountain-header.jpg' %}" alt="" decoding="async">
         </div>
-    {% endfor %}
-
-{% endif %}
-
-
-<!-- INFORMACIÓN GENERAL -->
-
-<div class="stats">
-
-    <article>
-        <small>Excursionista</small>
-        <strong>
-            {{ incident.trekking.user.username }}
-        </strong>
-    </article>
-
-    <article>
-        <small>Tipo de incidente</small>
-        <strong>
-            {{ incident.get_incident_type_display }}
-        </strong>
-    </article>
-
-    <article>
-        <small>Parque</small>
-        <strong>
-            {{ incident.trekking.trail.park.name }}
-        </strong>
-    </article>
-
-    <article>
-        <small>Fecha registrada</small>
-        <strong style="font-size:1rem;">
-            {{ incident.registered_at|date:"d/m/Y H:i:s" }}
-        </strong>
-    </article>
-
-</div>
-
-
-<!-- REPORTE ORIGINAL -->
-
-<section class="incident-section">
-
-    <h2>Reporte original del excursionista</h2>
-
-    <p>
-        <strong>Sendero:</strong>
-        {{ incident.trekking.trail.name }}
-    </p>
-
-    <p>
-        <strong>Trekking:</strong>
-
-        <a href="{% url 'dashboard:trekking_detail' incident.trekking_id %}">
-            #{{ incident.trekking_id }}
-        </a>
-    </p>
-
-    <p>
-        <strong>Estado del trekking:</strong>
-        {{ incident.trekking.get_status_display }}
-    </p>
-
-    <p>
-        <strong>Descripción:</strong>
-    </p>
-
-    <div class="incident-description">{{ incident.description }}</div>
-
-    <p>
-        <strong>Fecha de registro:</strong>
-        {{ incident.registered_at|date:"d/m/Y H:i:s" }}
-    </p>
-
-    <p>
-        <strong>Fecha de recepción en Django:</strong>
-        {{ incident.created_at|date:"d/m/Y H:i:s" }}
-    </p>
-
-    <p class="incident-muted">
-        El contenido original del reporte no se
-        modifica desde el dashboard.
-    </p>
-
-</section>
-
-
-<!-- FOTOGRAFÍA -->
-
-<section class="incident-section">
-
-    <h2>Fotografía adjunta</h2>
-
-    {% if incident.photo %}
-
-        <a
-            href="{% url 'dashboard:incident_photo' incident.pk %}"
-            target="_blank"
-            rel="noopener noreferrer"
-        >
-            <img
-                class="incident-photo"
-                src="{% url 'dashboard:incident_photo' incident.pk %}"
-                alt="Fotografía adjunta al incidente"
-                loading="lazy"
-            >
-        </a>
-
-        <p class="incident-muted">
-            Fotografía recibida junto al incidente.
-            Pulsa para abrirla en otra pestaña.
-        </p>
-
-    {% else %}
-
-        <p class="incident-muted">
-            Este incidente no tiene fotografía.
-        </p>
-
-    {% endif %}
-
-</section>
-
-
-<!-- MAPA -->
-
-<section class="incident-section">
-
-    <h2>Ubicación registrada del incidente</h2>
-
-    {% if incident_position %}
-
-        <div
-            id="incident-map"
-            role="region"
-            aria-label="Mapa de ubicación del incidente"
-        ></div>
-
-        <p
-            id="incident-map-warning"
-            class="incident-warning"
-        ></p>
-
-        <p class="incident-muted">
-            Coordenadas:
-            {{ incident.latitude }},
-            {{ incident.longitude }}.
-
-            La posición corresponde al reporte
-            almacenado, no a una ubicación GPS en vivo.
-        </p>
-
-    {% else %}
-
-        <p class="incident-warning">
-            El incidente no tiene coordenadas
-            geográficas registradas.
-        </p>
-
-    {% endif %}
-
-</section>
-
-
-<!-- SEGUIMIENTO -->
-
-<section class="incident-section">
-
-    <h2>Seguimiento del guardaparque</h2>
-
-    <p class="incident-muted">
-        Registra el estado de atención y las medidas
-        adoptadas. No se alterará el reporte original
-        ni el estado del trekking.
-    </p>
-
-    <form method="post">
-
-        {% csrf_token %}
-
-        <label for="{{ form.status.id_for_label }}">
-            {{ form.status.label }}
-        </label>
-
-        {{ form.status }}
-
-        {% for error in form.status.errors %}
-            <p class="incident-error">{{ error }}</p>
-        {% endfor %}
-
-        <label for="{{ form.notes.id_for_label }}">
-            {{ form.notes.label }}
-        </label>
-
-        {{ form.notes }}
-
-        {% for error in form.notes.errors %}
-            <p class="incident-error">{{ error }}</p>
-        {% endfor %}
-
-        <button type="submit">
-            Guardar seguimiento
-        </button>
-
-    </form>
-
-    {% if follow_up %}
-
-        <p class="incident-muted">
-            Última modificación:
-
-            {{ follow_up.updated_at|date:"d/m/Y H:i:s" }}
-
-            {% if follow_up.updated_by %}
-                · {{ follow_up.updated_by.username }}
+        <div class="detail-header-content">
+            <a href="{% url 'dashboard:incidents' %}" class="detail-back">
+                <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-back"/></svg>
+                Volver a incidentes
+            </a>
+            <span class="detail-eyebrow">
+                <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-shield"/></svg>
+                SEGURIDAD Y SEGUIMIENTO
+            </span>
+            <h1>Reporte de incidente #{{ incident.pk }}</h1>
+            <p class="detail-header-description">Información, ubicación registrada y gestión de atención del incidente.</p>
+        </div>
+        <div class="detail-header-status">
+            {% if current_status == "PENDING" %}
+                <span class="incident-badge pending">Pendiente</span>
+            {% elif current_status == "REVIEWING" %}
+                <span class="incident-badge reviewing">En revisión</span>
+            {% elif current_status == "RESOLVED" %}
+                <span class="incident-badge resolved">Atendido</span>
             {% endif %}
-        </p>
-
-    {% else %}
-
-        <p class="incident-muted">
-            No hay atención registrada por
-            el personal de guardaparques.
-        </p>
-
+        </div>
+    </section>
+    <!-- MENSAJES -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="incident-message {{ message.tags }}" role="status">
+                <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-info"/></svg>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
     {% endif %}
-
-</section>
-
-
-<!-- AUDITORÍA -->
-
-<section class="incident-section">
-
-    <h2>Historial de auditoría</h2>
-
-    <p class="incident-muted">
-        Cada modificación del seguimiento
-        conserva el funcionario, la fecha,
-        el estado anterior y las observaciones.
-    </p>
-
-    <div class="table-wrap">
-
-        <table class="incident-audit-table">
-
-            <thead>
-                <tr>
-                    <th>Fecha y hora</th>
-                    <th>Funcionario</th>
-                    <th>Estado anterior</th>
-                    <th>Estado posterior</th>
-                    <th>Detalle</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for log in audit_logs %}
-
-                    <tr>
-
-                        <td>
-                            {{ log.created_at|date:"d/m/Y H:i:s" }}
-                        </td>
-
-                        <td>
-                            {{ log.actor_username }}
-                        </td>
-
-                        <td>
-                            {{ log.previous_status }}
-                        </td>
-
-                        <td>
-                            {{ log.new_status }}
-                        </td>
-
-                        <td>
-
-                            <details>
-
-                                <summary>
-                                    Ver observaciones
-                                </summary>
-
-                                <div class="incident-audit-content">
-
-                                    <p>
-                                        <strong>
-                                            Observación anterior:
-                                        </strong>
-                                    </p>
-
-                                    <p>
-                                        {{ log.previous_notes|default:"Sin observaciones"|linebreaksbr }}
-                                    </p>
-
-                                    <p>
-                                        <strong>
-                                            Observación nueva:
-                                        </strong>
-                                    </p>
-
-                                    <p>
-                                        {{ log.new_notes|default:"Sin observaciones"|linebreaksbr }}
-                                    </p>
-
-                                </div>
-
-                            </details>
-
-                        </td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-                        <td colspan="5">
-                            Todavía no hay acciones
-                            registradas para este incidente.
-                        </td>
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
+    <!-- INFORMACIÓN GENERAL -->
+    <section class="detail-stats" aria-label="Información general del incidente">
+        <article class="detail-stat">
+            <div class="detail-stat-icon">
+                <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-user"/></svg>
+            </div>
+            <span class="detail-stat-label">Excursionista</span>
+            <strong class="detail-stat-value">{{ incident.trekking.user.username }}</strong>
+        </article>
+        <article class="detail-stat">
+            <div class="detail-stat-icon">
+                <svg class="detail-icon" aria-hidden="true"><use href="#icon-alert"/></svg>
+            </div>
+            <span class="detail-stat-label">Tipo de incidente</span>
+            <strong class="detail-stat-value">{{ incident.get_incident_type_display }}</strong>
+        </article>
+        <article class="detail-stat">
+            <div class="detail-stat-icon">
+                <svg class="detail-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+            </div>
+            <span class="detail-stat-label">Parque</span>
+            <strong class="detail-stat-value">{{ incident.trekking.trail.park.name }}</strong>
+        </article>
+        <article class="detail-stat">
+            <div class="detail-stat-icon">
+                <svg class="detail-icon" aria-hidden="true"><use href="#icon-calendar"/></svg>
+            </div>
+            <span class="detail-stat-label">Fecha registrada</span>
+            <strong class="detail-stat-value date">{{ incident.registered_at|date:"d/m/Y H:i:s" }}</strong>
+        </article>
+    </section>
+    <!-- REPORTE Y FOTOGRAFÍA -->
+    <div class="detail-grid">
+        <section class="incident-section">
+            <div class="detail-section-heading">
+                <div class="detail-section-icon">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-document"/></svg>
+                </div>
+                <div class="detail-section-copy">
+                    <h2>Reporte original del excursionista</h2>
+                    <p>Información recibida desde Hito Mobile.</p>
+                </div>
+            </div>
+            <div class="detail-section-body">
+                <div class="detail-information">
+                    <div class="detail-field">
+                        <small>Sendero</small>
+                        <strong>{{ incident.trekking.trail.name }}</strong>
+                    </div>
+                    <div class="detail-field">
+                        <small>Trekking asociado</small>
+                        <a href="{% url 'dashboard:trekking_detail' incident.trekking_id %}">
+                            Trekking #{{ incident.trekking_id }}
+                            <svg class="detail-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
+                        </a>
+                    </div>
+                    <div class="detail-field full">
+                        <small>Estado del trekking</small>
+                        <strong>{{ incident.trekking.get_status_display }}</strong>
+                    </div>
+                    <div class="detail-field">
+                        <small>Fecha de registro</small>
+                        <strong>{{ incident.registered_at|date:"d/m/Y H:i:s" }}</strong>
+                    </div>
+                    <div class="detail-field">
+                        <small>Fecha de recepción en Django</small>
+                        <strong>{{ incident.created_at|date:"d/m/Y H:i:s" }}</strong>
+                    </div>
+                </div>
+                <div class="detail-description-label">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-document"/></svg>
+                    Descripción del incidente
+                </div>
+                <div class="incident-description">{{ incident.description }}</div>
+                <div class="detail-protected">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-shield"/></svg>
+                    <span>El contenido original del reporte no se modifica desde el dashboard.</span>
+                </div>
+            </div>
+        </section>
+        <!-- FOTOGRAFÍA -->
+        <section class="incident-section">
+            <div class="detail-section-heading">
+                <div class="detail-section-icon">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-camera"/></svg>
+                </div>
+                <div class="detail-section-copy">
+                    <h2>Fotografía adjunta</h2>
+                    <p>Registro visual enviado por el excursionista.</p>
+                </div>
+            </div>
+            <div class="detail-section-body">
+                {% if incident.photo %}
+                    <a href="{% url 'dashboard:incident_photo' incident.pk %}" target="_blank" rel="noopener noreferrer" class="detail-photo-link">
+                        <img class="incident-photo" src="{% url 'dashboard:incident_photo' incident.pk %}" alt="Fotografía adjunta al incidente" loading="lazy">
+                        <span class="detail-photo-expand">
+                            <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-expand"/></svg>
+                        </span>
+                    </a>
+                    <div class="detail-photo-caption">
+                        <p class="incident-muted">Fotografía recibida junto al incidente.</p>
+                        <a href="{% url 'dashboard:incident_photo' incident.pk %}" target="_blank" rel="noopener noreferrer" class="detail-text-link">
+                            Abrir fotografía
+                            <svg class="detail-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="detail-empty">
+                        <div class="detail-empty-icon">
+                            <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-image"/></svg>
+                        </div>
+                        <h3>Sin fotografía adjunta</h3>
+                        <p>El excursionista no adjuntó una fotografía al registrar este incidente.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
     </div>
-
-</section>
-
-
-<!-- DATOS SEGUROS PARA JAVASCRIPT -->
-
+    <!-- MAPA Y SEGUIMIENTO -->
+    <div class="detail-grid">
+        <section class="incident-section">
+            <div class="detail-section-heading">
+                <div class="detail-section-icon">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                </div>
+                <div class="detail-section-copy">
+                    <h2>Ubicación del incidente</h2>
+                    <p>Posición geográfica registrada en el reporte.</p>
+                </div>
+            </div>
+            <div class="detail-section-body">
+                {% if incident_position %}
+                    <div id="incident-map" role="region" aria-label="Mapa de ubicación del incidente"></div>
+                    <p id="incident-map-warning" class="incident-warning" role="status"></p>
+                    <div class="detail-coordinates">
+                        <div class="detail-coordinate">
+                            <small>LATITUD</small>
+                            <strong>{{ incident.latitude }}</strong>
+                        </div>
+                        <div class="detail-coordinate">
+                            <small>LONGITUD</small>
+                            <strong>{{ incident.longitude }}</strong>
+                        </div>
+                    </div>
+                    <div class="detail-map-notice">
+                        <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-info"/></svg>
+                        <span>La posición corresponde al reporte almacenado y no representa una ubicación GPS en vivo.</span>
+                    </div>
+                {% else %}
+                    <div class="detail-empty">
+                        <div class="detail-empty-icon">
+                            <svg class="detail-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                        </div>
+                        <h3>Ubicación no disponible</h3>
+                        <p>El incidente no tiene coordenadas geográficas registradas.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+        <!-- SEGUIMIENTO DEL GUARDAPARQUE -->
+        <section class="incident-section">
+            <div class="detail-section-heading">
+                <div class="detail-section-icon">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-edit"/></svg>
+                </div>
+                <div class="detail-section-copy">
+                    <h2>Seguimiento del guardaparque</h2>
+                    <p>Gestión del estado y medidas de atención.</p>
+                </div>
+            </div>
+            <div class="detail-section-body">
+                <p class="detail-form-intro">Registra el estado de atención y las medidas adoptadas. No se alterará el reporte original ni el estado del trekking.</p>
+                <form method="post" class="detail-form">
+                    {% csrf_token %}
+                    {% for error in form.non_field_errors %}
+                        <p class="incident-error">{{ error }}</p>
+                    {% endfor %}
+                    <div class="detail-form-field">
+                        <label for="{{ form.status.id_for_label }}">
+                            <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-list"/></svg>
+                            {{ form.status.label }}
+                        </label>
+                        {{ form.status }}
+                        {% for error in form.status.errors %}
+                            <p class="incident-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    <div class="detail-form-field">
+                        <label for="{{ form.notes.id_for_label }}">
+                            <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-document"/></svg>
+                            {{ form.notes.label }}
+                        </label>
+                        {{ form.notes }}
+                        {% for error in form.notes.errors %}
+                            <p class="incident-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="detail-save">
+                        <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-save"/></svg>
+                        Guardar seguimiento
+                    </button>
+                </form>
+                <div class="detail-last-update">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                    <div>
+                        {% if follow_up %}
+                            <strong>Última modificación</strong>
+                            <p>{{ follow_up.updated_at|date:"d/m/Y H:i:s" }}{% if follow_up.updated_by %} · {{ follow_up.updated_by.username }}{% endif %}</p>
+                        {% else %}
+                            <strong>Sin seguimiento registrado</strong>
+                            <p>No hay atención registrada por el personal de guardaparques.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-protected">
+                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-shield"/></svg>
+                    <span>Las modificaciones del seguimiento quedan registradas en el historial de auditoría.</span>
+                </div>
+            </div>
+        </section>
+    </div>
+    <!-- HISTORIAL DE AUDITORÍA -->
+    <section class="incident-section detail-audit">
+        <div class="detail-section-heading">
+            <div class="detail-section-icon">
+                <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-history"/></svg>
+            </div>
+            <div class="detail-section-copy">
+                <h2>Historial de auditoría</h2>
+                <p>Registro de modificaciones, funcionarios, estados y observaciones.</p>
+            </div>
+        </div>
+        <div class="detail-section-body">
+            <div class="table-wrap detail-audit-table-wrap">
+                <table class="incident-audit-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Fecha y hora</th>
+                            <th scope="col">Funcionario</th>
+                            <th scope="col">Estado anterior</th>
+                            <th scope="col">Estado posterior</th>
+                            <th scope="col">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                            <tr>
+                                <td>
+                                    <div class="detail-audit-date">
+                                        <strong>{{ log.created_at|date:"d/m/Y" }}</strong>
+                                        <small>{{ log.created_at|date:"H:i:s" }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="detail-audit-user">
+                                        <span class="detail-audit-avatar">{{ log.actor_username|slice:":1"|upper }}</span>
+                                        <span>{{ log.actor_username }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if log.previous_status == "PENDING" %}
+                                        <span class="incident-badge pending">Pendiente</span>
+                                    {% elif log.previous_status == "REVIEWING" %}
+                                        <span class="incident-badge reviewing">En revisión</span>
+                                    {% elif log.previous_status == "RESOLVED" %}
+                                        <span class="incident-badge resolved">Atendido</span>
+                                    {% else %}
+                                        <span class="incident-badge">{{ log.previous_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.new_status == "PENDING" %}
+                                        <span class="incident-badge pending">Pendiente</span>
+                                    {% elif log.new_status == "REVIEWING" %}
+                                        <span class="incident-badge reviewing">En revisión</span>
+                                    {% elif log.new_status == "RESOLVED" %}
+                                        <span class="incident-badge resolved">Atendido</span>
+                                    {% else %}
+                                        <span class="incident-badge">{{ log.new_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <details>
+                                        <summary>Ver observaciones</summary>
+                                        <div class="incident-audit-content">
+                                            <strong>Observación anterior</strong>
+                                            <p>{{ log.previous_notes|default:"Sin observaciones"|linebreaksbr }}</p>
+                                            <strong>Observación nueva</strong>
+                                            <p>{{ log.new_notes|default:"Sin observaciones"|linebreaksbr }}</p>
+                                        </div>
+                                    </details>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="detail-audit-empty">
+                                    <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-inbox"/></svg>
+                                    Todavía no hay acciones registradas para este incidente.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <!-- PIE DE PÁGINA -->
+    <footer class="detail-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span class="detail-footer-info">
+            <svg class="detail-icon" aria-hidden="true"><use href="#detail-icon-shield"/></svg>
+            Registro y seguimiento de incidentes
+        </span>
+    </footer>
+</div>
 {{ incident_position|json_script:"incident-position-data" }}
-
 {% endblock %}
-
-
 {% block scripts %}
-
 {% if incident_position %}
-
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    const mapElement = document.getElementById(
-        "incident-map"
-    );
-
-    const dataElement = document.getElementById(
-        "incident-position-data"
-    );
-
-    const warning = document.getElementById(
-        "incident-map-warning"
-    );
-
-    if (
-        !mapElement ||
-        !dataElement ||
-        typeof L === "undefined"
-    ) {
-        if (warning) {
-            warning.textContent =
-                "No se pudo inicializar el mapa.";
+    document.addEventListener("DOMContentLoaded", function () {
+        const mapElement = document.getElementById("incident-map");
+        const dataElement = document.getElementById("incident-position-data");
+        const warning = document.getElementById("incident-map-warning");
+        if (!mapElement || !dataElement || typeof L === "undefined") {
+            if (warning) {
+                warning.textContent = "No se pudo inicializar el mapa.";
+            }
+            return;
         }
-        return;
-    }
-
-    let position;
-
-    try {
-        position = JSON.parse(
-            dataElement.textContent
-        );
-    } catch (error) {
-        if (warning) {
-            warning.textContent =
-                "No se pudieron leer las coordenadas.";
+        let position;
+        try {
+            position = JSON.parse(dataElement.textContent);
+        } catch (error) {
+            if (warning) {
+                warning.textContent = "No se pudieron leer las coordenadas.";
+            }
+            return;
         }
-        return;
-    }
-
-    const lat = Number(position.lat);
-    const lng = Number(position.lng);
-
-    if (
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lng) ||
-        Math.abs(lat) > 90 ||
-        Math.abs(lng) > 180
-    ) {
-        if (warning) {
-            warning.textContent =
-                "Coordenadas inválidas.";
+        if (!position || position.lat == null || position.lng == null || String(position.lat).trim() === "" || String(position.lng).trim() === "") {
+            if (warning) {
+                warning.textContent = "No hay coordenadas disponibles.";
+            }
+            return;
         }
-        return;
-    }
-
-    const map = L.map("incident-map").setView(
-        [lat, lng],
-        15
-    );
-
-    L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
+        const lat = Number(position.lat);
+        const lng = Number(position.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+            if (warning) {
+                warning.textContent = "Coordenadas inválidas.";
+            }
+            return;
+        }
+        const map = L.map("incident-map").setView([lat, lng], 15);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
-            attribution:
-                "&copy; OpenStreetMap contributors",
-            referrerPolicy:
-                "strict-origin-when-cross-origin"
-        }
-    ).addTo(map);
-
-    const marker = L.circleMarker(
-        [lat, lng],
-        {
+            attribution: "&copy; OpenStreetMap contributors",
+            referrerPolicy: "strict-origin-when-cross-origin"
+        }).addTo(map);
+        const marker = L.circleMarker([lat, lng], {
             radius: 11,
-            color: "#fff",
+            color: "#ffffff",
             weight: 2,
-            fillColor: "#f0b94b",
+            fillColor: "#ff794d",
             fillOpacity: 1
+        }).addTo(map);
+        const popup = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = position.type;
+        popup.appendChild(title);
+        const description = document.createElement("p");
+        description.textContent = "Ubicación registrada del incidente. No representa seguimiento GPS en vivo.";
+        popup.appendChild(description);
+        marker.bindPopup(popup).openPopup();
+        requestAnimationFrame(function () {
+            map.invalidateSize();
+        });
+        window.addEventListener("resize", function () {
+            map.invalidateSize();
+        });
+        if (typeof ResizeObserver !== "undefined") {
+            const observer = new ResizeObserver(function () {
+                map.invalidateSize();
+            });
+            observer.observe(mapElement);
         }
-    ).addTo(map);
-
-    const popup = document.createElement("div");
-
-    const title = document.createElement("strong");
-
-    title.textContent = position.type;
-
-    popup.appendChild(title);
-
-    const description = document.createElement("p");
-
-    description.textContent =
-        "Ubicación registrada del incidente. " +
-        "No representa seguimiento GPS en vivo.";
-
-    popup.appendChild(description);
-
-    marker.bindPopup(popup).openPopup();
-
-    requestAnimationFrame(function () {
-        map.invalidateSize();
     });
-
-});
 </script>
-
 {% endif %}
-
 {% endblock %}

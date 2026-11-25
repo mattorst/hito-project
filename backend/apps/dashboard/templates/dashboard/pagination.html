@@ -1,38 +1,254 @@
 {% extends 'dashboard/base.html' %}
 {% block title %}Trekking #{{ trekking.pk }} | Hito{% endblock %}
-{% block head %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoTIl5s3QxihnE=" crossorigin="">{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoTIl5s3QxihnE=" crossorigin="">
+<style>
+    .pagination-detail {
+        width:100%;
+        min-width:0;
+    }
+    .pagination-detail .pagination-action {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        padding:9px 13px;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:8px;
+        color:#ffffff;
+        font-size:12px;
+        font-weight:550;
+        text-decoration:none;
+        transition:background .2s,border-color .2s;
+    }
+    .pagination-detail .pagination-action:hover {
+        background:#263238;
+        border-color:#526269;
+        color:#ffffff;
+    }
+    .pagination-detail .pagination-action svg {
+        width:16px;
+        height:16px;
+        fill:none;
+        stroke:currentColor;
+        stroke-width:1.8;
+        stroke-linecap:round;
+        stroke-linejoin:round;
+        color:#ffffff!important;
+    }
+    .pagination-detail .pagination-action:focus-visible {
+        outline:2px solid #ffffff;
+        outline-offset:3px;
+    }
+    @media (prefers-reduced-motion:reduce) {
+        .pagination-detail .pagination-action {
+            transition:none;
+        }
+    }
+</style>
+{% endblock %}
 {% block content %}
-<p><a href="{% url 'dashboard:trekkings' %}">← Volver a trekkings</a></p>
-<h1>Trekking #{{ trekking.pk }} — {{ trekking.user.username }}</h1>
-<div class="stats"><article><small>Estado</small><strong>{{ trekking.get_status_display }}</strong></article><article><small>Parque</small><strong>{{ trekking.trail.park.name }}</strong></article><article><small>Sendero</small><strong>{{ trekking.trail.name }}</strong></article><article><small>GPS recibidos</small><strong>{{ gps_count }}</strong></article></div>
-<p><b>Inicio:</b> {{ trekking.started_at|date:'d/m/Y H:i' }} · <b>Regreso estimado:</b> {{ trekking.estimated_return_time|date:'d/m/Y H:i' }} · <b>Finalización:</b> {{ trekking.finished_at|date:'d/m/Y H:i'|default:'Sin finalizar' }}</p>
-<h2>Mapa de puntos GPS recibidos</h2><p class="subtle">El mapa muestra ubicaciones almacenadas por Django, no seguimiento en vivo. La última posición puede estar desactualizada si el excursionista está offline.</p>
-{% if map_points %}<div id="map" role="img" aria-label="Recorrido GPS recibido"></div>{% else %}<p>No hay puntos GPS sincronizados para este trekking.</p>{% endif %}
-<h2>Acompañantes ({{ companions.count }})</h2><div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Contacto de emergencia</th><th>Teléfono</th></tr></thead><tbody>{% for c in companions %}<tr><td>{{ c.first_name }} {{ c.last_name }}</td><td>{{ c.emergency_contact_name }}</td><td>{{ c.emergency_contact_phone }}</td></tr>{% empty %}<tr><td colspan="3">Sin acompañantes registrados.</td></tr>{% endfor %}</tbody></table></div>
-<h2>Registros de checkpoint (modelo CheckpointRecord)</h2><p class="subtle">Los eventos QR offline de ida/vuelta usan otro modelo que aún debemos integrar a esta vista. No interpretes esta lista como el historial QR completo.</p>
-<div class="table-wrap"><table><thead><tr><th>Checkpoint</th><th>Fecha/hora</th><th>Ubicación</th></tr></thead><tbody>{% for c in checkpoints %}<tr><td>{{ c.checkpoint.name }}</td><td>{{ c.registered_at|date:'d/m/Y H:i:s' }}</td><td>{{ c.latitude }}, {{ c.longitude }}</td></tr>{% empty %}<tr><td colspan="3">Sin registros en CheckpointRecord.</td></tr>{% endfor %}</tbody></table></div>
-<h2>Incidentes del trekking</h2><div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Descripción</th><th>Fecha</th><th>Fotografía</th></tr></thead><tbody>{% for i in incidents %}<tr><td>{{ i.get_incident_type_display }}</td><td>{{ i.description }}</td><td>{{ i.registered_at|date:'d/m/Y H:i' }}</td><td>{% if i.photo %}<a href="{{ i.photo.url }}" target="_blank" rel="noopener noreferrer">Ver foto</a>{% else %}Sin foto{% endif %}</td></tr>{% empty %}<tr><td colspan="4">Sin incidentes.</td></tr>{% endfor %}</tbody></table></div>
-<h2>Rescates del trekking</h2><div class="table-wrap"><table><thead><tr><th>Estado</th><th>Inicio</th><th>Cierre</th><th>Observaciones</th></tr></thead><tbody>{% for r in rescues %}<tr><td>{{ r.get_status_display }}</td><td>{{ r.started_at|date:'d/m/Y H:i' }}</td><td>{{ r.finished_at|date:'d/m/Y H:i'|default:'—' }}</td><td>{{ r.notes|default:'—' }}</td></tr>{% empty %}<tr><td colspan="4">Sin rescates.</td></tr>{% endfor %}</tbody></table></div>
+<div class="pagination-detail">
+    <!-- REGRESAR AL LISTADO -->
+    <p>
+        <a href="{% url 'dashboard:trekkings' %}" class="pagination-action">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            Volver a trekkings
+        </a>
+    </p>
+    <h1>Trekking #{{ trekking.pk }} — {{ trekking.user.username }}</h1>
+    <!-- TARJETAS DE INFORMACIÓN ORIGINALES -->
+    <div class="stats">
+        <article>
+            <small>Estado</small>
+            <strong>{{ trekking.get_status_display }}</strong>
+        </article>
+        <article>
+            <small>Parque</small>
+            <strong>{{ trekking.trail.park.name }}</strong>
+        </article>
+        <article>
+            <small>Sendero</small>
+            <strong>{{ trekking.trail.name }}</strong>
+        </article>
+        <article>
+            <small>GPS recibidos</small>
+            <strong>{{ gps_count }}</strong>
+        </article>
+    </div>
+    <!-- FECHAS DEL TREKKING -->
+    <p>
+        <b>Inicio:</b> {{ trekking.started_at|date:'d/m/Y H:i' }} ·
+        <b>Regreso estimado:</b> {{ trekking.estimated_return_time|date:'d/m/Y H:i' }} ·
+        <b>Finalización:</b> {{ trekking.finished_at|date:'d/m/Y H:i'|default:'Sin finalizar' }}
+    </p>
+    <!-- MAPA GPS -->
+    <h2>Mapa de puntos GPS recibidos</h2>
+    <p class="subtle">El mapa muestra ubicaciones almacenadas por Django, no seguimiento en vivo. La última posición puede estar desactualizada si el excursionista está offline.</p>
+    {% if map_points %}
+        <div id="map" role="img" aria-label="Recorrido GPS recibido"></div>
+    {% else %}
+        <p>No hay puntos GPS sincronizados para este trekking.</p>
+    {% endif %}
+    <!-- ACOMPAÑANTES -->
+    <h2>Acompañantes ({{ companions.count }})</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Contacto de emergencia</th>
+                    <th>Teléfono</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in companions %}
+                    <tr>
+                        <td>{{ c.first_name }} {{ c.last_name }}</td>
+                        <td>{{ c.emergency_contact_name }}</td>
+                        <td>{{ c.emergency_contact_phone }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3">Sin acompañantes registrados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- REGISTROS DE CHECKPOINT -->
+    <h2>Registros de checkpoint (modelo CheckpointRecord)</h2>
+    <p class="subtle">Los eventos QR offline de ida/vuelta usan otro modelo que aún debemos integrar a esta vista. No interpretes esta lista como el historial QR completo.</p>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Checkpoint</th>
+                    <th>Fecha/hora</th>
+                    <th>Ubicación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in checkpoints %}
+                    <tr>
+                        <td>{{ c.checkpoint.name }}</td>
+                        <td>{{ c.registered_at|date:'d/m/Y H:i:s' }}</td>
+                        <td>{{ c.latitude }}, {{ c.longitude }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3">Sin registros en CheckpointRecord.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- INCIDENTES -->
+    <h2>Incidentes del trekking</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Fecha</th>
+                    <th>Fotografía</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in incidents %}
+                    <tr>
+                        <td>{{ i.get_incident_type_display }}</td>
+                        <td>{{ i.description }}</td>
+                        <td>{{ i.registered_at|date:'d/m/Y H:i' }}</td>
+                        <td>
+                            {% if i.photo %}
+                                <a href="{{ i.photo.url }}" target="_blank" rel="noopener noreferrer" class="pagination-action">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M4 6h4l2-3h4l2 3h4a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
+                                        <circle cx="12" cy="13" r="4"/>
+                                    </svg>
+                                    Ver foto
+                                </a>
+                            {% else %}
+                                Sin foto
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4">Sin incidentes.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- RESCATES -->
+    <h2>Rescates del trekking</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th>Inicio</th>
+                    <th>Cierre</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rescues %}
+                    <tr>
+                        <td>{{ r.get_status_display }}</td>
+                        <td>{{ r.started_at|date:'d/m/Y H:i' }}</td>
+                        <td>{{ r.finished_at|date:'d/m/Y H:i'|default:'—' }}</td>
+                        <td>{{ r.notes|default:'—' }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4">Sin rescates.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {{ map_points|json_script:'gps-data' }}
 {% endblock %}
 {% block scripts %}
 {% if map_points %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
-  const points = JSON.parse(document.getElementById('gps-data').textContent);
-  const map = L.map('map');
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-  const coords = points.map(p => [p.lat, p.lng]);
-  L.polyline(coords, {color:'#bbef5a', weight:4}).addTo(map);
-  L.circleMarker(coords[0], {color:'#65c0ff',radius:7}).addTo(map).bindPopup('Primer punto registrado');
-  const last = points[points.length - 1];
-  L.circleMarker(coords[coords.length - 1], {color:'#f0b94b',radius:8}).addTo(map)
-    .bindPopup('Último punto recibido: ' + last.time + (last.accuracy !== null ? '<br>Precisión: ' + last.accuracy + ' m' : ''));
-  if (coords.length > 1) map.fitBounds(coords, {padding:[25,25]});
-  else map.setView(coords[0], 16);
+    const points = JSON.parse(document.getElementById('gps-data').textContent);
+    const map = L.map('map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    const coords = points.map(p => [p.lat, p.lng]);
+    L.polyline(coords, {
+        color:'#bbef5a',
+        weight:4
+    }).addTo(map);
+    L.circleMarker(coords[0], {
+        color:'#65c0ff',
+        radius:7
+    }).addTo(map).bindPopup('Primer punto registrado');
+    const last = points[points.length - 1];
+    L.circleMarker(coords[coords.length - 1], {
+        color:'#f0b94b',
+        radius:8
+    }).addTo(map)
+        .bindPopup('Último punto recibido: ' + last.time + (last.accuracy !== null ? '<br>Precisión: ' + last.accuracy + ' m' : ''));
+    if (coords.length > 1) {
+        map.fitBounds(coords, {
+            padding:[25,25]
+        });
+    } else {
+        map.setView(coords[0], 16);
+    }
 </script>
 {% endif %}
 {% endblock %}

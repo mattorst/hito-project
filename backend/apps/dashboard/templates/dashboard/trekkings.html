@@ -1,48 +1,1000 @@
-
 {% extends "dashboard/base.html" %}
-
+{% load static %}
 {% block title %}Trekkings | Hito{% endblock %}
-
+{% block head %}
+<style>
+    /* CONFIGURACIÓN GENERAL */
+    .trekkings-page {
+        width: 100%;
+        min-width: 0;
+    }
+    .trekkings-page .trek-icon {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+    }
+    /* ENCABEZADO */
+    .trekkings-header {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 190px;
+        margin: -30px -30px 24px;
+        padding: 34px 30px 28px;
+        overflow: hidden;
+        background: #090e11;
+        border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .trekkings-landscape {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(65%, 1000px);
+        z-index: -2;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .trekkings-landscape img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 60%;
+        opacity: .85;
+        filter: brightness(.70) saturate(.55);
+        image-rendering: auto;
+    }
+    .trekkings-landscape::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, #090e11 0%, rgba(9,14,17,.80) 25%, rgba(9,14,17,.45) 50%, rgba(9,14,17,.15) 75%, rgba(9,14,17,.05) 100%), linear-gradient(to top, rgba(9,14,17,.90), transparent 65%);
+        pointer-events: none;
+    }
+    .trekkings-header::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(90deg, #090e11 0%, rgba(9,14,17,.95) 18%, rgba(9,14,17,.70) 35%, rgba(9,14,17,.20) 65%, transparent 90%);
+        pointer-events: none;
+    }
+    .trekkings-header-content {
+        position: relative;
+        z-index: 1;
+        max-width: 650px;
+    }
+    .trekkings-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 8px;
+        color: #62d36b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+    }
+    .trekkings-eyebrow .trek-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    .trekkings-header h1 {
+        margin: 0 0 8px;
+        color: #e1e8ed;
+        font-size: clamp(29px, 2.8vw, 40px);
+        font-weight: 700;
+        letter-spacing: -.8px;
+        line-height: 1.15;
+    }
+    .trekkings-description {
+        margin: 0;
+        color: #a0adb5;
+        font-size: 13px;
+        line-height: 1.7;
+    }
+    .trekkings-header-tag {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 15px;
+        background: rgba(11,20,23,.80);
+        border: 1px solid #34454d;
+        border-radius: 25px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .trekkings-header-tag .trek-icon {
+        width: 17px;
+        height: 17px;
+        color: #ffffff;
+    }
+    /* TARJETAS SUPERIORES - DISEÑO ORIGINAL */
+    .trekkings-overview {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 15px;
+        margin-bottom: 22px;
+    }
+    .trek-overview-card {
+        --trek-color: #59d66b;
+        --trek-glow: rgba(89,214,107,.12);
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        min-width: 0;
+        min-height: 145px;
+        padding: 20px;
+        overflow: hidden;
+        background: radial-gradient(ellipse at 0% 0%, var(--trek-glow), transparent 75%), linear-gradient(145deg, #172226, #11181d);
+        border: 1px solid #29373c;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.17);
+        transition: transform .2s, border-color .2s;
+    }
+    .trek-overview-card:nth-child(2) {
+        --trek-color: #419fff;
+        --trek-glow: rgba(65,159,255,.12);
+    }
+    .trek-overview-card:nth-child(3) {
+        --trek-color: #ce91f7;
+        --trek-glow: rgba(206,145,247,.12);
+    }
+    .trek-overview-card::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 35px;
+        z-index: -1;
+        background: linear-gradient(to top, var(--trek-glow), transparent);
+    }
+    .trek-overview-card::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--trek-color), transparent);
+        opacity: .75;
+    }
+    .trek-overview-card:hover {
+        transform: translateY(-3px);
+        border-color: color-mix(in srgb, var(--trek-color) 40%, #29373c);
+    }
+    .trek-overview-icon {
+        display: grid;
+        place-items: center;
+        width: 45px;
+        height: 45px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        background: var(--trek-glow);
+        color: var(--trek-color);
+    }
+    .trekkings-page .trek-overview-card .trek-overview-icon .trek-icon {
+        width: 25px;
+        height: 25px;
+        color: var(--trek-color) !important;
+    }
+    .trek-overview-copy {
+        min-width: 0;
+    }
+    .trek-overview-copy h2 {
+        margin: 0 0 6px;
+        color: #e4ebef;
+        font-size: 15px;
+        font-weight: 650;
+    }
+    .trek-overview-copy p {
+        margin: 0;
+        color: #9ca9b0;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+    .trek-overview-value {
+        display: block;
+        margin: 5px 0;
+        color: #f4f7f9;
+        font-size: 32px;
+        font-weight: 750;
+        line-height: 1.1;
+        letter-spacing: -.8px;
+        font-variant-numeric: tabular-nums;
+    }
+    /* PANEL PRINCIPAL */
+    .trekkings-panel {
+        min-width: 0;
+        margin-bottom: 20px;
+        background: linear-gradient(150deg, #151f23, #11181c);
+        border: 1px solid #29373c;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0,0,0,.17);
+        overflow: hidden;
+    }
+    .trekkings-panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+        padding: 20px;
+    }
+    .trekkings-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .trekkings-panel-icon {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        background: #090e11;
+        color: #ffffff;
+        border: 1px solid #34454d;
+        border-radius: 11px;
+    }
+    .trekkings-panel-icon .trek-icon {
+        width: 23px;
+        height: 23px;
+        color: #ffffff;
+    }
+    .trekkings-panel-copy {
+        min-width: 0;
+    }
+    .trekkings-panel-copy h2 {
+        margin: 0 0 3px;
+        color: #e8eef1;
+        font-size: 17px;
+        font-weight: 650;
+        letter-spacing: -.25px;
+    }
+    .trekkings-panel-copy p {
+        margin: 0;
+        color: #9ca9b0;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+    .trekkings-record-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        background: #19262c;
+        border: 1px solid #344349;
+        border-radius: 7px;
+        color: #a9b8c0;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .trekkings-record-count strong {
+        color: #e5edf0;
+        font-weight: 650;
+    }
+    /* AVISO DE SINCRONIZACIÓN */
+    .trekkings-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 20px 18px;
+        padding: 13px 15px;
+        background: rgba(65,159,255,.055);
+        border: 1px solid rgba(65,159,255,.14);
+        border-radius: 9px;
+        color: #a5bdcf;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+    .trekkings-notice .trek-icon {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        color: #ffffff;
+    }
+    .trekkings-notice strong {
+        color: #c5dcef;
+        font-weight: 600;
+    }
+    /* TABLA DE TREKKINGS */
+    .trekkings-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+    }
+    .trekkings-table {
+        width: 100%;
+        min-width: 950px;
+        border-collapse: collapse;
+    }
+    .trekkings-table th {
+        padding: 15px 17px;
+        background: #10191e;
+        border-top: 1px solid #29373c;
+        border-bottom: 1px solid #29373c;
+        color: #a5b4bd;
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: .6px;
+        text-transform: uppercase;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .trekkings-table td {
+        padding: 17px;
+        border-bottom: 1px solid #243034;
+        color: #d0d9df;
+        font-size: 12px;
+        line-height: 1.6;
+        vertical-align: middle;
+    }
+    .trekkings-table tbody tr {
+        transition: background .2s;
+    }
+    .trekkings-table tbody tr:hover {
+        background: rgba(255,255,255,.027);
+    }
+    .trekkings-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+    .trekkings-table .trek-row-rescue {
+        background: rgba(255,100,120,.04);
+    }
+    .trekkings-table .trek-row-rescue td:first-child {
+        box-shadow: inset 3px 0 #ff6478;
+    }
+    .trekkings-table .trek-row-rescue:hover {
+        background: rgba(255,100,120,.07);
+    }
+    /* IDENTIFICADOR */
+    .trek-id {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 9px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+    .trek-id .trek-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    /* EXCURSIONISTA */
+    .trek-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+    .trek-user-avatar {
+        display: grid;
+        place-items: center;
+        width: 35px;
+        height: 35px;
+        flex-shrink: 0;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 50%;
+        color: #c084fc;
+        font-size: 12px;
+        font-weight: 650;
+    }
+    .trek-user-name {
+        color: #e1e8ed;
+        font-size: 12px;
+        font-weight: 550;
+        overflow-wrap: anywhere;
+    }
+    /* PARQUE Y SENDERO */
+    .trek-location {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 100px;
+    }
+    .trek-location .trek-icon {
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        color: #ffffff;
+    }
+    .trek-park-name {
+        color: #dce5ea;
+        font-size: 12px;
+        font-weight: 550;
+        overflow-wrap: anywhere;
+    }
+    .trek-trail {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        color: #b3c1ca;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+    }
+    .trek-trail .trek-icon {
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        color: #ffffff;
+    }
+    /* ESTADOS DE TREKKING */
+    .trek-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        border: 1px solid #344349;
+        border-radius: 7px;
+        background: #1b282e;
+        color: #b4c3cc;
+        font-size: 11px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+    .trek-status::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        flex-shrink: 0;
+        background: currentColor;
+        border-radius: 50%;
+    }
+    .trek-status.active {
+        color: #70b7ff;
+        background: rgba(65,159,255,.10);
+        border-color: rgba(65,159,255,.22);
+    }
+    .trek-status.completed {
+        color: #73dc7d;
+        background: rgba(89,214,107,.08);
+        border-color: rgba(89,214,107,.20);
+    }
+    .trek-status.cancelled {
+        color: #facc20;
+        background: rgba(250,204,32,.08);
+        border-color: rgba(250,204,32,.20);
+    }
+    .trek-status.rescue {
+        color: #ff8a98;
+        background: rgba(255,100,120,.10);
+        border-color: rgba(255,100,120,.25);
+    }
+    .trek-status.rescue::before {
+        box-shadow: 0 0 8px rgba(255,100,120,.50);
+    }
+    /* FECHA Y HORA */
+    .trek-date {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .trek-date strong {
+        color: #e2e9ed;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .trek-time {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #93a3ad;
+        font-size: 11px;
+    }
+    .trek-time .trek-icon {
+        width: 13px;
+        height: 13px;
+        color: #ffffff;
+    }
+    /* BOTÓN DE DETALLE */
+    .trek-detail-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 13px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: background .2s, border-color .2s;
+    }
+    .trek-detail-link .trek-icon {
+        width: 14px;
+        height: 14px;
+        color: #ffffff;
+    }
+    .trek-detail-link:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    /* TABLA SIN REGISTROS */
+    .trek-empty-cell {
+        padding: 0 !important;
+    }
+    .trekkings-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 280px;
+        padding: 30px;
+        text-align: center;
+    }
+    .trekkings-empty-icon {
+        display: grid;
+        place-items: center;
+        width: 65px;
+        height: 65px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 18px;
+        color: #ffffff;
+    }
+    .trekkings-empty-icon .trek-icon {
+        width: 32px;
+        height: 32px;
+        color: #ffffff;
+    }
+    .trekkings-empty h3 {
+        margin: 0;
+        color: #e1e8ed;
+        font-size: 16px;
+        font-weight: 650;
+    }
+    .trekkings-empty p {
+        max-width: 380px;
+        margin: 0;
+        color: #91a3ad;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+    /* PAGINACIÓN */
+    .trekkings-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+        padding: 17px 20px;
+        background: rgba(0,0,0,.10);
+        border-top: 1px solid #29373c;
+    }
+    .trekkings-pagination-side {
+        min-width: 95px;
+    }
+    .trekkings-pagination-side:last-child {
+        text-align: right;
+    }
+    .trekkings-pagination a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 9px 13px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 550;
+        transition: background .2s, border-color .2s;
+    }
+    .trekkings-pagination a .trek-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .trekkings-pagination a:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    .trekkings-page-number {
+        color: #98a9b1;
+        font-size: 12px;
+    }
+    .trekkings-page-number strong {
+        color: #e5edf0;
+        font-weight: 600;
+    }
+    /* PIE DE PÁGINA */
+    .trekkings-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 22px;
+        padding-top: 15px;
+        border-top: 1px solid #202c30;
+        color: #788b95;
+        font-size: 11px;
+    }
+    .trekkings-footer-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .trekkings-footer-info .trek-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    /* COLORES DE ICONOS FUERA DE LAS TARJETAS */
+    .trekkings-page svg.trek-icon:not(.trek-overview-card *) {
+        color: #ffffff;
+    }
+    .trekkings-page svg.trek-icon:has(use[href="#tr-icon-users"]):not(.trek-overview-card *) {
+        color: #c084fc;
+    }
+    .trekkings-page svg.trek-icon:has(use[href="#icon-alert"]):not(.trek-overview-card *) {
+        color: #facc15;
+    }
+    .trekkings-page svg.trek-icon:has(use[href="#icon-rescue"]):not(.trek-overview-card *),
+    .trekkings-page svg.trek-icon:has(use[href="#icon-sos"]):not(.trek-overview-card *) {
+        color: #ff453a;
+    }
+    /* RESPONSIVE */
+    @media (min-width: 1600px) {
+        .trek-overview-card {
+            min-height: 160px;
+            padding: 24px;
+        }
+        .trekkings-table td {
+            padding: 20px;
+        }
+    }
+    @media (max-width: 1150px) {
+        .trekkings-header {
+            min-height: 165px;
+        }
+        .trek-overview-card {
+            flex-direction: column;
+            gap: 10px;
+            padding: 17px;
+        }
+    }
+    @media (max-width: 850px) {
+        .trekkings-header {
+            margin: -20px -20px 20px;
+            padding: 24px 20px;
+            flex-wrap: wrap;
+        }
+        .trekkings-landscape {
+            width: 80%;
+            opacity: .75;
+        }
+        .trekkings-overview {
+            gap: 10px;
+        }
+        .trekkings-panel-heading {
+            padding: 16px;
+        }
+        .trekkings-notice {
+            margin: 0 16px 16px;
+        }
+    }
+    @media (max-width: 550px) {
+        .trekkings-header {
+            min-height: 190px;
+        }
+        .trekkings-landscape {
+            width: 100%;
+            opacity: .45;
+        }
+        .trekkings-header h1 {
+            font-size: 27px;
+        }
+        .trekkings-description {
+            font-size: 12px;
+        }
+        .trekkings-overview {
+            grid-template-columns: 1fr;
+        }
+        .trek-overview-card {
+            flex-direction: row;
+            min-height: 105px;
+            padding: 15px;
+        }
+        .trekkings-panel-copy h2 {
+            font-size: 15px;
+        }
+        .trekkings-pagination {
+            padding: 15px 12px;
+            gap: 8px;
+        }
+        .trekkings-pagination-side {
+            min-width: 0;
+        }
+        .trekkings-pagination a {
+            padding: 8px;
+        }
+        .trekkings-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .trekkings-page *,
+        .trekkings-page *::before,
+        .trekkings-page *::after {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+</style>
+{% endblock %}
 {% block content %}
-<h1>Trekkings registrados</h1>
-
-<p>Excursiones recibidas desde la aplicación móvil.</p>
-
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Excursionista</th>
-            <th>Parque</th>
-            <th>Sendero</th>
-            <th>Estado</th>
-            <th>Inicio</th>
-            <th>Detalle</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        {% for trekking in page %}
-        <tr>
-            <td>{{ trekking.id }}</td>
-            <td>{{ trekking.user.username }}</td>
-            <td>{{ trekking.trail.park.name }}</td>
-            <td>{{ trekking.trail.name }}</td>
-            <td>{{ trekking.get_status_display }}</td>
-            <td>{{ trekking.started_at|date:"d/m/Y H:i" }}</td>
-            <td>
-                <a href="{% url 'dashboard:trekking_detail' trekking.pk %}">
-                    Ver detalle
-                </a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="7">
-                Todavía no hay trekkings registrados.
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="trekkings-page">
+    <!-- ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="tr-icon-users" viewBox="0 0 24 24">
+                <circle cx="9" cy="7" r="3"/>
+                <path d="M2 21v-3a7 7 0 0 1 14 0v3M17 4a3 3 0 0 1 0 6M18 13a5 5 0 0 1 4 5v3"/>
+            </symbol>
+            <symbol id="tr-icon-trail" viewBox="0 0 24 24">
+                <circle cx="5" cy="19" r="2"/>
+                <circle cx="19" cy="5" r="2"/>
+                <path d="M7 19h7a4 4 0 0 0 0-8h-4a3 3 0 0 1 0-6h7"/>
+            </symbol>
+            <symbol id="tr-icon-list" viewBox="0 0 24 24">
+                <rect x="5" y="3" width="14" height="18" rx="2"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+            </symbol>
+            <symbol id="tr-icon-info" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 7h.01"/>
+            </symbol>
+            <symbol id="tr-icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+            </symbol>
+            <symbol id="tr-icon-inbox" viewBox="0 0 24 24">
+                <path d="M4 4h16l2 10v6H2v-6L4 4zM2 14h6l2 3h4l2-3h6"/>
+            </symbol>
+            <symbol id="tr-icon-left" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </symbol>
+            <symbol id="tr-icon-right" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </symbol>
+            <symbol id="tr-icon-eye" viewBox="0 0 24 24">
+                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- ENCABEZADO -->
+    <section class="trekkings-header">
+        <div class="trekkings-landscape" aria-hidden="true">
+            <img src="{% static 'dashboard/images/mountain-header.jpg' %}" alt="" decoding="async">
+        </div>
+        <div class="trekkings-header-content">
+            <span class="trekkings-eyebrow">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+                EXPLORACIÓN Y TRAZABILIDAD
+            </span>
+            <h1>Trekkings registrados</h1>
+            <p class="trekkings-description">Consulta las excursiones recibidas desde Hito Mobile, sus participantes, senderos recorridos y estados registrados en el sistema.</p>
+        </div>
+        <div class="trekkings-header-tag">
+            <svg class="trek-icon" aria-hidden="true"><use href="#icon-trekking"/></svg>
+            Gestión de excursiones
+        </div>
+    </section>
+    <!-- TARJETAS SUPERIORES - COLORES ORIGINALES -->
+    <section class="trekkings-overview" aria-label="Información de excursiones">
+        <article class="trek-overview-card">
+            <div class="trek-overview-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+            </div>
+            <div class="trek-overview-copy">
+                {% if page.paginator %}
+                    <h2>Trekkings registrados</h2>
+                    <strong class="trek-overview-value">{{ page.paginator.count }}</strong>
+                    <p>Total de excursiones del listado</p>
+                {% else %}
+                    <h2>Trekkings en el listado</h2>
+                    <strong class="trek-overview-value">{{ page|length }}</strong>
+                    <p>Excursiones disponibles</p>
+                {% endif %}
+            </div>
+        </article>
+        <article class="trek-overview-card">
+            <div class="trek-overview-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-users"/></svg>
+            </div>
+            <div class="trek-overview-copy">
+                <h2>Excursionistas</h2>
+                <p>Consulta los usuarios responsables de las excursiones y accede a la información de sus registros.</p>
+            </div>
+        </article>
+        <article class="trek-overview-card">
+            <div class="trek-overview-icon">
+                <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-trail"/></svg>
+            </div>
+            <div class="trek-overview-copy">
+                <h2>Parques y senderos</h2>
+                <p>Identifica los parques y senderos asociados a cada excursión sincronizada desde Hito Mobile.</p>
+            </div>
+        </article>
+    </section>
+    <!-- PANEL DE REGISTROS -->
+    <section class="trekkings-panel">
+        <div class="trekkings-panel-heading">
+            <div class="trekkings-panel-title">
+                <div class="trekkings-panel-icon">
+                    <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-list"/></svg>
+                </div>
+                <div class="trekkings-panel-copy">
+                    <h2>Registro de excursiones</h2>
+                    <p>Historial de trekkings sincronizados desde la aplicación móvil.</p>
+                </div>
+            </div>
+            <span class="trekkings-record-count">
+                <strong>{{ page|length }}</strong> registros en esta página
+            </span>
+        </div>
+        <div class="trekkings-notice">
+            <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-info"/></svg>
+            <span><strong>Información sincronizada:</strong> los estados y fechas corresponden a los registros recibidos desde Hito Mobile y pueden actualizarse después de una nueva sincronización.</span>
+        </div>
+        <!-- TABLA DE TREKKINGS -->
+        <div class="table-wrap trekkings-table-wrap">
+            <table class="trekkings-table">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Excursionista</th>
+                        <th scope="col">Parque</th>
+                        <th scope="col">Sendero</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Inicio de excursión</th>
+                        <th scope="col">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trekking in page %}
+                        <tr class="{% if trekking.status == 'RESCUE' %}trek-row-rescue{% endif %}">
+                            <td>
+                                <span class="trek-id">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+                                    #{{ trekking.id }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="trek-user">
+                                    <span class="trek-user-avatar">{{ trekking.user.username|slice:":1"|upper }}</span>
+                                    <span class="trek-user-name">{{ trekking.user.username }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="trek-location">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                                    <span class="trek-park-name">{{ trekking.trail.park.name }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="trek-trail">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-trail"/></svg>
+                                    <span>{{ trekking.trail.name }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if trekking.status == "ACTIVE" or trekking.status == "IN_PROGRESS" %}
+                                    <span class="trek-status active">{{ trekking.get_status_display }}</span>
+                                {% elif trekking.status == "COMPLETED" %}
+                                    <span class="trek-status completed">{{ trekking.get_status_display }}</span>
+                                {% elif trekking.status == "CANCELLED" %}
+                                    <span class="trek-status cancelled">{{ trekking.get_status_display }}</span>
+                                {% elif trekking.status == "RESCUE" %}
+                                    <span class="trek-status rescue">{{ trekking.get_status_display }}</span>
+                                {% else %}
+                                    <span class="trek-status">{{ trekking.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="trek-date">
+                                    <strong>{{ trekking.started_at|date:"d/m/Y" }}</strong>
+                                    <span class="trek-time">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                                        {{ trekking.started_at|date:"H:i" }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{% url 'dashboard:trekking_detail' trekking.pk %}" class="trek-detail-link">
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-eye"/></svg>
+                                    Ver detalle
+                                    <svg class="trek-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="trek-empty-cell">
+                                <div class="trekkings-empty">
+                                    <div class="trekkings-empty-icon">
+                                        <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-inbox"/></svg>
+                                    </div>
+                                    <h3>No hay trekkings registrados</h3>
+                                    <p>Todavía no existen excursiones sincronizadas desde Hito Mobile.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- PAGINACIÓN -->
+        {% if page.has_other_pages %}
+            <nav class="trekkings-pagination" aria-label="Paginación de trekkings">
+                <div class="trekkings-pagination-side">
+                    {% if page.has_previous %}
+                        <a href="?page={{ page.previous_page_number }}">
+                            <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-left"/></svg>
+                            Anterior
+                        </a>
+                    {% endif %}
+                </div>
+                <span class="trekkings-page-number">
+                    Página <strong>{{ page.number }}</strong> de <strong>{{ page.paginator.num_pages }}</strong>
+                </span>
+                <div class="trekkings-pagination-side">
+                    {% if page.has_next %}
+                        <a href="?page={{ page.next_page_number }}">
+                            Siguiente
+                            <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-right"/></svg>
+                        </a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+    <!-- PIE DE PÁGINA -->
+    <footer class="trekkings-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span class="trekkings-footer-info">
+            <svg class="trek-icon" aria-hidden="true"><use href="#tr-icon-shield"/></svg>
+            Registro y seguimiento de excursiones
+        </span>
+    </footer>
+</div>
 {% endblock %}

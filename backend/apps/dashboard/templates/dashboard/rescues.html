@@ -1,125 +1,430 @@
-
 {% extends "dashboard/base.html" %}
-
-{% block title %}
-Rescates | Hito
+{% load static %}
+{% block title %}Rescates | Hito{% endblock %}
+{% block head %}
+<style>
+    /* CONFIGURACIÓN GENERAL */
+    .rescues-page {width:100%;min-width:0;}
+    .rescues-page .rescue-icon {width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+    /* ENCABEZADO */
+    .rescues-header {position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:190px;margin:-30px -30px 24px;padding:34px 30px 28px;overflow:hidden;background:#090e11;border-bottom:1px solid rgba(255,255,255,.04);}
+    .rescues-landscape {position:absolute;top:0;right:0;bottom:0;width:min(65%,1000px);z-index:-2;overflow:hidden;pointer-events:none;}
+    .rescues-landscape img {display:block;width:100%;height:100%;object-fit:cover;object-position:center 60%;opacity:.85;filter:brightness(.70) saturate(.55);image-rendering:auto;}
+    .rescues-landscape::after {content:"";position:absolute;inset:0;background:linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.80) 25%,rgba(9,14,17,.45) 50%,rgba(9,14,17,.15) 75%,rgba(9,14,17,.05) 100%),linear-gradient(to top,rgba(9,14,17,.90),transparent 65%);pointer-events:none;}
+    .rescues-header::after {content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.95) 18%,rgba(9,14,17,.70) 35%,rgba(9,14,17,.20) 65%,transparent 90%);pointer-events:none;}
+    .rescues-header-content {position:relative;z-index:1;max-width:650px;}
+    .rescues-eyebrow {display:flex;align-items:center;gap:7px;margin-bottom:8px;color:#ff8292;font-size:11px;font-weight:700;letter-spacing:1.5px;}
+    .rescues-eyebrow .rescue-icon {width:16px;height:16px;}
+    .rescues-header h1 {margin:0 0 8px;color:#e1e8ed;font-size:clamp(29px,2.8vw,40px);font-weight:700;letter-spacing:-.8px;line-height:1.15;}
+    .rescues-description {max-width:650px;margin:0;color:#a0adb5;font-size:13px;line-height:1.7;}
+    .rescues-header-tag {position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;padding:10px 15px;background:rgba(42,24,30,.85);border:1px solid rgba(255,100,120,.25);border-radius:25px;color:#ffacb6;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+    .rescues-header-tag .rescue-icon {width:17px;height:17px;}
+    /* TARJETAS INFORMATIVAS - COLORES ORIGINALES */
+    .rescues-overview {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:22px;}
+    .rescue-overview-card {--rescue-color:#ff6478;--rescue-glow:rgba(255,100,120,.12);position:relative;isolation:isolate;display:flex;align-items:flex-start;gap:15px;min-width:0;min-height:130px;padding:20px;overflow:hidden;background:radial-gradient(ellipse at 0% 0%,var(--rescue-glow),transparent 75%),linear-gradient(145deg,#172226,#11181d);border:1px solid #29373c;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.17);transition:transform .2s,border-color .2s;}
+    .rescue-overview-card:nth-child(2) {--rescue-color:#419fff;--rescue-glow:rgba(65,159,255,.12);}
+    .rescue-overview-card:nth-child(3) {--rescue-color:#59d66b;--rescue-glow:rgba(89,214,107,.12);}
+    .rescue-overview-card::after {content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,transparent,var(--rescue-color),transparent);opacity:.75;}
+    .rescue-overview-card:hover {transform:translateY(-3px);border-color:color-mix(in srgb,var(--rescue-color) 40%,#29373c);}
+    .rescue-overview-icon {display:grid;place-items:center;width:45px;height:45px;flex-shrink:0;border-radius:12px;background:var(--rescue-glow);color:var(--rescue-color);}
+    .rescue-overview-icon .rescue-icon {width:25px;height:25px;}
+    .rescue-overview-copy {min-width:0;}
+    .rescue-overview-copy h2 {margin:0 0 6px;color:#e4ebef;font-size:15px;font-weight:650;}
+    .rescue-overview-copy p {margin:0;color:#9ca9b0;font-size:12px;line-height:1.7;}
+    /* PANEL DE SOLICITUDES */
+    .rescues-panel {min-width:0;margin-bottom:20px;background:linear-gradient(150deg,#151f23,#11181c);border:1px solid #29373c;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,.17);overflow:hidden;}
+    .rescues-panel-heading {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;padding:20px;}
+    .rescues-panel-title {display:flex;align-items:center;gap:12px;min-width:0;}
+    .rescues-panel-icon {display:grid;place-items:center;width:42px;height:42px;flex-shrink:0;background:#090e11;border:1px solid #34454d;color:#ffffff;border-radius:11px;}
+    .rescues-panel-icon .rescue-icon {width:23px;height:23px;}
+    .rescues-panel-copy {min-width:0;}
+    .rescues-panel-copy h2 {margin:0 0 3px;color:#e8eef1;font-size:17px;font-weight:650;letter-spacing:-.25px;}
+    .rescues-panel-copy p {margin:0;color:#9ca9b0;font-size:11px;}
+    .rescues-record-count {display:inline-flex;align-items:center;gap:7px;padding:7px 12px;background:#19262c;border:1px solid #344349;border-radius:7px;color:#a9b8c0;font-size:11px;white-space:nowrap;}
+    .rescues-record-count strong {color:#e5edf0;font-weight:650;}
+    /* AVISO INFORMATIVO */
+    .rescues-notice {display:flex;align-items:flex-start;gap:10px;margin:0 20px 18px;padding:13px 15px;background:rgba(65,159,255,.055);border:1px solid rgba(65,159,255,.14);border-radius:9px;color:#a5bdcf;font-size:12px;line-height:1.7;}
+    .rescues-notice .rescue-icon {width:18px;height:18px;margin-top:2px;color:#ffffff;}
+    .rescues-notice strong {color:#c5dcef;font-weight:600;}
+    /* TABLA DE RESCATES */
+    .rescues-table-wrap {width:100%;overflow-x:auto;background:transparent;border:0;border-radius:0;}
+    .rescues-table {width:100%;min-width:1080px;border-collapse:collapse;}
+    .rescues-table th {padding:15px 17px;background:#10191e;border-top:1px solid #29373c;border-bottom:1px solid #29373c;color:#a5b4bd;font-size:10px;font-weight:650;letter-spacing:.5px;text-transform:uppercase;text-align:left;white-space:nowrap;}
+    .rescues-table td {padding:17px;border-bottom:1px solid #243034;color:#d0d9df;font-size:12px;line-height:1.6;vertical-align:middle;}
+    .rescues-table tbody tr {transition:background .2s;}
+    .rescues-table tbody tr:hover {background:rgba(255,255,255,.027);}
+    .rescues-table tbody tr:last-child td {border-bottom:0;}
+    .rescues-table .rescue-row-active {background:rgba(255,100,120,.045);}
+    .rescues-table .rescue-row-active td:first-child {box-shadow:inset 3px 0 #ff6478;}
+    .rescues-table .rescue-row-active:hover {background:rgba(255,100,120,.075);}
+    /* FECHA Y HORA */
+    .rescue-date {display:flex;flex-direction:column;gap:4px;white-space:nowrap;}
+    .rescue-date strong {color:#e2e9ed;font-size:12px;font-weight:600;}
+    .rescue-time {display:inline-flex;align-items:center;gap:5px;color:#93a3ad;font-size:11px;}
+    .rescue-time .rescue-icon {width:13px;height:13px;color:#ffffff;}
+    .rescue-record-id {display:inline-flex;align-items:center;gap:5px;color:#aab8c0;font-size:10px;font-weight:600;}
+    /* EXCURSIONISTA */
+    .rescue-user {display:flex;align-items:center;gap:10px;min-width:0;}
+    .rescue-user-avatar {display:grid;place-items:center;width:34px;height:34px;flex-shrink:0;background:#090e11;border:1px solid #34454d;border-radius:50%;color:#c084fc;font-size:12px;font-weight:650;}
+    .rescue-user-name {color:#e1e8ed;font-size:12px;font-weight:550;overflow-wrap:anywhere;}
+    /* PARQUE Y SENDERO */
+    .rescue-location {display:flex;align-items:flex-start;gap:8px;min-width:130px;}
+    .rescue-location .rescue-icon {width:16px;height:16px;margin-top:3px;color:#ffffff;}
+    .rescue-park-name {display:block;color:#dce5ea;font-weight:550;}
+    .rescue-trail {display:block;margin-top:4px;color:#95a5ad;font-size:11px;}
+    /* ESTADOS DEL RESCATE - COLORES ORIGINALES */
+    .rescue-status {display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid #344349;border-radius:7px;background:#1b282e;color:#b4c3cc;font-size:11px;font-weight:650;white-space:nowrap;}
+    .rescue-status-dot {display:block;width:7px;height:7px;flex-shrink:0;border-radius:50%;background:currentColor;}
+    .rescue-status.active {color:#ff8a98;background:rgba(255,100,120,.10);border-color:rgba(255,100,120,.25);}
+    .rescue-status.active .rescue-status-dot {box-shadow:0 0 8px rgba(255,100,120,.65);}
+    .rescue-status.completed {color:#73dc7d;background:rgba(89,214,107,.08);border-color:rgba(89,214,107,.20);}
+    .rescue-status.cancelled {color:#facc20;background:rgba(250,204,32,.08);border-color:rgba(250,204,32,.20);}
+    /* COORDENADAS GPS */
+    .rescue-coordinates {display:flex;flex-direction:column;gap:5px;padding:9px 11px;background:rgba(8,16,19,.40);border:1px solid #29373c;border-radius:7px;min-width:145px;}
+    .rescue-coordinate {display:flex;align-items:center;gap:7px;color:#c9d7de;font-size:11px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+    .rescue-coordinate small {width:25px;flex-shrink:0;color:#8297a2;font-size:9px;font-weight:650;}
+    .rescue-coordinate-label {display:inline-flex;align-items:center;gap:6px;margin-bottom:3px;color:#8fc696;font-size:10px;font-weight:600;}
+    .rescue-coordinate-label .rescue-icon {width:14px;height:14px;color:#ffffff;}
+    .rescue-no-location {display:inline-flex;align-items:center;gap:7px;color:#e1b76b;font-size:11px;white-space:nowrap;}
+    .rescue-no-location .rescue-icon {width:15px;height:15px;}
+    .rescue-no-close {display:inline-flex;align-items:center;gap:6px;color:#8799a3;font-size:11px;white-space:nowrap;}
+    .rescue-no-close .rescue-icon {width:14px;height:14px;}
+    /* BOTONES DE ACCIÓN */
+    .rescue-actions {display:flex;flex-direction:column;align-items:flex-start;gap:9px;}
+    .rescue-manage {display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;background:#090e11;border:1px solid #34454d;border-radius:7px;color:#ffffff;font-size:11px;font-weight:600;white-space:nowrap;transition:background .2s,border-color .2s;}
+    .rescue-manage .rescue-icon {width:14px;height:14px;color:#ff453a;}
+    .rescue-manage:hover {background:#263238;border-color:#526269;color:#ffffff;}
+    .rescue-manage.urgent {background:#090e11;border-color:#34454d;color:#ffffff;}
+    .rescue-manage.urgent:hover {background:#263238;border-color:#526269;color:#ffffff;}
+    .rescue-trekking-link {display:inline-flex;align-items:center;gap:5px;padding:7px 9px;background:#090e11;border:1px solid #34454d;border-radius:7px;color:#ffffff;font-size:11px;white-space:nowrap;transition:background .2s,border-color .2s;}
+    .rescue-trekking-link .rescue-icon {width:14px;height:14px;color:#ffffff;}
+    .rescue-trekking-link:hover {background:#263238;border-color:#526269;color:#ffffff;}
+    /* TABLA SIN REGISTROS */
+    .rescue-empty-cell {padding:0!important;}
+    .rescues-empty {display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;min-height:280px;padding:30px;text-align:center;}
+    .rescues-empty-icon {display:grid;place-items:center;width:65px;height:65px;background:#090e11;border:1px solid #34454d;border-radius:18px;color:#ffffff;}
+    .rescues-empty-icon .rescue-icon {width:32px;height:32px;}
+    .rescues-empty h3 {margin:0;color:#e1e8ed;font-size:16px;font-weight:650;}
+    .rescues-empty p {max-width:380px;margin:0;color:#91a3ad;font-size:12px;line-height:1.7;}
+    /* LEYENDA - COLORES ORIGINALES */
+    .rescues-legend {display:flex;align-items:center;flex-wrap:wrap;gap:12px 22px;padding:16px 20px;border-top:1px solid #29373c;background:rgba(0,0,0,.10);}
+    .rescues-legend-title {color:#d0dbe1;font-size:11px;font-weight:650;}
+    .rescues-legend-item {display:inline-flex;align-items:center;gap:7px;color:#9ca9b0;font-size:11px;}
+    .rescues-legend-dot {width:8px;height:8px;flex-shrink:0;border-radius:50%;}
+    .rescues-legend-dot.active {background:#ff6478;}
+    .rescues-legend-dot.completed {background:#59d66b;}
+    .rescues-legend-dot.cancelled {background:#facc20;}
+    /* PIE DE PÁGINA */
+    .rescues-footer {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:15px;margin-top:22px;border-top:1px solid #202c30;color:#788b95;font-size:11px;}
+    .rescues-footer-info {display:inline-flex;align-items:center;gap:7px;}
+    .rescues-footer-info .rescue-icon {width:15px;height:15px;color:#ffffff;}
+    /* PALETA GENERAL - EXCLUYE TARJETAS Y ESTADOS */
+    .rescues-page .rescue-overview-card .rescue-icon {color:var(--rescue-color)!important;}
+    .rescues-page svg.rescue-icon:not(.rescue-overview-card *) {color:#ffffff!important;}
+    .rescues-page svg.rescue-icon:has(> use:is([href="#res-icon-sos"],[href="#icon-rescue"],[href="#icon-sos"])):not(.rescue-overview-card *),
+    .rescues-page .rescue-manage svg.rescue-icon:not(.rescue-overview-card *) {color:#ff453a!important;}
+    .rescues-page :is(.rescues-panel-icon,.rescues-empty-icon,.rescue-user-avatar) {background:#090e11!important;border:1px solid #34454d!important;box-shadow:none;}
+    .rescues-page .rescue-user-avatar {color:#c084fc!important;}
+    .rescues-page :is(.rescue-manage,.rescue-trekking-link) {background:#090e11!important;border:1px solid #34454d!important;color:#ffffff!important;box-shadow:none;}
+    .rescues-page .rescue-trekking-link {padding:7px 9px;border-radius:7px;transition:background .2s,border-color .2s;}
+    .rescues-page :is(.rescue-manage,.rescue-trekking-link):hover {background:#263238!important;border-color:#526269!important;color:#ffffff!important;}
+    /* RESPONSIVE */
+    @media (min-width:1600px) {
+        .rescue-overview-card {min-height:150px;padding:24px;}
+        .rescues-table td {padding:20px;}
+    }
+    @media (max-width:1150px) {
+        .rescues-header {min-height:165px;}
+        .rescue-overview-card {flex-direction:column;gap:10px;padding:17px;}
+    }
+    @media (max-width:850px) {
+        .rescues-header {margin:-20px -20px 20px;padding:24px 20px;flex-wrap:wrap;}
+        .rescues-landscape {width:80%;opacity:.75;}
+        .rescues-overview {gap:10px;}
+        .rescues-panel-heading {padding:16px;}
+        .rescues-notice {margin:0 16px 16px;}
+    }
+    @media (max-width:550px) {
+        .rescues-header {min-height:190px;}
+        .rescues-landscape {width:100%;opacity:.45;}
+        .rescues-header h1 {font-size:27px;}
+        .rescues-description {font-size:12px;}
+        .rescues-overview {grid-template-columns:1fr;}
+        .rescue-overview-card {flex-direction:row;min-height:105px;padding:15px;}
+        .rescues-panel-copy h2 {font-size:15px;}
+        .rescues-legend {padding:14px;gap:10px;}
+        .rescues-legend-title {width:100%;}
+        .rescues-footer {flex-direction:column;align-items:flex-start;}
+    }
+    @media (prefers-reduced-motion:reduce) {
+        .rescues-page *,.rescues-page *::before,.rescues-page *::after {animation:none!important;transition:none!important;}
+    }
+</style>
 {% endblock %}
-
 {% block content %}
-
-<h1>Solicitudes de rescate</h1>
-
-<p class="subtle">
-    Solicitudes SOS recibidas desde Hito Mobile.
-    El personal autorizado puede consultar
-    la información y gestionar su cierre.
-</p>
-
-<div class="table-wrap">
-
-    <table>
-        <thead>
-            <tr>
-                <th>Fecha</th>
-                <th>Excursionista</th>
-                <th>Parque / sendero</th>
-                <th>Estado</th>
-                <th>Ubicación SOS</th>
-                <th>Fecha de cierre</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            {% for rescue in page %}
-
-            <tr>
-                <td>
-                    {{ rescue.started_at|date:"d/m/Y H:i" }}
-                </td>
-
-                <td>
-                    {{ rescue.trekking.user.username }}
-                </td>
-
-                <td>
-                    {{ rescue.trekking.trail.park.name }}
-
-                    <br>
-
-                    <small class="subtle">
-                        {{ rescue.trekking.trail.name }}
-                    </small>
-                </td>
-
-                <td>
-                    {% if rescue.status == "ACTIVE" %}
-                        <strong style="color:#f08080;">
-                            SOS activo
-                        </strong>
-
-                    {% elif rescue.status == "COMPLETED" %}
-                        <strong style="color:#b3e853;">
-                            Completado
-                        </strong>
-
-                    {% elif rescue.status == "CANCELLED" %}
-                        <strong style="color:#f0b94b;">
-                            Cancelado
-                        </strong>
-
-                    {% else %}
-                        {{ rescue.get_status_display }}
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if rescue.latitude != None and rescue.longitude != None %}
-                        {{ rescue.latitude }},
-                        {{ rescue.longitude }}
-                    {% else %}
-                        No registrada
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if rescue.finished_at %}
-                        {{ rescue.finished_at|date:"d/m/Y H:i" }}
-                    {% else %}
-                        —
-                    {% endif %}
-                </td>
-
-                <td>
-                    <a href="{% url 'dashboard:rescue_detail' rescue.pk %}">
-                        Gestionar rescate
-                    </a>
-
-                    <br>
-
-                    <a href="{% url 'dashboard:trekking_detail' rescue.trekking_id %}">
-                        Ver trekking #{{ rescue.trekking_id }}
-                    </a>
-                </td>
-            </tr>
-
-            {% empty %}
-
-            <tr>
-                <td colspan="7">
-                    No hay solicitudes de rescate
-                    sincronizadas.
-                </td>
-            </tr>
-
-            {% endfor %}
-
-        </tbody>
-    </table>
-
+<div class="rescues-page">
+    <!-- ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="res-icon-sos" viewBox="0 0 24 24">
+                <path d="M5 18v-7a7 7 0 0 1 14 0v7M3 18h18v3H3zM12 1v2M2 5l2 2M22 5l-2 2M12 7v4"/>
+            </symbol>
+            <symbol id="res-icon-gps" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7"/>
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </symbol>
+            <symbol id="res-icon-gps-off" viewBox="0 0 24 24">
+                <path d="M3 3l18 18M12 2v3M19 12h3M2 12h3M12 19v3"/>
+                <path d="M8 6a7 7 0 0 1 10 10M6 8a7 7 0 0 0 10 10"/>
+            </symbol>
+            <symbol id="res-icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+            </symbol>
+            <symbol id="res-icon-list" viewBox="0 0 24 24">
+                <rect x="5" y="3" width="14" height="18" rx="2"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+            </symbol>
+            <symbol id="res-icon-info" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 7h.01"/>
+            </symbol>
+            <symbol id="res-icon-inbox" viewBox="0 0 24 24">
+                <path d="M4 4h16l2 10v6H2v-6L4 4z"/>
+                <path d="M2 14h6l2 3h4l2-3h6"/>
+            </symbol>
+            <symbol id="res-icon-check" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M8 12l3 3 5-6"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- ENCABEZADO -->
+    <section class="rescues-header">
+        <div class="rescues-landscape" aria-hidden="true">
+            <img src="{% static 'dashboard/images/mountain-header.jpg' %}" alt="" decoding="async">
+        </div>
+        <div class="rescues-header-content">
+            <span class="rescues-eyebrow">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-sos"/></svg>
+                EMERGENCIAS Y SEGURIDAD
+            </span>
+            <h1>Solicitudes de rescate</h1>
+            <p class="rescues-description">Solicitudes SOS recibidas desde Hito Mobile. El personal autorizado puede consultar la información y gestionar su cierre.</p>
+        </div>
+        <div class="rescues-header-tag">
+            <svg class="rescue-icon" aria-hidden="true"><use href="#icon-rescue"/></svg>
+            Centro de emergencias SOS
+        </div>
+    </section>
+    <!-- TARJETAS INFORMATIVAS - DISEÑO ORIGINAL -->
+    <section class="rescues-overview" aria-label="Información del módulo de rescates">
+        <article class="rescue-overview-card">
+            <div class="rescue-overview-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-sos"/></svg>
+            </div>
+            <div class="rescue-overview-copy">
+                <h2>Alertas SOS</h2>
+                <p>Consulta las solicitudes de emergencia enviadas por los excursionistas desde Hito Mobile.</p>
+            </div>
+        </article>
+        <article class="rescue-overview-card">
+            <div class="rescue-overview-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-gps"/></svg>
+            </div>
+            <div class="rescue-overview-copy">
+                <h2>Ubicación registrada</h2>
+                <p>Revisa las coordenadas geográficas asociadas a cada solicitud de rescate.</p>
+            </div>
+        </article>
+        <article class="rescue-overview-card">
+            <div class="rescue-overview-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-shield"/></svg>
+            </div>
+            <div class="rescue-overview-copy">
+                <h2>Gestión de rescates</h2>
+                <p>Consulta el estado de las solicitudes y accede a su gestión desde el dashboard.</p>
+            </div>
+        </article>
+    </section>
+    <!-- PANEL DE SOLICITUDES -->
+    <section class="rescues-panel">
+        <div class="rescues-panel-heading">
+            <div class="rescues-panel-title">
+                <div class="rescues-panel-icon">
+                    <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-list"/></svg>
+                </div>
+                <div class="rescues-panel-copy">
+                    <h2>Registro de solicitudes SOS</h2>
+                    <p>Historial de emergencias sincronizadas desde Hito Mobile.</p>
+                </div>
+            </div>
+            <span class="rescues-record-count">
+                <strong>{{ page|length }}</strong> registros en esta página
+            </span>
+        </div>
+        <div class="rescues-notice">
+            <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-info"/></svg>
+            <span><strong>Información de ubicación:</strong> las coordenadas corresponden a la ubicación registrada en la solicitud SOS y no representan un seguimiento GPS en tiempo real.</span>
+        </div>
+        <!-- TABLA DE RESCATES -->
+        <div class="table-wrap rescues-table-wrap">
+            <table class="rescues-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Fecha de solicitud</th>
+                        <th scope="col">Excursionista</th>
+                        <th scope="col">Parque / sendero</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Ubicación SOS</th>
+                        <th scope="col">Fecha de cierre</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rescue in page %}
+                        <tr class="{% if rescue.status == 'ACTIVE' %}rescue-row-active{% endif %}">
+                            <td>
+                                <div class="rescue-date">
+                                    <span class="rescue-record-id">SOS #{{ rescue.pk }}</span>
+                                    <strong>{{ rescue.started_at|date:"d/m/Y" }}</strong>
+                                    <span class="rescue-time">
+                                        <svg class="rescue-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                                        {{ rescue.started_at|date:"H:i" }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="rescue-user">
+                                    <span class="rescue-user-avatar">{{ rescue.trekking.user.username|slice:":1"|upper }}</span>
+                                    <span class="rescue-user-name">{{ rescue.trekking.user.username }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="rescue-location">
+                                    <svg class="rescue-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                                    <div>
+                                        <span class="rescue-park-name">{{ rescue.trekking.trail.park.name }}</span>
+                                        <span class="rescue-trail">{{ rescue.trekking.trail.name }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if rescue.status == "ACTIVE" %}
+                                    <span class="rescue-status active">
+                                        <span class="rescue-status-dot"></span>
+                                        SOS activo
+                                    </span>
+                                {% elif rescue.status == "COMPLETED" %}
+                                    <span class="rescue-status completed">
+                                        <span class="rescue-status-dot"></span>
+                                        Completado
+                                    </span>
+                                {% elif rescue.status == "CANCELLED" %}
+                                    <span class="rescue-status cancelled">
+                                        <span class="rescue-status-dot"></span>
+                                        Cancelado
+                                    </span>
+                                {% else %}
+                                    <span class="rescue-status">
+                                        <span class="rescue-status-dot"></span>
+                                        {{ rescue.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rescue.latitude != None and rescue.longitude != None %}
+                                    <div class="rescue-coordinates">
+                                        <span class="rescue-coordinate-label">
+                                            <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-gps"/></svg>
+                                            Coordenadas
+                                        </span>
+                                        <span class="rescue-coordinate">
+                                            <small>LAT</small>
+                                            {{ rescue.latitude }}
+                                        </span>
+                                        <span class="rescue-coordinate">
+                                            <small>LNG</small>
+                                            {{ rescue.longitude }}
+                                        </span>
+                                    </div>
+                                {% else %}
+                                    <span class="rescue-no-location">
+                                        <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-gps-off"/></svg>
+                                        No registrada
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rescue.finished_at %}
+                                    <div class="rescue-date">
+                                        <strong>{{ rescue.finished_at|date:"d/m/Y" }}</strong>
+                                        <span class="rescue-time">
+                                            <svg class="rescue-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                                            {{ rescue.finished_at|date:"H:i" }}
+                                        </span>
+                                    </div>
+                                {% else %}
+                                    <span class="rescue-no-close">
+                                        <svg class="rescue-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                                        Sin cierre registrado
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="rescue-actions">
+                                    <a href="{% url 'dashboard:rescue_detail' rescue.pk %}" class="rescue-manage{% if rescue.status == 'ACTIVE' %} urgent{% endif %}">
+                                        Gestionar rescate
+                                        <svg class="rescue-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
+                                    </a>
+                                    <a href="{% url 'dashboard:trekking_detail' rescue.trekking_id %}" class="rescue-trekking-link">
+                                        <svg class="rescue-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+                                        Ver trekking #{{ rescue.trekking_id }}
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="rescue-empty-cell">
+                                <div class="rescues-empty">
+                                    <div class="rescues-empty-icon">
+                                        <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-inbox"/></svg>
+                                    </div>
+                                    <h3>No hay solicitudes de rescate</h3>
+                                    <p>Todavía no existen solicitudes SOS sincronizadas desde Hito Mobile.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- LEYENDA DE ESTADOS -->
+        <div class="rescues-legend">
+            <span class="rescues-legend-title">Estados de rescate:</span>
+            <span class="rescues-legend-item">
+                <span class="rescues-legend-dot active"></span>
+                SOS activo
+            </span>
+            <span class="rescues-legend-item">
+                <span class="rescues-legend-dot completed"></span>
+                Completado
+            </span>
+            <span class="rescues-legend-item">
+                <span class="rescues-legend-dot cancelled"></span>
+                Cancelado
+            </span>
+        </div>
+    </section>
+    <!-- PIE DE PÁGINA -->
+    <footer class="rescues-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span class="rescues-footer-info">
+            <svg class="rescue-icon" aria-hidden="true"><use href="#res-icon-shield"/></svg>
+            Gestión de emergencias y solicitudes SOS
+        </span>
+    </footer>
 </div>
-
-{% include "dashboard/pagination.html" %}
-
 {% endblock %}

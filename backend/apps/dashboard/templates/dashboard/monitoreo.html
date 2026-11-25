@@ -1,1089 +1,2068 @@
-
 {% extends "dashboard/base.html" %}
+{% load static %}
 {% block title %}Centro de monitoreo | Hito{% endblock %}
-
 {% block head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-
 <style>
-    #monitor-map {
-        height: 380px;
+    /* CONFIGURACIÓN GENERAL */
+    .monitor-page {
         width: 100%;
-        border: 1px solid #344035;
-        border-radius: 10px;
-        background: #18211c;
+        min-width: 0;
+    }
+    .monitor-page .monitor-icon {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+    }
+    /* ENCABEZADO */
+    .monitor-header {
         position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 190px;
+        margin: -30px -30px 24px;
+        padding: 34px 30px 28px;
+        overflow: hidden;
+        background: #090e11;
+        border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .monitor-landscape {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(65%, 1000px);
+        z-index: -2;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .monitor-landscape img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 60%;
+        opacity: .85;
+        filter: brightness(.70) saturate(.55);
+        image-rendering: auto;
+    }
+    .monitor-landscape::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, #090e11 0%, rgba(9,14,17,.80) 25%, rgba(9,14,17,.45) 50%, rgba(9,14,17,.15) 75%, rgba(9,14,17,.05) 100%), linear-gradient(to top, rgba(9,14,17,.90), transparent 65%);
+        pointer-events: none;
+    }
+    .monitor-header::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(90deg, #090e11 0%, rgba(9,14,17,.95) 18%, rgba(9,14,17,.70) 35%, rgba(9,14,17,.20) 65%, transparent 90%);
+        pointer-events: none;
+    }
+    .monitor-header-content {
+        position: relative;
+        z-index: 1;
+        max-width: 650px;
+    }
+    .monitor-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 8px;
+        color: #62d36b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+    }
+    .monitor-eyebrow .monitor-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    .monitor-header h1 {
+        margin: 0 0 8px;
+        color: #e1e8ed;
+        font-size: clamp(29px, 2.8vw, 40px);
+        font-weight: 700;
+        letter-spacing: -.8px;
+        line-height: 1.15;
+    }
+    .monitor-header-description {
+        margin: 0;
+        color: #a0adb5;
+        font-size: 13px;
+        line-height: 1.7;
+    }
+    .monitor-header-label {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 15px;
+        background: rgba(11,20,23,.80);
+        border: 1px solid #344349;
+        border-radius: 25px;
+        color: #c4d5cb;
+        font-size: 11px;
+        font-weight: 550;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .monitor-header-label .monitor-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    /* TARJETAS DE INDICADORES - COLORES ORIGINALES */
+    .monitor-stats {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 15px;
+        margin-bottom: 22px;
+    }
+    .monitor-stat {
+        --monitor-color: #59d66b;
+        --monitor-glow: rgba(89,214,107,.12);
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: 0;
+        min-height: 177px;
+        padding: 16px 17px 23px;
+        overflow: hidden;
+        background: radial-gradient(ellipse at 0% 0%, var(--monitor-glow), transparent 70%), linear-gradient(145deg, #172226, #11181d);
+        border: 1px solid #29373c;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.17), inset 0 1px rgba(255,255,255,.025);
+        transition: transform .2s, border-color .2s;
+    }
+    .monitor-stat.overdue {
+        --monitor-color: #facc20;
+        --monitor-glow: rgba(250,204,32,.12);
+    }
+    .monitor-stat.rescue {
+        --monitor-color: #ff794d;
+        --monitor-glow: rgba(255,121,77,.12);
+    }
+    .monitor-stat.gps {
+        --monitor-color: #419fff;
+        --monitor-glow: rgba(65,159,255,.12);
+    }
+    .monitor-stat.sos {
+        --monitor-color: #ff6478;
+        --monitor-glow: rgba(255,100,120,.13);
+    }
+    .monitor-stat::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 40px;
+        z-index: -1;
+        background: linear-gradient(to top, var(--monitor-glow), transparent);
+    }
+    .monitor-stat::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--monitor-color), transparent);
+        opacity: .75;
+    }
+    .monitor-stat:hover {
+        transform: translateY(-3px);
+        border-color: color-mix(in srgb, var(--monitor-color) 40%, #29373c);
+    }
+    .monitor-stat.is-alert {
+        border-color: var(--monitor-color);
+    }
+    .monitor-stat-icon {
+        display: grid;
+        place-items: center;
+        width: 39px;
+        height: 39px;
+        margin-bottom: 10px;
+        background: var(--monitor-glow);
+        color: var(--monitor-color);
+        border-radius: 11px;
+    }
+    .monitor-page .monitor-stat .monitor-stat-icon .monitor-icon {
+        width: 23px;
+        height: 23px;
+        stroke-width: 1.9;
+        color: var(--monitor-color) !important;
+    }
+    .monitor-stat-label {
+        color: #dfe5e9;
+        font-size: 12px;
+        font-weight: 550;
+        line-height: 1.4;
+    }
+    .monitor-stat-value {
+        display: block;
+        margin: 7px 0;
+        color: #f4f7f9;
+        font-size: 34px;
+        font-weight: 750;
+        letter-spacing: -.9px;
+        line-height: 1.05;
+        font-variant-numeric: tabular-nums;
+    }
+    .monitor-stat-caption {
+        color: #9ca9b0;
+        font-size: 11px;
+        line-height: 1.5;
+    }
+    .monitor-stat.is-alert .monitor-stat-caption {
+        color: var(--monitor-color);
+    }
+    /* PANELES GENERALES */
+    .monitor-panel {
+        min-width: 0;
+        margin-bottom: 20px;
+        background: linear-gradient(150deg, #151f23, #11181c);
+        border: 1px solid #29373c;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0,0,0,.17);
+        overflow: hidden;
+    }
+    .monitor-panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 18px 20px;
+    }
+    .monitor-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .monitor-panel-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        background: #090e11;
+        color: #ffffff;
+        border: 1px solid #34454d;
+        border-radius: 11px;
+    }
+    .monitor-panel-icon .monitor-icon {
+        width: 23px;
+        height: 23px;
+    }
+    .monitor-panel-copy {
+        min-width: 0;
+    }
+    .monitor-panel-copy h2 {
+        margin: 0 0 3px;
+        color: #e8eef1;
+        font-size: 17px;
+        font-weight: 650;
+        letter-spacing: -.25px;
+    }
+    .monitor-panel-copy p {
+        margin: 0;
+        color: #9ca9b0;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+    /* FILTROS */
+    .monitor-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 0 20px 18px;
+        margin: 0;
+    }
+    .monitor-filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+        min-width: 200px;
+    }
+    .monitor-filter-field label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #c9d4da;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .monitor-filter-field label .monitor-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .monitor-filter-field select {
+        width: 100%;
+        min-height: 43px;
+        padding: 10px 13px;
+        background: #0e171b;
+        border: 1px solid #344349;
+        border-radius: 8px;
+        color: #e3eaee;
+        font-size: 13px;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .monitor-filter-field select:hover {
+        border-color: #506068;
+    }
+    .monitor-filter-field select:focus {
+        outline: none;
+        border-color: #62d36b;
+        box-shadow: 0 0 0 3px rgba(98,211,107,.08);
+    }
+    .monitor-filter-buttons {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        flex-wrap: wrap;
+    }
+    .monitor-button,
+    .monitor-button.primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 43px;
+        padding: 10px 15px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 8px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background .2s, color .2s, border-color .2s;
+    }
+    .monitor-button .monitor-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    .monitor-button:hover,
+    .monitor-button.primary:hover {
+        background: #263238;
+        color: #ffffff;
+        border-color: #526269;
+    }
+    /* ACTUALIZACIÓN DEL MONITOREO */
+    .monitor-update-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        flex-wrap: wrap;
+        padding: 13px 20px;
+        background: rgba(0,0,0,.12);
+        border-top: 1px solid #29373c;
+    }
+    .monitor-update-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #9ca9b0;
+        font-size: 11px;
+    }
+    .monitor-update-item strong {
+        color: #dfe7eb;
+        font-weight: 600;
+    }
+    .monitor-update-item .monitor-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .monitor-refresh-dot {
+        width: 7px;
+        height: 7px;
+        flex-shrink: 0;
+        background: #62d36b;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(98,211,107,.35);
+    }
+    /* AVISO DE SINCRONIZACIÓN */
+    .monitor-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        margin-bottom: 20px;
+        padding: 13px 16px;
+        background: rgba(65,159,255,.055);
+        border: 1px solid rgba(65,159,255,.14);
+        border-radius: 10px;
+        color: #a5bdcf;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+    .monitor-notice .monitor-icon {
+        width: 19px;
+        height: 19px;
+        margin-top: 1px;
+        color: #ffffff;
+    }
+    .monitor-notice strong {
+        color: #c5dcef;
+        font-weight: 600;
+    }
+    /* PANEL DE EMERGENCIAS SOS */
+    .sos-panel {
+        margin-bottom: 20px;
+        background: radial-gradient(ellipse at 0% 0%, rgba(255,84,106,.10), transparent 65%), linear-gradient(145deg, #291b21, #1b151a);
+        border: 1px solid rgba(255,100,120,.42);
+        border-radius: 14px;
+        box-shadow: 0 8px 25px rgba(0,0,0,.18);
+        overflow: hidden;
+    }
+    .sos-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 18px 20px;
+        border-bottom: 1px solid rgba(255,100,120,.13);
+    }
+    .sos-panel-icon {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        background: #090e11;
+        color: #ff453a;
+        border: 1px solid rgba(255,69,58,.25);
+        border-radius: 12px;
+    }
+    .sos-panel-icon .monitor-icon {
+        width: 25px;
+        height: 25px;
+        color: #ff453a;
+    }
+    .sos-panel-copy {
+        flex: 1;
+        min-width: 0;
+    }
+    .sos-panel-copy h2 {
+        margin: 0 0 5px;
+        color: #ff9ba8;
+        font-size: 17px;
+        font-weight: 650;
+    }
+    .sos-panel-copy p {
+        margin: 0;
+        color: #c3a6af;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+    .sos-panel-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(255,100,120,.10);
+        border: 1px solid rgba(255,100,120,.20);
+        border-radius: 7px;
+        color: #ff9ba8;
+        font-size: 11px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+    .sos-panel-count::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        background: #ff6478;
+        border-radius: 50%;
+        box-shadow: 0 0 9px rgba(255,100,120,.65);
+    }
+    .sos-location-warning {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 20px;
+        background: rgba(255,180,85,.055);
+        color: #f0c276;
+        border-bottom: 1px solid rgba(255,180,85,.10);
+        font-size: 12px;
+    }
+    .sos-location-warning .monitor-icon {
+        width: 16px;
+        height: 16px;
+    }
+    .sos-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px 20px;
+    }
+    .sos-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px;
+        background: rgba(8,10,14,.25);
+        border: 1px solid rgba(255,100,120,.14);
+        border-radius: 9px;
+    }
+    .sos-row-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        background: #090e11;
+        color: #ff453a;
+        border: 1px solid rgba(255,69,58,.25);
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 800;
+    }
+    .sos-row-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+    }
+    .sos-row-title {
+        color: #f2d9df;
+        font-size: 13px;
+        font-weight: 650;
+        overflow-wrap: anywhere;
+    }
+    .sos-row-meta {
+        color: #bfa6af;
+        font-size: 11px;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+    .sos-row-warning {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #f0c276;
+        font-size: 11px;
+    }
+    .sos-row-warning .monitor-icon {
+        width: 14px;
+        height: 14px;
+    }
+    .sos-manage {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 12px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: background .2s, border-color .2s;
+    }
+    .sos-manage .monitor-icon {
+        width: 14px;
+        height: 14px;
+        color: #ff453a;
+    }
+    .sos-manage:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    /* PANEL DEL MAPA - DISEÑO ORIGINAL */
+    .monitor-map-body {
+        padding: 0 17px 17px;
+    }
+    .monitor-map-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        background: #1a272d;
+        border: 1px solid #344349;
+        border-radius: 7px;
+        color: #a8becb;
+        font-size: 10px;
+        font-weight: 550;
+        white-space: nowrap;
+    }
+    .monitor-map-tag .monitor-icon {
+        width: 15px;
+        height: 15px;
+    }
+    #monitor-map {
+        position: relative;
+        isolation: isolate;
+        width: 100%;
+        height: 540px;
+        border: 1px solid #344349;
+        border-radius: 11px;
         overflow: hidden;
         z-index: 0;
+        background: #172820;
+        color-scheme: light;
     }
-
     #monitor-map .leaflet-tile,
     #monitor-map .leaflet-pane img {
         max-width: none !important;
         max-height: none !important;
     }
-
-    #monitor-map .leaflet-popup-content {
-        color: #202820;
+    #monitor-map .leaflet-control-zoom {
+        border: 1px solid #344349;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 3px 12px rgba(0,0,0,.20);
     }
-
-    .monitor-actions {
+    #monitor-map .leaflet-control-zoom a {
+        background: #142126;
+        color: #e2ece8;
+        border-bottom-color: #344349;
+    }
+    #monitor-map .leaflet-control-zoom a:hover {
+        background: #24372e;
+    }
+    #monitor-map .leaflet-control-layers {
+        padding: 8px 12px;
+        background: rgba(17,27,31,.95);
+        border: 1px solid #344349;
+        border-radius: 8px;
+        color: #d5e0e5;
+        box-shadow: 0 3px 12px rgba(0,0,0,.20);
+        font-size: 12px;
+    }
+    #monitor-map .leaflet-control-layers label {
         display: flex;
-        gap: 10px;
+        align-items: center;
+        gap: 5px;
+        margin: 5px 0;
+        cursor: pointer;
+    }
+    #monitor-map .leaflet-control-layers input {
+        accent-color: #62d36b;
+    }
+    #monitor-map .leaflet-popup-content-wrapper,
+    #monitor-map .leaflet-popup-tip {
+        background: #172329;
+        color: #e3eaee;
+    }
+    #monitor-map .leaflet-popup-content {
+        min-width: 180px;
+        color: #e3eaee;
+        font-size: 12px;
+        line-height: 1.6;
+    }
+    #monitor-map .leaflet-popup-content strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #edf3f5;
+        font-size: 13px;
+    }
+    #monitor-map .leaflet-popup-content p {
+        margin: 6px 0;
+        color: #b6c4cb;
+    }
+    #monitor-map .leaflet-popup-content a {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 6px 10px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    #monitor-map .leaflet-popup-content a:hover {
+        background: #263238;
+        border-color: #526269;
+    }
+    #monitor-map .leaflet-popup-close-button {
+        color: #bac9d0;
+    }
+    #monitor-map .leaflet-control-attribution {
+        background: rgba(13,23,27,.90);
+        color: #b6c4cb;
+        font-size: 9px;
+    }
+    #monitor-map .leaflet-control-attribution a {
+        color: #9cdaa0;
+    }
+    /* LEYENDA DEL MAPA - COLORES ORIGINALES */
+    .monitor-legend {
+        display: flex;
         align-items: center;
         flex-wrap: wrap;
-        margin: 15px 0;
+        gap: 12px 20px;
+        padding: 14px 0 8px;
     }
-
-    .monitor-actions label {
-        color: #acb6ab;
+    .monitor-legend-title {
+        color: #dce6eb;
+        font-size: 11px;
+        font-weight: 650;
     }
-
+    .monitor-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #a9b8c0;
+        font-size: 11px;
+    }
+    .monitor-legend-dot {
+        width: 10px;
+        height: 10px;
+        flex-shrink: 0;
+        border: 1px solid rgba(255,255,255,.6);
+        border-radius: 50%;
+        background: #59d66b;
+    }
+    .monitor-legend-dot.overdue {
+        background: #facc20;
+    }
+    .monitor-legend-dot.rescue {
+        background: #ec7676;
+    }
+    .monitor-legend-dot.sos {
+        background: #d93347;
+        box-shadow: 0 0 0 3px rgba(217,51,71,.20);
+    }
     .monitor-caption {
-        color: #acb6ab;
-        font-size: 0.88rem;
+        margin: 6px 0 0;
+        color: #91a3ad;
+        font-size: 11px;
+        line-height: 1.7;
     }
-
-    .monitor-alert {
-        color: #ffb3a3;
-        font-weight: 650;
+    .monitor-map-warning {
+        margin: 10px 0 0;
+        color: #f0c276;
+        font-size: 12px;
     }
-
-    .monitor-warn {
-        color: #f0b94b;
-        font-weight: 650;
+    .monitor-map-warning:empty {
+        display: none;
     }
-
-    .monitor-ok {
-        color: #c1f263;
-    }
-
-    .monitor-chip {
-        font-size: 0.8rem;
-        padding: 3px 8px;
-        border-radius: 5px;
-        border: 1px solid #354336;
-        display: inline-block;
-    }
-
-    .monitor-no-data {
-        color: #acb6ab;
-        font-size: 0.92rem;
-    }
-
-    .monitor-help {
-        padding: 12px 15px;
-        background: #1a221b;
-        border: 1px solid #354336;
-        border-radius: 8px;
-    }
-
+    /* MAPA SIN COORDENADAS */
     .monitor-map-fallback {
-        border: 1px solid #344035;
-        background: #1a221b;
-        border-radius: 9px;
-        padding: 24px;
-        color: #acb6ab;
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 13px;
+        min-height: 390px;
+        padding: 30px;
+        overflow: hidden;
+        background: #0e171b;
+        border: 1px dashed #344349;
+        border-radius: 11px;
+        text-align: center;
     }
-
-    /* =====================================
-       PANEL DE EMERGENCIAS SOS
-    ===================================== */
-
-    .sos-panel {
-        background: #24191c;
-        border: 1px solid #9a4950;
-        padding: 14px;
-        border-radius: 10px;
-        margin: 15px 0;
+    .monitor-map-fallback::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-image: linear-gradient(rgba(110,150,145,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(110,150,145,.045) 1px, transparent 1px);
+        background-size: 32px 32px;
+        mask-image: radial-gradient(ellipse at center, #000, transparent 80%);
     }
-
-    .sos-panel h2 {
-        margin: 0 0 10px;
-        color: #ff9c9e;
+    .monitor-empty-icon {
+        display: grid;
+        place-items: center;
+        width: 66px;
+        height: 66px;
+        margin-bottom: 4px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 18px;
+        color: #ffffff;
     }
-
-    .sos-panel li {
-        margin: 9px 0;
+    .monitor-empty-icon .monitor-icon {
+        width: 33px;
+        height: 33px;
     }
-
-    /* =====================================
-       MARCADOR SOS ANIMADO
-    ===================================== */
-
+    .monitor-map-fallback h3 {
+        margin: 0;
+        color: #e1e8ed;
+        font-size: 17px;
+        font-weight: 650;
+    }
+    .monitor-map-fallback p {
+        max-width: 450px;
+        margin: 0;
+        color: #91a3ad;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+    /* MARCADOR SOS ANIMADO - DISEÑO ORIGINAL */
     .sos-marker {
+        position: relative;
         width: 34px;
         height: 34px;
-        position: relative;
     }
-
     .sos-marker__core {
         position: absolute;
         inset: 4px;
         z-index: 2;
-        border: 2px solid #fff;
-        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        background: #d93347;
+        color: #ffffff;
         font-size: 9px;
         font-weight: 800;
-        color: white;
-        background: #d93347;
+        box-shadow: 0 0 10px rgba(217,51,71,.55);
     }
-
     .sos-marker__pulse {
         position: absolute;
         inset: 0;
-        background: rgba(240, 70, 90, 0.25);
+        background: rgba(240,70,90,.25);
         border: 2px solid #ed5363;
         border-radius: 50%;
         animation: sosPulse 2s ease-out infinite;
     }
-
     @keyframes sosPulse {
         from {
             opacity: 1;
-            transform: scale(0.9);
+            transform: scale(.9);
         }
-
         to {
             opacity: 0;
             transform: scale(2.5);
         }
     }
-
-    @media (prefers-reduced-motion: reduce) {
-        .sos-marker__pulse {
-            animation: none;
+    /* INFORMACIÓN DE PRIORIDAD */
+    .monitor-help {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 20px 16px;
+        padding: 12px 14px;
+        background: rgba(98,211,107,.045);
+        border: 1px solid rgba(98,211,107,.12);
+        border-radius: 8px;
+        color: #a6bfa9;
+        font-size: 11px;
+        line-height: 1.7;
+    }
+    .monitor-help strong {
+        color: #c1dfc3;
+        font-weight: 650;
+    }
+    .monitor-help .monitor-icon {
+        width: 18px;
+        height: 18px;
+        color: #ffffff;
+    }
+    .monitor-results-count {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #9ca9b0;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .monitor-results-count strong {
+        color: #dfe7eb;
+        font-weight: 650;
+    }
+    /* TABLA DE EXCURSIONISTAS */
+    .monitor-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+    .monitor-table {
+        width: 100%;
+        min-width: 1180px;
+        border-collapse: collapse;
+    }
+    .monitor-table th {
+        padding: 14px 16px;
+        background: #10191e;
+        color: #a5b4bd;
+        border-top: 1px solid #29373c;
+        border-bottom: 1px solid #29373c;
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .monitor-table td {
+        padding: 15px 16px;
+        border-bottom: 1px solid #243034;
+        color: #d0d9df;
+        font-size: 12px;
+        line-height: 1.6;
+        vertical-align: middle;
+    }
+    .monitor-table tbody tr {
+        transition: background .2s;
+    }
+    .monitor-table tbody tr:hover {
+        background: rgba(255,255,255,.027);
+    }
+    .monitor-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+    .monitor-table .row-rescue {
+        background: rgba(255,100,120,.035);
+    }
+    .monitor-table .row-rescue td:first-child {
+        box-shadow: inset 3px 0 #ff6478;
+    }
+    .monitor-table .row-overdue {
+        background: rgba(250,204,32,.025);
+    }
+    .monitor-table .row-overdue td:first-child {
+        box-shadow: inset 3px 0 #facc20;
+    }
+    .monitor-trekking-id {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+    .monitor-trekking-id .monitor-icon {
+        width: 16px;
+        height: 16px;
+        color: #ffffff;
+    }
+    .monitor-user {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+    }
+    .monitor-user-avatar {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 50%;
+        color: #c084fc;
+        font-size: 12px;
+        font-weight: 650;
+    }
+    .monitor-user-name {
+        color: #e1e8ed;
+        font-size: 12px;
+        font-weight: 550;
+        overflow-wrap: anywhere;
+    }
+    .monitor-location {
+        display: flex;
+        align-items: flex-start;
+        gap: 7px;
+        min-width: 140px;
+    }
+    .monitor-location .monitor-icon {
+        width: 15px;
+        height: 15px;
+        margin-top: 3px;
+        color: #ffffff;
+    }
+    .monitor-location strong {
+        display: block;
+        color: #dce5ea;
+        font-size: 12px;
+        font-weight: 550;
+    }
+    .monitor-secondary {
+        display: block;
+        margin-top: 4px;
+        color: #91a3ad;
+        font-size: 11px;
+    }
+    .monitor-companions {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 8px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 6px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .monitor-companions .monitor-icon {
+        width: 15px;
+        height: 15px;
+        color: #c084fc;
+    }
+    /* ESTADOS Y ALERTAS - COLORES ORIGINALES */
+    .monitor-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border: 1px solid #344349;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 650;
+        line-height: 1.5;
+    }
+    .monitor-chip::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: currentColor;
+    }
+    .monitor-alert {
+        color: #ff8a98;
+        background: rgba(255,100,120,.10);
+        border-color: rgba(255,100,120,.22);
+    }
+    .monitor-warn {
+        color: #facc20;
+        background: rgba(250,204,32,.08);
+        border-color: rgba(250,204,32,.20);
+    }
+    .monitor-ok {
+        color: #73dc7d;
+        background: rgba(89,214,107,.08);
+        border-color: rgba(89,214,107,.18);
+    }
+    .monitor-no-data {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #91a3ad;
+        font-size: 11px;
+    }
+    .monitor-no-data .monitor-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .monitor-date {
+        color: #d8e2e8;
+        font-size: 11px;
+        font-weight: 550;
+        white-space: nowrap;
+    }
+    .monitor-gps-time {
+        display: block;
+        margin-top: 4px;
+        color: #91a3ad;
+        font-size: 10px;
+    }
+    .monitor-stale-label {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 4px 7px;
+        background: rgba(250,204,32,.07);
+        border: 1px solid rgba(250,204,32,.15);
+        border-radius: 5px;
+        color: #eac66b;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    .monitor-detail-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 11px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: background .2s, border-color .2s;
+    }
+    .monitor-detail-link .monitor-icon {
+        width: 14px;
+        height: 14px;
+        color: #ffffff;
+    }
+    .monitor-detail-link:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    /* TABLA SIN RESULTADOS */
+    .monitor-empty-cell {
+        padding: 0 !important;
+    }
+    .monitor-table-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 230px;
+        padding: 25px;
+        text-align: center;
+    }
+    .monitor-table-empty h3 {
+        margin: 0;
+        color: #e1e8ed;
+        font-size: 15px;
+        font-weight: 600;
+    }
+    .monitor-table-empty p {
+        margin: 0;
+        color: #91a3ad;
+        font-size: 12px;
+    }
+    /* PAGINACIÓN */
+    .monitor-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        flex-wrap: wrap;
+        padding: 17px 20px;
+        background: rgba(0,0,0,.10);
+        border-top: 1px solid #29373c;
+    }
+    .monitor-pagination-side {
+        min-width: 95px;
+    }
+    .monitor-pagination-side:last-child {
+        text-align: right;
+    }
+    .monitor-pagination a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 9px 13px;
+        background: #090e11;
+        border: 1px solid #34454d;
+        border-radius: 7px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 550;
+        transition: background .2s, border-color .2s;
+    }
+    .monitor-pagination a .monitor-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    .monitor-pagination a:hover {
+        background: #263238;
+        border-color: #526269;
+        color: #ffffff;
+    }
+    .monitor-page-number {
+        color: #98a9b1;
+        font-size: 12px;
+    }
+    .monitor-page-number strong {
+        color: #e5edf0;
+        font-weight: 600;
+    }
+    /* PIE DE PÁGINA */
+    .monitor-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding-top: 15px;
+        margin-top: 22px;
+        border-top: 1px solid #202c30;
+        color: #788b95;
+        font-size: 11px;
+    }
+    .monitor-footer-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .monitor-footer-info .monitor-icon {
+        width: 15px;
+        height: 15px;
+        color: #ffffff;
+    }
+    /* COLORES DE ICONOS FUERA DE LOS INDICADORES */
+    .monitor-page svg.monitor-icon:not(.monitor-stat *) {
+        color: #ffffff;
+    }
+    .monitor-page svg.monitor-icon:has(use[href="#mon-icon-users"]):not(.monitor-stat *) {
+        color: #c084fc;
+    }
+    .monitor-page svg.monitor-icon:has(use[href="#icon-alert"]):not(.monitor-stat *) {
+        color: #facc15;
+    }
+    .monitor-page svg.monitor-icon:has(use[href="#icon-rescue"]):not(.monitor-stat *),
+    .monitor-page svg.monitor-icon:has(use[href="#mon-icon-sos"]):not(.monitor-stat *),
+    .monitor-page .sos-manage .monitor-icon {
+        color: #ff453a;
+    }
+    /* RESPONSIVE */
+    @media (min-width: 1600px) {
+        .monitor-stat {
+            min-height: 195px;
+            padding: 22px;
+        }
+        .monitor-stat-value {
+            font-size: 40px;
+        }
+        .monitor-stat-label {
+            font-size: 14px;
+        }
+        #monitor-map {
+            height: 620px;
         }
     }
-
-    @media (max-width: 700px) {
-        #monitor-map {
-            height: 350px;
+    @media (max-width: 1150px) {
+        .monitor-stats {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
-
+        .monitor-header {
+            min-height: 165px;
+        }
+        #monitor-map {
+            height: 480px;
+        }
+    }
+    @media (max-width: 850px) {
+        .monitor-header {
+            margin: -20px -20px 20px;
+            padding: 24px 20px;
+            flex-wrap: wrap;
+        }
+        .monitor-landscape {
+            width: 80%;
+            opacity: .75;
+        }
+        .monitor-panel-heading {
+            padding: 16px;
+        }
         .monitor-actions {
+            padding: 0 16px 16px;
+        }
+        .monitor-update-bar {
+            padding: 13px 16px;
+        }
+        .monitor-map-body {
+            padding: 0 13px 13px;
+        }
+        .monitor-help {
+            margin: 0 16px 14px;
+        }
+        #monitor-map {
+            height: 430px;
+        }
+    }
+    @media (max-width: 550px) {
+        .monitor-header {
+            min-height: 190px;
+        }
+        .monitor-landscape {
+            width: 100%;
+            opacity: .45;
+        }
+        .monitor-header h1 {
+            font-size: 27px;
+        }
+        .monitor-header-description {
+            font-size: 12px;
+        }
+        .monitor-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .monitor-stat {
+            min-height: 165px;
+            padding: 14px;
+        }
+        .monitor-stat-value {
+            font-size: 29px;
+        }
+        .monitor-panel-heading {
+            flex-wrap: wrap;
+        }
+        .monitor-panel-copy h2 {
+            font-size: 15px;
+        }
+        .monitor-actions {
+            flex-direction: column;
             align-items: stretch;
         }
-
-        .monitor-actions select {
+        .monitor-filter-field {
+            min-width: 0;
             width: 100%;
+        }
+        .monitor-filter-buttons {
+            width: 100%;
+        }
+        .monitor-filter-buttons > * {
+            flex: 1;
+        }
+        .monitor-update-bar {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 9px;
+        }
+        .sos-panel-header {
+            flex-wrap: wrap;
+            padding: 15px;
+        }
+        .sos-list {
+            padding: 13px;
+        }
+        .sos-row {
+            flex-wrap: wrap;
+        }
+        .sos-manage {
+            width: 100%;
+        }
+        .monitor-map-tag {
+            white-space: normal;
+        }
+        #monitor-map {
+            height: 370px;
+        }
+        #monitor-map .leaflet-control-layers {
+            max-width: 180px;
+            font-size: 10px;
+            padding: 6px;
+        }
+        .monitor-map-fallback {
+            min-height: 300px;
+            padding: 20px;
+        }
+        .monitor-legend {
+            gap: 10px;
+        }
+        .monitor-legend-title {
+            width: 100%;
+        }
+        .monitor-pagination {
+            padding: 15px 12px;
+            gap: 8px;
+        }
+        .monitor-pagination-side {
+            min-width: 0;
+        }
+        .monitor-pagination a {
+            padding: 8px;
+        }
+        .monitor-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+    @media (max-width: 350px) {
+        .monitor-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .monitor-page *,
+        .monitor-page *::before,
+        .monitor-page *::after {
+            animation: none !important;
+            transition: none !important;
         }
     }
 </style>
 {% endblock %}
-
-
 {% block content %}
-
-<!-- =====================================
-     ENCABEZADO
-===================================== -->
-
-<h1>Centro de monitoreo</h1>
-
-<p class="subtle">
-    Excursiones activas y últimas posiciones GPS
-    almacenadas en Django.
-
-    No es un seguimiento en tiempo real:
-    la app sincroniza cuando tiene conectividad.
-</p>
-
-
-<!-- =====================================
-     ESTADÍSTICAS
-===================================== -->
-
-<div class="stats">
-
-    <article>
-        <small>Excursiones en seguimiento</small>
-        <strong>{{ active_count }}</strong>
-    </article>
-
-    <article>
-        <small>Regreso estimado vencido</small>
-        <strong>{{ overdue_count }}</strong>
-    </article>
-
-    <article>
-        <small>Trekkings con alerta de rescate</small>
-        <strong>{{ active_rescue_count }}</strong>
-    </article>
-
-    <article>
-        <small>GPS antiguo o inexistente</small>
-        <strong>{{ stale_count }}</strong>
-    </article>
-
-    <article>
-        <small>
-            Solicitudes SOS activas
-            (todos los estados de trekking)
-        </small>
-        <strong>{{ sos_count }}</strong>
-    </article>
-
-</div>
-
-
-<!-- =====================================
-     FILTRO POR PARQUE
-===================================== -->
-
-<form
-    class="monitor-actions"
-    method="get"
-    action="{% url 'dashboard:monitoreo' %}"
->
-
-    <label for="park-filter">
-        Parque
-    </label>
-
-    <select
-        name="park"
-        id="park-filter"
-    >
-
-        <option value="">
-            Todos los parques
-        </option>
-
-        {% for park in parks %}
-
-            <option
-                value="{{ park.pk }}"
-                {% if park_filter == park.pk|stringformat:'s' %}
-                    selected
+<div class="monitor-page">
+    <!-- ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="mon-icon-filter" viewBox="0 0 24 24">
+                <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z"/>
+            </symbol>
+            <symbol id="mon-icon-refresh" viewBox="0 0 24 24">
+                <path d="M20 7a9 9 0 1 0 1 10M20 3v6h-6"/>
+            </symbol>
+            <symbol id="mon-icon-gps" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7"/>
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </symbol>
+            <symbol id="mon-icon-gps-off" viewBox="0 0 24 24">
+                <path d="M3 3l18 18M12 2v3M19 12h3M2 12h3M12 19v3"/>
+                <path d="M8 6a7 7 0 0 1 10 10M6 8a7 7 0 0 0 10 10"/>
+            </symbol>
+            <symbol id="mon-icon-info" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 7h.01"/>
+            </symbol>
+            <symbol id="mon-icon-users" viewBox="0 0 24 24">
+                <circle cx="9" cy="7" r="3"/>
+                <path d="M2 21v-3a7 7 0 0 1 14 0v3M17 4a3 3 0 0 1 0 6M18 13a5 5 0 0 1 4 5v3"/>
+            </symbol>
+            <symbol id="mon-icon-list" viewBox="0 0 24 24">
+                <rect x="5" y="3" width="14" height="18" rx="2"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+            </symbol>
+            <symbol id="mon-icon-sos" viewBox="0 0 24 24">
+                <path d="M5 18v-7a7 7 0 0 1 14 0v7M3 18h18v3H3zM12 1v2M2 5l2 2M22 5l-2 2M12 7v4"/>
+            </symbol>
+            <symbol id="mon-icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+            </symbol>
+            <symbol id="mon-icon-left" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </symbol>
+            <symbol id="mon-icon-right" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </symbol>
+            <symbol id="mon-icon-qr" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <path d="M14 14h3v3h4v4h-7z"/>
+            </symbol>
+            <symbol id="mon-icon-inbox" viewBox="0 0 24 24">
+                <path d="M4 4h16l2 10v6H2v-6L4 4zM2 14h6l2 3h4l2-3h6"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- ENCABEZADO -->
+    <section class="monitor-header">
+        <div class="monitor-landscape" aria-hidden="true">
+            <img src="{% static 'dashboard/images/mountain-header.jpg' %}" alt="" decoding="async">
+        </div>
+        <div class="monitor-header-content">
+            <span class="monitor-eyebrow">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps"/></svg>
+                SUPERVISIÓN Y SEGURIDAD EN TERRENO
+            </span>
+            <h1>Centro de monitoreo</h1>
+            <p class="monitor-header-description">Supervisa las excursiones activas, las últimas posiciones GPS almacenadas y las solicitudes de rescate registradas en Hito.</p>
+        </div>
+        <div class="monitor-header-label">
+            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-refresh"/></svg>
+            Actualización automática
+        </div>
+    </section>
+    <!-- INDICADORES - COLORES ORIGINALES -->
+    <section class="monitor-stats" aria-label="Indicadores de monitoreo">
+        <article class="monitor-stat">
+            <div class="monitor-stat-icon">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#icon-trekking"/></svg>
+            </div>
+            <span class="monitor-stat-label">Excursiones en seguimiento</span>
+            <strong class="monitor-stat-value">{{ active_count }}</strong>
+            <span class="monitor-stat-caption">Trekkings supervisados</span>
+        </article>
+        <article class="monitor-stat overdue{% if overdue_count > 0 %} is-alert{% endif %}">
+            <div class="monitor-stat-icon">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+            </div>
+            <span class="monitor-stat-label">Regreso estimado vencido</span>
+            <strong class="monitor-stat-value">{{ overdue_count }}</strong>
+            <span class="monitor-stat-caption">
+                {% if overdue_count > 0 %}
+                    Requiere revisión
+                {% else %}
+                    Sin regresos vencidos
                 {% endif %}
-            >
-                {{ park.name }}
-            </option>
-
-        {% endfor %}
-
-    </select>
-
-    <button type="submit">
-        Aplicar filtro
-    </button>
-
-    <a href="{% url 'dashboard:monitoreo' %}">
-        Limpiar
-    </a>
-
-    <a href="" aria-label="Actualizar monitoreo">
-        Actualizar ahora
-    </a>
-
-</form>
-
-
-<!-- =====================================
-     FECHA DE ACTUALIZACIÓN
-===================================== -->
-
-<p class="monitor-caption">
-    Última actualización de esta pantalla:
-    {{ now|date:"d/m/Y H:i:s" }}
-
-    · Se actualiza automáticamente cada
-    {{ refresh_seconds }} segundos.
-
-    Un GPS antiguo o ausente no confirma
-    una emergencia.
-</p>
-
-
-<!-- =====================================
-     SOLICITUDES SOS ACTIVAS
-===================================== -->
-
-{% if active_sos %}
-
-<section
-    class="sos-panel"
-    aria-label="Solicitudes SOS activas"
->
-
-    <h2>
-        Solicitudes SOS activas ({{ sos_count }})
-    </h2>
-
-    <p>
-        Se muestran incluso cuando el trekking
-        ya figura como completado.
-
-        {{ sos_without_location }}
-        sin coordenadas utilizables.
-    </p>
-
-    <ul>
-
-        {% for item in active_sos %}
-
-        <li>
-
-            <a href="{% url 'dashboard:rescue_detail' item.rescue.pk %}">
-                SOS #{{ item.rescue.pk }}
-            </a>
-
-            · {{ item.rescue.trekking.user.username }}
-
-            · Trekking #{{ item.rescue.trekking_id }}
-
-            ({{ item.rescue.trekking.get_status_display }})
-
-            · {{ item.rescue.started_at|date:"d/m/Y H:i:s" }}
-
-            {% if not item.has_location %}
-                · Ubicación no registrada
-            {% endif %}
-
-        </li>
-
-        {% endfor %}
-
-    </ul>
-
-</section>
-
-{% endif %}
-
-
-<!-- =====================================
-     MAPA GENERAL DE MONITOREO
-===================================== -->
-
-<h2>
-    Mapa de últimas posiciones conocidas
-    y solicitudes SOS
-</h2>
-
-{% if map_positions or sos_positions %}
-
-    <div
-        id="monitor-map"
-        role="region"
-        aria-label="Mapa de últimas posiciones GPS y solicitudes SOS"
-    ></div>
-
-    <p class="monitor-caption">
-        Los marcadores GPS representan posiciones
-        sincronizadas de las excursiones.
-
-        Los marcadores SOS rojos representan
-        ubicaciones registradas en solicitudes
-        de rescate activas.
-
-        No son ubicaciones en vivo.
-    </p>
-
-    <p
-        id="monitor-map-warning"
-        class="monitor-warn"
-    ></p>
-
-{% else %}
-
-    <div class="monitor-map-fallback">
-        No hay posiciones GPS ni solicitudes SOS
-        con coordenadas disponibles para el
-        filtro seleccionado.
-
-        Los registros pueden consultarse
-        en los listados correspondientes.
+            </span>
+        </article>
+        <article class="monitor-stat rescue{% if active_rescue_count > 0 %} is-alert{% endif %}">
+            <div class="monitor-stat-icon">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#icon-rescue"/></svg>
+            </div>
+            <span class="monitor-stat-label">Trekkings con alerta de rescate</span>
+            <strong class="monitor-stat-value">{{ active_rescue_count }}</strong>
+            <span class="monitor-stat-caption">
+                {% if active_rescue_count > 0 %}
+                    Atención prioritaria
+                {% else %}
+                    Sin alertas de rescate
+                {% endif %}
+            </span>
+        </article>
+        <article class="monitor-stat gps">
+            <div class="monitor-stat-icon">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps-off"/></svg>
+            </div>
+            <span class="monitor-stat-label">GPS antiguo o inexistente</span>
+            <strong class="monitor-stat-value">{{ stale_count }}</strong>
+            <span class="monitor-stat-caption">Información de ubicación</span>
+        </article>
+        <article class="monitor-stat sos{% if sos_count > 0 %} is-alert{% endif %}">
+            <div class="monitor-stat-icon">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-sos"/></svg>
+            </div>
+            <span class="monitor-stat-label">Solicitudes SOS activas</span>
+            <strong class="monitor-stat-value">{{ sos_count }}</strong>
+            <span class="monitor-stat-caption">Todos los estados de trekking</span>
+        </article>
+    </section>
+    <!-- FILTRO POR PARQUE -->
+    <section class="monitor-panel">
+        <div class="monitor-panel-heading">
+            <div class="monitor-panel-title">
+                <div class="monitor-panel-icon">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-filter"/></svg>
+                </div>
+                <div class="monitor-panel-copy">
+                    <h2>Configuración del monitoreo</h2>
+                    <p>Filtra las excursiones y solicitudes registradas por parque.</p>
+                </div>
+            </div>
+        </div>
+        <form class="monitor-actions" method="get" action="{% url 'dashboard:monitoreo' %}">
+            <div class="monitor-filter-field">
+                <label for="park-filter">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                    Parque
+                </label>
+                <select name="park" id="park-filter">
+                    <option value="">Todos los parques</option>
+                    {% for park in parks %}
+                        <option value="{{ park.pk }}" {% if park_filter == park.pk|stringformat:'s' %}selected{% endif %}>{{ park.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="monitor-filter-buttons">
+                <button type="submit" class="monitor-button primary">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-filter"/></svg>
+                    Aplicar filtro
+                </button>
+                <a href="{% url 'dashboard:monitoreo' %}" class="monitor-button">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-refresh"/></svg>
+                    Limpiar
+                </a>
+                <a href="" class="monitor-button" aria-label="Actualizar monitoreo">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-refresh"/></svg>
+                    Actualizar ahora
+                </a>
+            </div>
+        </form>
+        <div class="monitor-update-bar">
+            <div class="monitor-update-item">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#icon-clock"/></svg>
+                <span>Última actualización: <strong>{{ now|date:"d/m/Y H:i:s" }}</strong></span>
+            </div>
+            <div class="monitor-update-item">
+                <span class="monitor-refresh-dot" aria-hidden="true"></span>
+                <span>Actualización cada <strong>{{ refresh_seconds }} segundos</strong></span>
+            </div>
+        </div>
+    </section>
+    <!-- AVISO DE SINCRONIZACIÓN -->
+    <div class="monitor-notice">
+        <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-info"/></svg>
+        <div>
+            <strong>Información sincronizada desde Hito Mobile.</strong>
+            Las posiciones corresponden a los últimos registros almacenados en Django. No es un seguimiento GPS en tiempo real: la aplicación sincroniza cuando tiene conectividad. Un GPS antiguo o ausente no confirma una emergencia.
+        </div>
     </div>
-
-{% endif %}
-
-
-<!-- =====================================
-     EXCURSIONISTAS EN SEGUIMIENTO
-===================================== -->
-
-<h2>Excursionistas en seguimiento</h2>
-
-<div class="monitor-help">
-    <strong>Prioridad:</strong>
-
-    rescate, luego regreso vencido.
-
-    La antigüedad del GPS se informa por separado.
-
-    Los estados corresponden a datos recibidos
-    por Django y pueden cambiar después
-    de una sincronización offline.
-</div>
-
-
-<div
-    class="table-wrap"
-    style="margin-top: 14px;"
->
-
-    <table>
-
-        <thead>
-            <tr>
-                <th>Trekking</th>
-                <th>Excursionista</th>
-                <th>Parque / sendero</th>
-                <th>Acompañantes</th>
-                <th>Situación</th>
-                <th>Regreso estimado</th>
-                <th>Último GPS registrado</th>
-                <th>Último QR registrado</th>
-                <th>Detalle</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            {% for row in page %}
-
-                {% with t=row.trekking %}
-
-                <tr>
-
-                    <td>
-                        #{{ t.pk }}
-                    </td>
-
-                    <td>
-                        {{ t.user.username }}
-                    </td>
-
-                    <td>
-                        {{ t.trail.park.name }}
-
-                        <br>
-
-                        <small class="subtle">
-                            {{ t.trail.name }}
-                        </small>
-                    </td>
-
-                    <td>
-                        {{ t.companion_count }}
-                    </td>
-
-                    <td>
-
-                        {% if row.rescue_alert %}
-
-                            <span class="monitor-alert">
-                                Rescate / estado rescate
-                            </span>
-
-                        {% elif row.overdue %}
-
-                            <span class="monitor-warn">
-                                Regreso vencido
-                            </span>
-
-                        {% else %}
-
-                            <span class="monitor-ok">
-                                Sin alertas de horario o rescate
-                            </span>
-
-                        {% endif %}
-
-                        <br>
-
-                        <small class="subtle">
-                            {{ t.get_status_display }}
-                        </small>
-
-                    </td>
-
-                    <td>
-                        {{ t.estimated_return_time|date:"d/m/Y H:i"|default:"Sin definir" }}
-                    </td>
-
-                    <td>
-
-                        {% if t.last_gps_at %}
-
-                            {{ t.last_gps_at|date:"d/m/Y H:i:s" }}
-
-                            <br>
-
-                            <small class="subtle">
-                                Hace {{ t.last_gps_at|timesince:now }}
-                            </small>
-
-                            {% if row.gps_stale %}
-
-                                <br>
-
-                                <span class="monitor-warn">
-                                    Dato antiguo (&gt; 30 min)
+    <!-- SOLICITUDES SOS ACTIVAS -->
+    {% if active_sos %}
+        <section class="sos-panel" aria-label="Solicitudes SOS activas">
+            <div class="sos-panel-header">
+                <div class="sos-panel-icon">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-sos"/></svg>
+                </div>
+                <div class="sos-panel-copy">
+                    <h2>Solicitudes SOS activas ({{ sos_count }})</h2>
+                    <p>Se muestran incluso cuando el trekking ya figura como completado.</p>
+                </div>
+                <span class="sos-panel-count">{{ sos_count }} activas</span>
+            </div>
+            {% if sos_without_location %}
+                <div class="sos-location-warning">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps-off"/></svg>
+                    {{ sos_without_location }} solicitudes sin coordenadas utilizables.
+                </div>
+            {% endif %}
+            <div class="sos-list">
+                {% for item in active_sos %}
+                    <article class="sos-row">
+                        <div class="sos-row-icon">SOS</div>
+                        <div class="sos-row-content">
+                            <a href="{% url 'dashboard:rescue_detail' item.rescue.pk %}" class="sos-row-title">SOS #{{ item.rescue.pk }} · {{ item.rescue.trekking.user.username }}</a>
+                            <span class="sos-row-meta">Trekking #{{ item.rescue.trekking_id }} · {{ item.rescue.trekking.get_status_display }}</span>
+                            <span class="sos-row-meta">Solicitud registrada: {{ item.rescue.started_at|date:"d/m/Y H:i:s" }}</span>
+                            {% if not item.has_location %}
+                                <span class="sos-row-warning">
+                                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps-off"/></svg>
+                                    Ubicación no registrada
                                 </span>
-
                             {% endif %}
-
-                        {% else %}
-
-                            <span class="monitor-no-data">
-                                Sin GPS sincronizado
-                            </span>
-
-                        {% endif %}
-
-                    </td>
-
-                    <td>
-
-                        {% if t.last_qr_at %}
-
-                            {{ t.last_qr_name }}
-
-                            <br>
-
-                            <small class="subtle">
-                                {{ t.last_qr_at|date:"d/m/Y H:i:s" }}
-                            </small>
-
-                        {% else %}
-
-                            <span class="monitor-no-data">
-                                Sin QR sincronizado
-                            </span>
-
-                        {% endif %}
-
-                    </td>
-
-                    <td>
-
-                        <a href="{% url 'dashboard:trekking_detail' t.pk %}">
-                            Abrir
+                        </div>
+                        <a href="{% url 'dashboard:rescue_detail' item.rescue.pk %}" class="sos-manage">
+                            Gestionar rescate
+                            <svg class="monitor-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
                         </a>
-
-                    </td>
-
-                </tr>
-
-                {% endwith %}
-
-            {% empty %}
-
-                <tr>
-                    <td colspan="9">
-                        No hay excursiones activas
-                        para el filtro seleccionado.
-                    </td>
-                </tr>
-
-            {% endfor %}
-
-        </tbody>
-
-    </table>
-
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+    <!-- MAPA GENERAL -->
+    <section class="monitor-panel">
+        <div class="monitor-panel-heading">
+            <div class="monitor-panel-title">
+                <div class="monitor-panel-icon">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#icon-map"/></svg>
+                </div>
+                <div class="monitor-panel-copy">
+                    <h2>Mapa de monitoreo</h2>
+                    <p>Últimas posiciones conocidas y solicitudes SOS registradas.</p>
+                </div>
+            </div>
+            <span class="monitor-map-tag">
+                <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps"/></svg>
+                Posiciones sincronizadas
+            </span>
+        </div>
+        <div class="monitor-map-body">
+            {% if map_positions or sos_positions %}
+                <div id="monitor-map" role="region" aria-label="Mapa de últimas posiciones GPS y solicitudes SOS"></div>
+                <div class="monitor-legend" aria-label="Leyenda de marcadores">
+                    <span class="monitor-legend-title">Leyenda del mapa:</span>
+                    <span class="monitor-legend-item">
+                        <span class="monitor-legend-dot"></span>
+                        Sin alertas de horario o rescate
+                    </span>
+                    <span class="monitor-legend-item">
+                        <span class="monitor-legend-dot overdue"></span>
+                        Regreso vencido
+                    </span>
+                    <span class="monitor-legend-item">
+                        <span class="monitor-legend-dot rescue"></span>
+                        Alerta de rescate
+                    </span>
+                    <span class="monitor-legend-item">
+                        <span class="monitor-legend-dot sos"></span>
+                        Solicitud SOS activa
+                    </span>
+                </div>
+                <p class="monitor-caption">Los marcadores GPS representan posiciones sincronizadas de las excursiones. Los marcadores SOS rojos representan ubicaciones registradas en solicitudes de rescate activas. No son ubicaciones en vivo.</p>
+                <p id="monitor-map-warning" class="monitor-map-warning" role="status"></p>
+            {% else %}
+                <div class="monitor-map-fallback">
+                    <div class="monitor-empty-icon">
+                        <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps-off"/></svg>
+                    </div>
+                    <h3>No hay posiciones disponibles</h3>
+                    <p>No hay posiciones GPS ni solicitudes SOS con coordenadas disponibles para el filtro seleccionado.</p>
+                    <p>Los registros pueden consultarse en los listados correspondientes.</p>
+                    <a href="{% url 'dashboard:trekkings' %}" class="monitor-button primary">
+                        <svg class="monitor-icon" aria-hidden="true"><use href="#icon-trekking"/></svg>
+                        Consultar trekkings
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+    <!-- EXCURSIONISTAS EN SEGUIMIENTO -->
+    <section class="monitor-panel">
+        <div class="monitor-panel-heading">
+            <div class="monitor-panel-title">
+                <div class="monitor-panel-icon">
+                    <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-users"/></svg>
+                </div>
+                <div class="monitor-panel-copy">
+                    <h2>Excursionistas en seguimiento</h2>
+                    <p>Consulta la situación, ubicación y últimos registros de cada excursión.</p>
+                </div>
+            </div>
+            <div class="monitor-results-count">
+                <strong>{{ page.paginator.count }}</strong> registros
+            </div>
+        </div>
+        <div class="monitor-help">
+            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-shield"/></svg>
+            <span><strong>Prioridad de atención:</strong> rescate, luego regreso vencido. La antigüedad del GPS se informa por separado. Los estados corresponden a datos recibidos por Django y pueden cambiar después de una sincronización offline.</span>
+        </div>
+        <div class="table-wrap monitor-table-wrap">
+            <table class="monitor-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Trekking</th>
+                        <th scope="col">Excursionista</th>
+                        <th scope="col">Parque / sendero</th>
+                        <th scope="col">Acompañantes</th>
+                        <th scope="col">Situación</th>
+                        <th scope="col">Regreso estimado</th>
+                        <th scope="col">Último GPS registrado</th>
+                        <th scope="col">Último QR registrado</th>
+                        <th scope="col">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in page %}
+                        {% with t=row.trekking %}
+                            <tr class="{% if row.rescue_alert %}row-rescue{% elif row.overdue %}row-overdue{% endif %}">
+                                <td>
+                                    <span class="monitor-trekking-id">
+                                        <svg class="monitor-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+                                        #{{ t.pk }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="monitor-user">
+                                        <span class="monitor-user-avatar">{{ t.user.username|slice:":1"|upper }}</span>
+                                        <span class="monitor-user-name">{{ t.user.username }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="monitor-location">
+                                        <svg class="monitor-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                                        <div>
+                                            <strong>{{ t.trail.park.name }}</strong>
+                                            <span class="monitor-secondary">{{ t.trail.name }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="monitor-companions">
+                                        <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-users"/></svg>
+                                        {{ t.companion_count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if row.rescue_alert %}
+                                        <span class="monitor-chip monitor-alert">Rescate / estado rescate</span>
+                                    {% elif row.overdue %}
+                                        <span class="monitor-chip monitor-warn">Regreso vencido</span>
+                                    {% else %}
+                                        <span class="monitor-chip monitor-ok">Sin alertas de horario o rescate</span>
+                                    {% endif %}
+                                    <span class="monitor-secondary">{{ t.get_status_display }}</span>
+                                </td>
+                                <td>
+                                    <span class="monitor-date">{{ t.estimated_return_time|date:"d/m/Y H:i"|default:"Sin definir" }}</span>
+                                </td>
+                                <td>
+                                    {% if t.last_gps_at %}
+                                        <span class="monitor-date">{{ t.last_gps_at|date:"d/m/Y H:i:s" }}</span>
+                                        <span class="monitor-gps-time">Hace {{ t.last_gps_at|timesince:now }}</span>
+                                        {% if row.gps_stale %}
+                                            <span class="monitor-stale-label">Dato antiguo (&gt; 30 min)</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="monitor-no-data">
+                                            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-gps-off"/></svg>
+                                            Sin GPS sincronizado
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if t.last_qr_at %}
+                                        <span class="monitor-date">{{ t.last_qr_name }}</span>
+                                        <span class="monitor-secondary">{{ t.last_qr_at|date:"d/m/Y H:i:s" }}</span>
+                                    {% else %}
+                                        <span class="monitor-no-data">
+                                            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-qr"/></svg>
+                                            Sin QR sincronizado
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'dashboard:trekking_detail' t.pk %}" class="monitor-detail-link">
+                                        Abrir detalle
+                                        <svg class="monitor-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endwith %}
+                    {% empty %}
+                        <tr>
+                            <td colspan="9" class="monitor-empty-cell">
+                                <div class="monitor-table-empty">
+                                    <div class="monitor-empty-icon">
+                                        <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-inbox"/></svg>
+                                    </div>
+                                    <h3>No hay excursiones activas</h3>
+                                    <p>No existen excursiones activas para el filtro seleccionado.</p>
+                                    {% if park_filter %}
+                                        <a href="{% url 'dashboard:monitoreo' %}" class="monitor-button">
+                                            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-refresh"/></svg>
+                                            Limpiar filtro
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- PAGINACIÓN -->
+        {% if page.has_other_pages %}
+            <nav class="monitor-pagination" aria-label="Páginas de monitoreo">
+                <div class="monitor-pagination-side">
+                    {% if page.has_previous %}
+                        <a href="?park={{ park_filter|urlencode }}&amp;page={{ page.previous_page_number }}">
+                            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-left"/></svg>
+                            Anterior
+                        </a>
+                    {% endif %}
+                </div>
+                <span class="monitor-page-number">Página <strong>{{ page.number }}</strong> de <strong>{{ page.paginator.num_pages }}</strong></span>
+                <div class="monitor-pagination-side">
+                    {% if page.has_next %}
+                        <a href="?park={{ park_filter|urlencode }}&amp;page={{ page.next_page_number }}">
+                            Siguiente
+                            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-right"/></svg>
+                        </a>
+                    {% endif %}
+                </div>
+            </nav>
+        {% endif %}
+    </section>
+    <!-- PIE DE PÁGINA -->
+    <footer class="monitor-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span class="monitor-footer-info">
+            <svg class="monitor-icon" aria-hidden="true"><use href="#mon-icon-shield"/></svg>
+            Monitoreo basado en registros sincronizados
+        </span>
+    </footer>
 </div>
-
-
-<!-- =====================================
-     PAGINACIÓN
-===================================== -->
-
-{% if page.has_other_pages %}
-
-<nav
-    class="pagination"
-    aria-label="Páginas de monitoreo"
->
-
-    {% if page.has_previous %}
-
-        <a href="?park={{ park_filter }}&amp;page={{ page.previous_page_number }}">
-            Anterior
-        </a>
-
-    {% endif %}
-
-    <span>
-        Página {{ page.number }}
-        de {{ page.paginator.num_pages }}
-    </span>
-
-    {% if page.has_next %}
-
-        <a href="?park={{ park_filter }}&amp;page={{ page.next_page_number }}">
-            Siguiente
-        </a>
-
-    {% endif %}
-
-</nav>
-
-{% endif %}
-
-
-<!-- =====================================
-     DATOS JSON PARA LEAFLET
-===================================== -->
-
+<!-- DATOS JSON PARA LEAFLET -->
 {{ map_positions|json_script:"monitor-map-data" }}
-
 {{ sos_positions|json_script:"monitor-sos-data" }}
-
 {% endblock %}
-
-
 {% block scripts %}
-
-<!-- =====================================
-     ACTUALIZACIÓN AUTOMÁTICA
-===================================== -->
-
+<!-- ACTUALIZACIÓN AUTOMÁTICA -->
 <script>
-(function () {
-
-    const refreshSeconds =
-        Number("{{ refresh_seconds|default:60 }}") || 60;
-
-    const refreshMilliseconds =
-        Math.max(refreshSeconds, 10) * 1000;
-
-    window.setTimeout(function () {
-        window.location.reload();
-    }, refreshMilliseconds);
-
-})();
+    (function () {
+        const refreshSeconds = Number("{{ refresh_seconds|default:60|escapejs }}") || 60;
+        const refreshMilliseconds = Math.max(refreshSeconds, 10) * 1000;
+        window.setTimeout(function () {
+            window.location.reload();
+        }, refreshMilliseconds);
+    })();
 </script>
-
-
 {% if map_positions or sos_positions %}
-
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    // =====================================
-    // ELEMENTOS DEL MAPA
-    // =====================================
-
-    const container = document.getElementById(
-        "monitor-map"
-    );
-
-    const source = document.getElementById(
-        "monitor-map-data"
-    );
-
-    const sosSource = document.getElementById(
-        "monitor-sos-data"
-    );
-
-    const warning = document.getElementById(
-        "monitor-map-warning"
-    );
-
-    if (
-        !container ||
-        !source ||
-        !sosSource ||
-        typeof L === "undefined"
-    ) {
-
-        if (warning) {
-            warning.textContent =
-                "No se pudo iniciar el mapa Leaflet.";
+    document.addEventListener("DOMContentLoaded", function () {
+        // ELEMENTOS DEL MAPA
+        const container = document.getElementById("monitor-map");
+        const source = document.getElementById("monitor-map-data");
+        const sosSource = document.getElementById("monitor-sos-data");
+        const warning = document.getElementById("monitor-map-warning");
+        if (!container || !source || !sosSource || typeof L === "undefined") {
+            if (warning) {
+                warning.textContent = "No se pudo iniciar el mapa Leaflet.";
+            }
+            return;
         }
-
-        return;
-    }
-
-
-    // =====================================
-    // LEER DATOS ENVIADOS POR DJANGO
-    // =====================================
-
-    let points = [];
-    let sosPoints = [];
-
-    try {
-
-        points = JSON.parse(
-            source.textContent
-        );
-
-        sosPoints = JSON.parse(
-            sosSource.textContent
-        );
-
-    } catch (error) {
-
-        if (warning) {
-            warning.textContent =
-                "No se pudieron leer las ubicaciones.";
+        // DATOS RECIBIDOS DESDE DJANGO
+        let points = [];
+        let sosPoints = [];
+        try {
+            points = JSON.parse(source.textContent);
+            sosPoints = JSON.parse(sosSource.textContent);
+        } catch (error) {
+            if (warning) {
+                warning.textContent = "No se pudieron leer las ubicaciones.";
+            }
+            return;
         }
-
-        return;
-    }
-
-    if (!Array.isArray(points)) {
-        points = [];
-    }
-
-    if (!Array.isArray(sosPoints)) {
-        sosPoints = [];
-    }
-
-
-    // =====================================
-    // CREAR MAPA
-    // =====================================
-
-    const map = L.map("monitor-map", {
-        zoomControl: true,
-        scrollWheelZoom: true
-    });
-
-
-    // =====================================
-    // OPENSTREETMAP
-    // =====================================
-
-    const tileLayer = L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
+        if (!Array.isArray(points)) {
+            points = [];
+        }
+        if (!Array.isArray(sosPoints)) {
+            sosPoints = [];
+        }
+        // CREAR MAPA
+        const map = L.map("monitor-map", {
+            zoomControl: true,
+            scrollWheelZoom: true
+        });
+        // OPENSTREETMAP
+        const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap contributors",
             referrerPolicy: "strict-origin-when-cross-origin"
+        });
+        tileLayer.on("tileerror", function () {
+            if (warning && !warning.textContent) {
+                warning.textContent = "Algunas imágenes del mapa no pudieron cargarse.";
+            }
+        });
+        tileLayer.addTo(map);
+        // CAPAS DEL MAPA
+        const gpsLayer = L.layerGroup().addTo(map);
+        const sosLayer = L.layerGroup().addTo(map);
+        const allBounds = L.latLngBounds([]);
+        const sosBounds = L.latLngBounds([]);
+        // COLORES ORIGINALES SEGÚN PRIORIDAD
+        const colors = {
+            rescue: "#EC7676",
+            overdue: "#FACC20",
+            normal: "#59D66B"
+        };
+        // VALIDACIÓN DE COORDENADAS
+        function getCoordinates(point) {
+            if (!point || point.lat == null || point.lng == null || String(point.lat).trim() === "" || String(point.lng).trim() === "") {
+                return null;
+            }
+            const lat = Number(point.lat);
+            const lng = Number(point.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                return null;
+            }
+            return [lat, lng];
         }
-    );
-
-    tileLayer.on("tileerror", function () {
-
-        if (warning && !warning.textContent) {
-            warning.textContent =
-                "Algunas imágenes del mapa no pudieron cargarse.";
+        // CREAR POPUPS CON TEXTO SEGURO
+        function createPopup(titleText, lines, linkUrl, linkText) {
+            const popup = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = titleText;
+            popup.appendChild(title);
+            lines.forEach(function (value) {
+                const line = document.createElement("p");
+                line.textContent = value;
+                popup.appendChild(line);
+            });
+            const link = document.createElement("a");
+            link.href = linkUrl;
+            link.textContent = linkText;
+            popup.appendChild(link);
+            return popup;
         }
-
-    });
-
-    tileLayer.addTo(map);
-
-
-    // =====================================
-    // CAPAS DEL MAPA
-    // =====================================
-
-    const gpsLayer = L.layerGroup().addTo(map);
-
-    const sosLayer = L.layerGroup().addTo(map);
-
-    const allBounds = L.latLngBounds([]);
-
-    const sosBounds = L.latLngBounds([]);
-
-
-    // =====================================
-    // MARCADORES GPS
-    // =====================================
-
-    const colors = {
-        rescue: "#EC7676",
-        overdue: "#F0B94B",
-        normal: "#B3E853"
-    };
-
-    points.forEach(function (point) {
-
-        if (
-            !point ||
-            point.lat === null ||
-            point.lat === undefined ||
-            point.lng === null ||
-            point.lng === undefined ||
-            point.lat === "" ||
-            point.lng === ""
-        ) {
-            return;
-        }
-
-        const lat = Number(point.lat);
-        const lng = Number(point.lng);
-
-        if (
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lng) ||
-            Math.abs(lat) > 90 ||
-            Math.abs(lng) > 180
-        ) {
-            return;
-        }
-
-        const marker = L.circleMarker(
-            [lat, lng],
-            {
+        // MARCADORES GPS
+        points.forEach(function (point) {
+            const coordinates = getCoordinates(point);
+            if (!coordinates) {
+                return;
+            }
+            const marker = L.circleMarker(coordinates, {
                 radius: 9,
                 color: "#FFFFFF",
                 weight: 2,
-                fillColor:
-                    colors[point.priority] ||
-                    colors.normal,
+                fillColor: colors[point.priority] || colors.normal,
                 fillOpacity: 1
+            });
+            marker.addTo(gpsLayer);
+            const popup = createPopup(
+                "Trekking #" + point.id + " · " + point.user,
+                [
+                    point.trail,
+                    "Último GPS registrado: " + point.at,
+                    point.stale ? "Ubicación antigua" : "Última ubicación conocida"
+                ],
+                "{% url 'dashboard:trekkings' %}" + encodeURIComponent(String(point.id)) + "/",
+                "Abrir detalle del trekking"
+            );
+            marker.bindPopup(popup);
+            allBounds.extend(coordinates);
+        });
+        // MARCADORES SOS ANIMADOS
+        sosPoints.forEach(function (sos) {
+            const coordinates = getCoordinates(sos);
+            if (!coordinates) {
+                return;
             }
-        );
-
-        marker.addTo(gpsLayer);
-
-
-        // =================================
-        // POPUP DEL EXCURSIONISTA
-        // =================================
-
-        const popup = document.createElement("div");
-
-        const title = document.createElement("strong");
-
-        title.textContent =
-            "Trekking #" +
-            point.id +
-            " · " +
-            point.user;
-
-        popup.appendChild(title);
-
-        [
-            point.trail,
-            "Último GPS registrado: " + point.at,
-            point.stale
-                ? "Ubicación antigua"
-                : "Última ubicación conocida"
-        ].forEach(function (value) {
-
-            const line = document.createElement("p");
-
-            line.textContent = value;
-
-            popup.appendChild(line);
+            const sosIcon = L.divIcon({
+                html: '<div class="sos-marker"><div class="sos-marker__pulse"></div><div class="sos-marker__core">SOS</div></div>',
+                className: "",
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
+            });
+            const marker = L.marker(coordinates, {
+                icon: sosIcon,
+                zIndexOffset: 1000
+            });
+            marker.addTo(sosLayer);
+            const popup = createPopup(
+                "SOS #" + sos.id + " · " + sos.user,
+                [
+                    sos.trail,
+                    "Solicitud: " + sos.at,
+                    "Estado del trekking: " + sos.trekking_status,
+                    "Ubicación de la solicitud SOS (no GPS en vivo)"
+                ],
+                "{% url 'dashboard:rescues' %}" + encodeURIComponent(String(sos.id)) + "/",
+                "Gestionar rescate"
+            );
+            marker.bindPopup(popup);
+            sosBounds.extend(coordinates);
+            allBounds.extend(coordinates);
         });
-
-        const link = document.createElement("a");
-
-        link.href =
-            "{% url 'dashboard:trekkings' %}" +
-            encodeURIComponent(String(point.id)) +
-            "/";
-
-        link.textContent = "Abrir detalle del trekking";
-
-        popup.appendChild(link);
-
-        marker.bindPopup(popup);
-
-        allBounds.extend([lat, lng]);
-
-    });
-
-
-    // =====================================
-    // MARCADORES SOS ANIMADOS
-    // =====================================
-
-    sosPoints.forEach(function (sos) {
-
-        if (
-            !sos ||
-            sos.lat === null ||
-            sos.lat === undefined ||
-            sos.lng === null ||
-            sos.lng === undefined ||
-            sos.lat === "" ||
-            sos.lng === ""
-        ) {
-            return;
-        }
-
-        const lat = Number(sos.lat);
-        const lng = Number(sos.lng);
-
-        if (
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lng) ||
-            Math.abs(lat) > 90 ||
-            Math.abs(lng) > 180
-        ) {
-            return;
-        }
-
-
-        // =================================
-        // ÍCONO SOS
-        // =================================
-
-        const sosIcon = L.divIcon({
-
-            html:
-                '<div class="sos-marker">' +
-                    '<div class="sos-marker__pulse"></div>' +
-                    '<div class="sos-marker__core">SOS</div>' +
-                '</div>',
-
-            className: "",
-            iconSize: [34, 34],
-            iconAnchor: [17, 17]
-
-        });
-
-
-        const marker = L.marker(
-            [lat, lng],
-            {
-                icon: sosIcon
-            }
-        );
-
-        marker.addTo(sosLayer);
-
-
-        // =================================
-        // POPUP DE EMERGENCIA
-        // =================================
-
-        const popup = document.createElement("div");
-
-        const title = document.createElement("strong");
-
-        title.textContent =
-            "SOS #" +
-            sos.id +
-            " · " +
-            sos.user;
-
-        popup.appendChild(title);
-
-        [
-            sos.trail,
-            "Solicitud: " + sos.at,
-            "Estado del trekking: " +
-                sos.trekking_status,
-            "Ubicación de la solicitud SOS (no GPS en vivo)"
-        ].forEach(function (value) {
-
-            const line = document.createElement("p");
-
-            line.textContent = value;
-
-            popup.appendChild(line);
-        });
-
-
-        // Enlace seguro a la gestión del rescate.
-
-        const link = document.createElement("a");
-
-        link.href =
-            "{% url 'dashboard:rescues' %}" +
-            encodeURIComponent(String(sos.id)) +
-            "/";
-
-        link.textContent = "Gestionar rescate";
-
-        popup.appendChild(link);
-
-        marker.bindPopup(popup);
-
-        sosBounds.extend([lat, lng]);
-
-        allBounds.extend([lat, lng]);
-
-    });
-
-
-    // =====================================
-    // SELECTOR DE CAPAS
-    // =====================================
-
-    L.control.layers(
-        null,
-        {
+        // SELECTOR DE CAPAS
+        L.control.layers(null, {
             "Últimas ubicaciones GPS": gpsLayer,
             "Solicitudes SOS activas": sosLayer
-        },
-        {
+        }, {
             collapsed: false,
             position: "topright"
-        }
-    ).addTo(map);
-
-
-    // =====================================
-    // CENTRAR EL MAPA
-    // =====================================
-
-    // Si hay rescates activos, se priorizan
-    // sus coordenadas al abrir el monitoreo.
-
-    const initialBounds = sosBounds.isValid()
-        ? sosBounds
-        : allBounds;
-
-    if (initialBounds.isValid()) {
-
-        if (
-            initialBounds.getSouthWest().equals(
-                initialBounds.getNorthEast()
-            )
-        ) {
-
-            map.setView(
-                initialBounds.getCenter(),
-                15
-            );
-
-        } else {
-
-            map.fitBounds(
-                initialBounds,
-                {
+        }).addTo(map);
+        // PRIORIDAD DE RESCATES AL CENTRAR EL MAPA
+        const initialBounds = sosBounds.isValid() ? sosBounds : allBounds;
+        if (initialBounds.isValid()) {
+            if (initialBounds.getSouthWest().equals(initialBounds.getNorthEast())) {
+                map.setView(initialBounds.getCenter(), 15);
+            } else {
+                map.fitBounds(initialBounds, {
                     padding: [35, 35],
                     maxZoom: 15
-                }
-            );
-
+                });
+            }
+        } else {
+            map.setView([-35.43, -71.65], 10);
+            if (warning) {
+                warning.textContent = "No hay coordenadas válidas para mostrar.";
+            }
         }
-
-    } else {
-
-        map.setView(
-            [-35.43, -71.65],
-            10
-        );
-
-    }
-
-
-    // =====================================
-    // AJUSTAR DIMENSIONES
-    // =====================================
-
-    requestAnimationFrame(function () {
-        map.invalidateSize();
-    });
-
-    window.addEventListener(
-        "resize",
-        function () {
+        // AJUSTAR DIMENSIONES DEL MAPA
+        requestAnimationFrame(function () {
             map.invalidateSize();
+        });
+        window.addEventListener("resize", function () {
+            map.invalidateSize();
+        });
+        if (typeof ResizeObserver !== "undefined") {
+            const observer = new ResizeObserver(function () {
+                map.invalidateSize();
+            });
+            observer.observe(container);
         }
-    );
-
-});
+    });
 </script>
-
 {% endif %}
-
 {% endblock %}

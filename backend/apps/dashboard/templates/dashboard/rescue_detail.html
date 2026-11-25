@@ -1,1129 +1,1919 @@
-
 {% extends "dashboard/base.html" %}
-
-{% block title %}
-Rescate #{{ rescue.pk }} | Hito
-{% endblock %}
-
-
+{% load static %}
+{% block title %}Rescate #{{ rescue.pk }} | Hito{% endblock %}
 {% block head %}
-
-<link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
->
-
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
-    /* =====================================
-       ENCABEZADO
-    ===================================== */
-
+    /* CONFIGURACIÓN GENERAL */
+    .rescue-detail {
+        width:100%;
+        min-width:0;
+    }
+    .rescue-detail .rescue-icon {
+        width:20px;
+        height:20px;
+        fill:none;
+        stroke:currentColor;
+        stroke-width:1.7;
+        stroke-linecap:round;
+        stroke-linejoin:round;
+        flex-shrink:0;
+    }
+    /* ENCABEZADO */
     .rescue-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 20px;
+        position:relative;
+        isolation:isolate;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:20px;
+        min-height:190px;
+        margin:-30px -30px 24px;
+        padding:25px 30px;
+        overflow:hidden;
+        background:#090e11;
+        border-bottom:1px solid rgba(255,255,255,.04);
     }
-
+    .rescue-landscape {
+        position:absolute;
+        top:0;
+        right:0;
+        bottom:0;
+        width:min(65%,1000px);
+        z-index:-2;
+        overflow:hidden;
+        pointer-events:none;
+    }
+    .rescue-landscape img {
+        display:block;
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        object-position:center 60%;
+        opacity:.85;
+        filter:brightness(.70) saturate(.55);
+        image-rendering:auto;
+    }
+    .rescue-landscape::after {
+        content:"";
+        position:absolute;
+        inset:0;
+        background:linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.80) 25%,rgba(9,14,17,.45) 50%,rgba(9,14,17,.15) 75%,rgba(9,14,17,.05) 100%),linear-gradient(to top,rgba(9,14,17,.90),transparent 65%);
+        pointer-events:none;
+    }
+    .rescue-header::after {
+        content:"";
+        position:absolute;
+        inset:0;
+        z-index:-1;
+        background:linear-gradient(90deg,#090e11 0%,rgba(9,14,17,.95) 18%,rgba(9,14,17,.70) 35%,rgba(9,14,17,.20) 65%,transparent 90%);
+        pointer-events:none;
+    }
+    .rescue-header-content {
+        position:relative;
+        z-index:1;
+        min-width:0;
+    }
+    .rescue-back {
+        display:inline-flex;
+        align-items:center;
+        gap:7px;
+        margin-bottom:15px;
+        padding:7px 11px;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:7px;
+        color:#ffffff;
+        font-size:12px;
+        font-weight:500;
+        transition:background .2s,border-color .2s;
+    }
+    .rescue-back .rescue-icon {
+        width:15px;
+        height:15px;
+        color:#ffffff;
+    }
+    .rescue-back:hover {
+        background:#263238;
+        border-color:#526269;
+        color:#ffffff;
+    }
+    .rescue-eyebrow {
+        display:flex;
+        align-items:center;
+        gap:7px;
+        margin-bottom:8px;
+        color:#ff8292;
+        font-size:11px;
+        font-weight:700;
+        letter-spacing:1.5px;
+    }
+    .rescue-eyebrow .rescue-icon {
+        width:16px;
+        height:16px;
+        color:#ff453a;
+    }
+    .rescue-header h1 {
+        margin:0 0 8px;
+        color:#e1e8ed;
+        font-size:clamp(27px,2.8vw,40px);
+        font-weight:700;
+        letter-spacing:-.8px;
+        line-height:1.15;
+    }
+    .rescue-header-description {
+        margin:0;
+        color:#9ca9b0;
+        font-size:13px;
+        line-height:1.7;
+    }
+    .rescue-header-status {
+        position:relative;
+        z-index:1;
+        flex-shrink:0;
+    }
+    /* ESTADOS DEL RESCATE */
     .rescue-status {
-        padding: 8px 14px;
-        border-radius: 8px;
-        font-weight: 700;
-        border: 1px solid;
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding:9px 13px;
+        background:#19252a;
+        border:1px solid #344349;
+        border-radius:8px;
+        color:#b7c6ce;
+        font-size:11px;
+        font-weight:650;
+        white-space:nowrap;
     }
-
+    .rescue-status::before {
+        content:"";
+        width:7px;
+        height:7px;
+        flex-shrink:0;
+        border-radius:50%;
+        background:currentColor;
+    }
     .rescue-status.active {
-        background: rgba(239, 75, 85, 0.12);
-        color: #ff898f;
-        border-color: #934249;
+        background:rgba(57,26,34,.94);
+        border-color:rgba(255,100,120,.35);
+        color:#ff8a98;
     }
-
+    .rescue-status.active::before {
+        box-shadow:0 0 9px rgba(255,100,120,.65);
+    }
     .rescue-status.completed {
-        background: rgba(179, 232, 83, 0.1);
-        color: #b3e853;
-        border-color: #526d39;
+        background:rgba(28,52,36,.94);
+        border-color:rgba(89,214,107,.25);
+        color:#73dc7d;
     }
-
     .rescue-status.cancelled {
-        background: rgba(240, 185, 75, 0.1);
-        color: #f0b94b;
-        border-color: #866a31;
+        background:rgba(47,42,24,.94);
+        border-color:rgba(250,204,32,.25);
+        color:#facc20;
     }
-
-    /* =====================================
-       SECCIONES
-    ===================================== */
-
-    .rescue-section {
-        padding: 20px;
-        margin-top: 20px;
-        background: #19211c;
-        border: 1px solid #354336;
-        border-radius: 12px;
-    }
-
-    .rescue-section h2 {
-        margin-top: 0;
-    }
-
-    .rescue-section textarea,
-    .rescue-section select {
-        display: block;
-        width: 100%;
-        max-width: 700px;
-        box-sizing: border-box;
-        padding: 12px;
-        background: #101611;
-        color: #e9eee9;
-        border: 1px solid #4d5d4d;
-        border-radius: 8px;
-        font: inherit;
-    }
-
-    .rescue-section textarea:focus,
-    .rescue-section select:focus {
-        outline: 2px solid #b3e853;
-        outline-offset: 2px;
-    }
-
-    .rescue-section label {
-        display: block;
-        margin: 12px 0 8px;
-        font-weight: 600;
-    }
-
-    .rescue-section button {
-        margin-top: 14px;
-    }
-
-    .rescue-error {
-        color: #ff898f;
-        margin-top: 8px;
-    }
-
+    /* MENSAJES DE DJANGO */
     .rescue-message {
-        padding: 12px 14px;
-        margin: 12px 0;
-        background: #223125;
-        border: 1px solid #49664c;
-        border-radius: 8px;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        margin-bottom:16px;
+        padding:13px 16px;
+        background:#182c20;
+        border:1px solid rgba(98,211,107,.22);
+        border-radius:9px;
+        color:#a9e6ad;
+        font-size:13px;
     }
-
-    .rescue-warning {
-        color: #f0b94b;
+    .rescue-message.error {
+        background:#342020;
+        border-color:rgba(255,100,120,.28);
+        color:#ffaaaa;
     }
-
-    .rescue-close-button {
-        background: #7d3038;
-        border: 1px solid #bb535e;
-        color: white;
+    .rescue-message.warning {
+        background:#302a1b;
+        border-color:rgba(250,204,32,.25);
+        color:#f1cb71;
     }
-
-    .rescue-close-button:hover {
-        background: #963a44;
+    /* TARJETAS DE INFORMACIÓN - COLORES ORIGINALES */
+    .rescue-stats {
+        display:grid;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:15px;
+        margin-bottom:22px;
     }
-
+    .rescue-stat {
+        --rescue-color:#59d66b;
+        --rescue-glow:rgba(89,214,107,.12);
+        position:relative;
+        isolation:isolate;
+        display:flex;
+        flex-direction:column;
+        align-items:flex-start;
+        min-width:0;
+        min-height:145px;
+        padding:18px 20px 23px;
+        overflow:hidden;
+        background:radial-gradient(ellipse at 0% 0%,var(--rescue-glow),transparent 70%),linear-gradient(145deg,#172226,#11181d);
+        border:1px solid #29373c;
+        border-radius:14px;
+        box-shadow:0 8px 24px rgba(0,0,0,.17);
+        transition:transform .2s,border-color .2s;
+    }
+    .rescue-stat:nth-child(2) {
+        --rescue-color:#419fff;
+        --rescue-glow:rgba(65,159,255,.12);
+    }
+    .rescue-stat:nth-child(3) {
+        --rescue-color:#ce91f7;
+        --rescue-glow:rgba(206,145,247,.12);
+    }
+    .rescue-stat:nth-child(4) {
+        --rescue-color:#ff794d;
+        --rescue-glow:rgba(255,121,77,.12);
+    }
+    .rescue-stat::before {
+        content:"";
+        position:absolute;
+        left:0;
+        right:0;
+        bottom:0;
+        height:35px;
+        z-index:-1;
+        background:linear-gradient(to top,var(--rescue-glow),transparent);
+    }
+    .rescue-stat::after {
+        content:"";
+        position:absolute;
+        left:0;
+        right:0;
+        bottom:0;
+        height:3px;
+        background:linear-gradient(90deg,transparent,var(--rescue-color),transparent);
+        opacity:.75;
+    }
+    .rescue-stat:hover {
+        transform:translateY(-3px);
+        border-color:color-mix(in srgb,var(--rescue-color) 40%,#29373c);
+    }
+    .rescue-stat-icon {
+        display:grid;
+        place-items:center;
+        width:40px;
+        height:40px;
+        margin-bottom:12px;
+        background:var(--rescue-glow);
+        color:var(--rescue-color);
+        border-radius:11px;
+    }
+    .rescue-stat-icon .rescue-icon {
+        width:23px;
+        height:23px;
+    }
+    .rescue-stat-label {
+        margin-bottom:5px;
+        color:#9ca9b0;
+        font-size:12px;
+        font-weight:500;
+    }
+    .rescue-stat-value {
+        color:#f0f4f6;
+        font-size:18px;
+        font-weight:650;
+        line-height:1.4;
+        overflow-wrap:anywhere;
+    }
+    .rescue-stat-value.date {
+        font-size:15px;
+        font-variant-numeric:tabular-nums;
+    }
+    /* DISTRIBUCIÓN DE PANELES */
+    .rescue-grid {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:18px;
+        margin-bottom:20px;
+        align-items:stretch;
+    }
+    .rescue-section {
+        display:flex;
+        flex-direction:column;
+        min-width:0;
+        background:linear-gradient(150deg,#151f23,#11181c);
+        border:1px solid #29373c;
+        border-radius:15px;
+        box-shadow:0 10px 25px rgba(0,0,0,.17);
+        overflow:hidden;
+    }
+    .rescue-section-heading {
+        display:flex;
+        align-items:center;
+        gap:12px;
+        padding:18px 20px;
+        border-bottom:1px solid rgba(255,255,255,.05);
+    }
+    .rescue-section-icon {
+        display:grid;
+        place-items:center;
+        width:40px;
+        height:40px;
+        flex-shrink:0;
+        background:#090e11;
+        border:1px solid #34454d;
+        color:#ffffff;
+        border-radius:11px;
+    }
+    .rescue-section-icon.red,
+    .rescue-section-icon.blue {
+        background:#090e11;
+        color:#ffffff;
+        border:1px solid #34454d;
+    }
+    .rescue-section-icon .rescue-icon {
+        width:22px;
+        height:22px;
+    }
+    .rescue-section-copy {
+        flex:1;
+        min-width:0;
+    }
+    .rescue-section-copy h2 {
+        margin:0 0 3px;
+        color:#e8eef1;
+        font-size:17px;
+        font-weight:650;
+        letter-spacing:-.25px;
+    }
+    .rescue-section-copy p {
+        margin:0;
+        color:#9ca9b0;
+        font-size:11px;
+        line-height:1.6;
+    }
+    .rescue-section-body {
+        flex:1;
+        min-width:0;
+        padding:20px;
+    }
+    /* INFORMACIÓN DE LA SOLICITUD */
+    .rescue-information {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;
+    }
+    .rescue-field {
+        min-width:0;
+        padding:14px;
+        background:#0e171b;
+        border:1px solid #29373c;
+        border-radius:8px;
+    }
+    .rescue-field.full {
+        grid-column:1 / -1;
+    }
+    .rescue-field small {
+        display:block;
+        margin-bottom:6px;
+        color:#91a2ac;
+        font-size:11px;
+    }
+    .rescue-field strong {
+        display:block;
+        color:#dfe7eb;
+        font-size:13px;
+        font-weight:550;
+        overflow-wrap:anywhere;
+    }
+    .rescue-field a {
+        display:inline-flex;
+        align-items:center;
+        gap:7px;
+        padding:7px 10px;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:7px;
+        color:#ffffff;
+        font-size:13px;
+        font-weight:600;
+        transition:background .2s,border-color .2s;
+    }
+    .rescue-field a .rescue-icon {
+        width:14px;
+        height:14px;
+        color:#ffffff;
+    }
+    .rescue-field a:hover {
+        background:#263238;
+        border-color:#526269;
+        color:#ffffff;
+    }
     .rescue-muted {
-        color: #aab8ac;
-        font-size: 0.9rem;
+        color:#9ca9b0;
+        font-size:12px;
+        line-height:1.7;
     }
-
-    /* =====================================
-       MAPA LEAFLET
-    ===================================== */
-
+    /* AVISOS */
+    .rescue-notice {
+        display:flex;
+        align-items:flex-start;
+        gap:10px;
+        margin-top:16px;
+        padding:13px;
+        background:rgba(65,159,255,.055);
+        border:1px solid rgba(65,159,255,.14);
+        border-radius:8px;
+        color:#a5bdcf;
+        font-size:11px;
+        line-height:1.7;
+    }
+    .rescue-notice .rescue-icon {
+        width:17px;
+        height:17px;
+        color:#ffffff;
+    }
+    .rescue-warning {
+        color:#f0c276;
+        font-size:12px;
+        line-height:1.7;
+    }
+    .rescue-warning:empty {
+        display:none;
+    }
+    .rescue-warning-box {
+        display:flex;
+        align-items:flex-start;
+        gap:10px;
+        margin-top:15px;
+        padding:13px;
+        background:rgba(250,204,32,.055);
+        border:1px solid rgba(250,204,32,.18);
+        border-radius:8px;
+        color:#f0c276;
+        font-size:12px;
+        line-height:1.7;
+    }
+    .rescue-warning-box .rescue-icon {
+        width:18px;
+        height:18px;
+        color:#f0c276;
+    }
+    /* MAPA LEAFLET - DISEÑO ORIGINAL */
     #rescue-map {
-        width: 100%;
-        height: 400px;
-        position: relative;
-        overflow: hidden;
-        border-radius: 12px;
-        background: #18211c;
-        z-index: 0;
+        position:relative;
+        isolation:isolate;
+        width:100%;
+        height:400px;
+        overflow:hidden;
+        border:1px solid #344349;
+        border-radius:11px;
+        background:#172820;
+        z-index:0;
+        color-scheme:light;
     }
-
     #rescue-map .leaflet-tile,
     #rescue-map .leaflet-pane img {
-        max-width: none !important;
-        max-height: none !important;
+        max-width:none!important;
+        max-height:none!important;
     }
-
+    #rescue-map .leaflet-control-zoom {
+        border:1px solid #344349;
+        border-radius:8px;
+        overflow:hidden;
+    }
+    #rescue-map .leaflet-control-zoom a {
+        background:#142126;
+        color:#e2ece8;
+        border-bottom-color:#344349;
+    }
+    #rescue-map .leaflet-control-zoom a:hover {
+        background:#24372e;
+    }
+    #rescue-map .leaflet-popup-content-wrapper,
+    #rescue-map .leaflet-popup-tip {
+        background:#172329;
+        color:#e3eaee;
+    }
     #rescue-map .leaflet-popup-content {
-        color: #202820;
+        color:#e3eaee;
+        font-size:12px;
+        line-height:1.6;
     }
-
-    /* =====================================
-       MARCADOR SOS
-    ===================================== */
-
+    #rescue-map .leaflet-popup-content strong {
+        color:#ff9ba8;
+        font-size:13px;
+    }
+    #rescue-map .leaflet-popup-content p {
+        margin:7px 0 0;
+        color:#b6c4cb;
+    }
+    #rescue-map .leaflet-popup-close-button {
+        color:#bac9d0;
+    }
+    #rescue-map .leaflet-control-attribution {
+        background:rgba(13,23,27,.90);
+        color:#b6c4cb;
+        font-size:9px;
+    }
+    #rescue-map .leaflet-control-attribution a {
+        color:#9cdaa0;
+    }
+    /* NUEVO BOTÓN DE PANTALLA COMPLETA */
+    #rescue-map:fullscreen {
+        width:100%!important;
+        height:100%!important;
+        max-width:none!important;
+        max-height:none!important;
+        margin:0!important;
+        border:none!important;
+        border-radius:0!important;
+        background:#172820;
+    }
+    #rescue-map:fullscreen::backdrop {
+        background:#090e11;
+    }
+    #rescue-map .rescue-fullscreen-control {
+        margin-top:8px;
+        border:1px solid #344349;
+        border-radius:8px;
+        overflow:hidden;
+        box-shadow:0 2px 8px rgba(0,0,0,.20);
+    }
+    #rescue-map .rescue-fullscreen-button {
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:30px;
+        height:30px;
+        padding:0;
+        margin:0;
+        background:#142126;
+        color:#ffffff;
+        border:0;
+        border-radius:0;
+        cursor:pointer;
+        transition:background .2s ease;
+    }
+    #rescue-map .rescue-fullscreen-button:hover {
+        background:#263238;
+        color:#ffffff;
+    }
+    #rescue-map .rescue-fullscreen-button:focus-visible {
+        outline:2px solid #ffffff;
+        outline-offset:-3px;
+    }
+    #rescue-map .rescue-fullscreen-button svg {
+        display:block;
+        width:18px;
+        height:18px;
+        fill:none;
+        stroke:currentColor;
+        stroke-width:2;
+        stroke-linecap:round;
+        stroke-linejoin:round;
+        pointer-events:none;
+    }
+    #rescue-map .rescue-fullscreen-button:disabled {
+        opacity:.5;
+        cursor:not-allowed;
+    }
+    /* COORDENADAS */
+    .rescue-coordinates {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+        margin-top:14px;
+    }
+    .rescue-coordinate {
+        min-width:0;
+        padding:11px 13px;
+        background:#0e171b;
+        border:1px solid #29373c;
+        border-radius:8px;
+    }
+    .rescue-coordinate small {
+        display:block;
+        margin-bottom:4px;
+        color:#8fa2ad;
+        font-size:10px;
+        font-weight:600;
+    }
+    .rescue-coordinate strong {
+        display:block;
+        color:#dfe9ed;
+        font-size:13px;
+        font-weight:550;
+        font-variant-numeric:tabular-nums;
+        overflow-wrap:anywhere;
+    }
+    .rescue-map-caption {
+        display:flex;
+        align-items:flex-start;
+        gap:8px;
+        margin-top:13px;
+        color:#9ca9b0;
+        font-size:11px;
+        line-height:1.7;
+    }
+    .rescue-map-caption .rescue-icon {
+        width:16px;
+        height:16px;
+        color:#8faab8;
+    }
+    /* MARCADOR SOS ANIMADO - COLORES ORIGINALES */
     .hito-sos-marker {
-        position: relative;
-        width: 32px;
-        height: 32px;
+        position:relative;
+        width:32px;
+        height:32px;
     }
-
     .hito-sos-core {
-        position: absolute;
-        inset: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #e84c56;
-        border: 2px solid white;
-        border-radius: 50%;
-        color: white;
-        font-size: 9px;
-        font-weight: 800;
-        box-shadow: 0 0 12px rgba(232, 76, 86, 0.7);
-        z-index: 2;
+        position:absolute;
+        inset:4px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#e84c56;
+        border:2px solid #ffffff;
+        border-radius:50%;
+        color:#ffffff;
+        font-size:9px;
+        font-weight:800;
+        box-shadow:0 0 12px rgba(232,76,86,.70);
+        z-index:2;
     }
-
     .hito-sos-pulse {
-        position: absolute;
-        inset: 0;
-        background: rgba(232, 76, 86, 0.35);
-        border: 2px solid rgba(232, 76, 86, 0.8);
-        border-radius: 50%;
-        animation: hito-sos-pulse 2s infinite ease-out;
-        z-index: 1;
+        position:absolute;
+        inset:0;
+        background:rgba(232,76,86,.35);
+        border:2px solid rgba(232,76,86,.80);
+        border-radius:50%;
+        animation:hito-sos-pulse 2s infinite ease-out;
+        z-index:1;
     }
-
     @keyframes hito-sos-pulse {
-        0% {
-            transform: scale(0.8);
-            opacity: 1;
+        from {
+            transform:scale(.8);
+            opacity:1;
         }
-
-        100% {
-            transform: scale(2.5);
-            opacity: 0;
-        }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .hito-sos-pulse {
-            animation: none;
+        to {
+            transform:scale(2.5);
+            opacity:0;
         }
     }
-
-    /* =====================================
-       AUDITORÍA
-    ===================================== */
-
+    /* ESTADOS VACÍOS */
+    .rescue-empty {
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:12px;
+        min-height:300px;
+        padding:25px;
+        background:#0e171b;
+        border:1px dashed #344349;
+        border-radius:10px;
+        text-align:center;
+    }
+    .rescue-empty-icon {
+        display:grid;
+        place-items:center;
+        width:60px;
+        height:60px;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:17px;
+        color:#ffffff;
+    }
+    .rescue-empty-icon .rescue-icon {
+        width:30px;
+        height:30px;
+    }
+    .rescue-empty h3 {
+        margin:0;
+        color:#e1e8ed;
+        font-size:16px;
+        font-weight:650;
+    }
+    .rescue-empty p {
+        max-width:350px;
+        margin:0;
+        color:#91a3ad;
+        font-size:12px;
+        line-height:1.7;
+    }
+    /* FORMULARIOS */
+    .rescue-form {
+        display:flex;
+        flex-direction:column;
+        gap:17px;
+    }
+    .rescue-form-field {
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        min-width:0;
+    }
+    .rescue-form-field label {
+        display:flex;
+        align-items:center;
+        gap:7px;
+        color:#dce5ea;
+        font-size:13px;
+        font-weight:600;
+    }
+    .rescue-form-field label .rescue-icon {
+        width:16px;
+        height:16px;
+        color:#ffffff;
+    }
+    .rescue-form-field textarea,
+    .rescue-form-field select {
+        display:block;
+        width:100%;
+        max-width:100%;
+        padding:12px 13px;
+        background:#0e171b;
+        border:1px solid #344349;
+        border-radius:8px;
+        color:#e3eaee;
+        font:inherit;
+        transition:border-color .2s,box-shadow .2s;
+    }
+    .rescue-form-field select {
+        min-height:44px;
+    }
+    .rescue-form-field textarea {
+        min-height:170px;
+        resize:vertical;
+        line-height:1.7;
+    }
+    .rescue-form-field textarea:hover,
+    .rescue-form-field select:hover {
+        border-color:#52626a;
+    }
+    .rescue-form-field textarea:focus,
+    .rescue-form-field select:focus {
+        outline:none;
+        border-color:#62d36b;
+        box-shadow:0 0 0 3px rgba(98,211,107,.08);
+    }
+    .rescue-form-field textarea::placeholder {
+        color:#71848f;
+    }
+    .rescue-error {
+        margin:0;
+        padding:9px 11px;
+        background:rgba(255,100,120,.08);
+        border:1px solid rgba(255,100,120,.17);
+        border-radius:7px;
+        color:#ffaaaa;
+        font-size:12px;
+    }
+    /* BOTONES DE GESTIÓN */
+    .rescue-save-button,
+    .rescue-close-button {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:9px;
+        width:100%;
+        min-height:45px;
+        padding:12px 17px;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:8px;
+        color:#ffffff;
+        font-size:13px;
+        font-weight:650;
+        cursor:pointer;
+        transition:background .2s,border-color .2s,box-shadow .2s;
+    }
+    .rescue-save-button:hover,
+    .rescue-close-button:hover {
+        background:#263238;
+        border-color:#526269;
+        color:#ffffff;
+        box-shadow:none;
+    }
+    .rescue-save-button .rescue-icon,
+    .rescue-close-button .rescue-icon {
+        width:18px;
+        height:18px;
+    }
+    .rescue-save-button .rescue-icon {
+        color:#ffffff;
+    }
+    .rescue-close-button .rescue-icon {
+        color:#ff453a;
+    }
+    /* PANEL DE CIERRE */
+    .rescue-close-section.is-active {
+        border-color:rgba(255,100,120,.28);
+    }
+    .rescue-close-section.is-active .rescue-section-heading {
+        background:rgba(255,100,120,.035);
+        border-bottom-color:rgba(255,100,120,.12);
+    }
+    .rescue-form-intro {
+        margin:0 0 18px;
+        color:#a5b3bb;
+        font-size:12px;
+        line-height:1.7;
+    }
+    .rescue-readonly {
+        min-height:100px;
+        padding:15px;
+        background:#0e171b;
+        border:1px solid #29373c;
+        border-radius:8px;
+        color:#cbd7de;
+        font-size:13px;
+        line-height:1.8;
+        overflow-wrap:anywhere;
+    }
+    /* INDICADOR DE RESCATE CERRADO */
+    .rescue-final-status {
+        display:flex;
+        align-items:flex-start;
+        gap:11px;
+        margin-bottom:17px;
+        padding:14px;
+        background:rgba(89,214,107,.055);
+        border:1px solid rgba(89,214,107,.14);
+        border-radius:8px;
+    }
+    .rescue-final-status .rescue-icon {
+        width:23px;
+        height:23px;
+        color:#73dc7d;
+    }
+    .rescue-final-status.cancelled {
+        background:rgba(250,204,32,.055);
+        border-color:rgba(250,204,32,.18);
+    }
+    .rescue-final-status.cancelled .rescue-icon {
+        color:#facc20;
+    }
+    .rescue-final-status strong {
+        display:block;
+        margin-bottom:4px;
+        color:#dfe7eb;
+        font-size:13px;
+    }
+    .rescue-final-status p {
+        margin:0;
+        color:#a0adb5;
+        font-size:11px;
+        line-height:1.7;
+    }
+    .rescue-reason-title {
+        margin:18px 0 9px;
+        color:#dce5ea;
+        font-size:13px;
+        font-weight:600;
+    }
+    /* HISTORIAL DE AUDITORÍA */
+    .rescue-audit {
+        margin-bottom:20px;
+    }
+    .rescue-audit .rescue-section-body {
+        padding:0;
+    }
     .audit-description {
-        color: #aab8ac;
-        font-size: 0.9rem;
-        margin-bottom: 16px;
+        margin:0;
+        color:#9ca9b0;
+        font-size:12px;
+        line-height:1.7;
     }
-
+    .rescue-audit-table-wrap {
+        width:100%;
+        overflow-x:auto;
+        border:0;
+        border-radius:0;
+        background:transparent;
+    }
     .audit-table {
-        width: 100%;
-        border-collapse: collapse;
+        width:100%;
+        min-width:850px;
+        border-collapse:collapse;
     }
-
-    .audit-table th,
-    .audit-table td {
-        padding: 12px;
-        text-align: left;
-        vertical-align: top;
-        border-bottom: 1px solid #354336;
-    }
-
     .audit-table th {
-        color: #dbe7db;
-        white-space: nowrap;
+        padding:15px 18px;
+        background:#10191e;
+        border-bottom:1px solid #29373c;
+        color:#a5b4bd;
+        font-size:10px;
+        font-weight:650;
+        letter-spacing:.6px;
+        text-transform:uppercase;
+        text-align:left;
+        white-space:nowrap;
     }
-
     .audit-table td {
-        color: #e2e9e2;
+        padding:15px 18px;
+        border-bottom:1px solid #243034;
+        color:#cbd7de;
+        font-size:12px;
+        line-height:1.6;
+        text-align:left;
+        vertical-align:top;
     }
-
+    .audit-table tbody tr:hover {
+        background:rgba(255,255,255,.025);
+    }
+    .audit-table tbody tr:last-child td {
+        border-bottom:0;
+    }
+    .audit-date {
+        display:flex;
+        flex-direction:column;
+        gap:3px;
+        white-space:nowrap;
+    }
+    .audit-date strong {
+        color:#e1e8ed;
+        font-size:12px;
+        font-weight:550;
+    }
+    .audit-date small {
+        color:#91a3ad;
+        font-size:11px;
+    }
+    .audit-user {
+        display:flex;
+        align-items:center;
+        gap:9px;
+    }
+    .audit-avatar {
+        display:grid;
+        place-items:center;
+        width:31px;
+        height:31px;
+        flex-shrink:0;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:50%;
+        color:#c084fc;
+        font-size:11px;
+        font-weight:650;
+    }
+    /* ESTADOS DE AUDITORÍA */
     .audit-action {
-        display: inline-block;
-        padding: 5px 9px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        border-radius: 6px;
-        border: 1px solid #4d5d4d;
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:6px 9px;
+        background:#19252a;
+        border:1px solid #344349;
+        border-radius:6px;
+        color:#b7c6ce;
+        font-size:10px;
+        font-weight:650;
+        white-space:nowrap;
     }
-
+    .audit-action::before {
+        content:"";
+        width:6px;
+        height:6px;
+        flex-shrink:0;
+        border-radius:50%;
+        background:currentColor;
+    }
     .audit-action.notes {
-        color: #b3e853;
-        background: rgba(179, 232, 83, 0.08);
-        border-color: #526d39;
+        color:#73dc7d;
+        background:rgba(89,214,107,.08);
+        border-color:rgba(89,214,107,.20);
     }
-
     .audit-action.completed {
-        color: #9ed9ff;
-        background: rgba(80, 170, 230, 0.1);
-        border-color: #446884;
+        color:#70b7ff;
+        background:rgba(65,159,255,.10);
+        border-color:rgba(65,159,255,.22);
     }
-
     .audit-action.cancelled {
-        color: #f0b94b;
-        background: rgba(240, 185, 75, 0.08);
-        border-color: #866a31;
+        color:#facc20;
+        background:rgba(250,204,32,.08);
+        border-color:rgba(250,204,32,.20);
     }
-
+    .audit-table .rescue-status {
+        padding:5px 8px;
+        font-size:10px;
+    }
     .audit-details {
-        margin-top: 8px;
+        min-width:170px;
     }
-
     .audit-details summary {
-        cursor: pointer;
-        color: #b3e853;
-        font-weight: 600;
+        padding:8px 10px;
+        background:#090e11;
+        border:1px solid #34454d;
+        border-radius:7px;
+        color:#ffffff;
+        font-size:11px;
+        font-weight:550;
+        cursor:pointer;
+        transition:background .2s,border-color .2s;
     }
-
+    .audit-details summary:hover {
+        background:#263238;
+        border-color:#526269;
+    }
+    .audit-details[open] summary {
+        background:#303a3e;
+        border-color:#526269;
+    }
     .audit-details-content {
-        margin-top: 12px;
-        padding: 12px;
-        border: 1px solid #354336;
-        border-radius: 8px;
-        background: #101611;
-        overflow-wrap: anywhere;
+        min-width:180px;
+        max-width:400px;
+        margin-top:10px;
+        padding:12px;
+        background:#0e171b;
+        border:1px solid #29373c;
+        border-radius:8px;
+        overflow-wrap:anywhere;
     }
-
+    .audit-details-content strong {
+        display:block;
+        margin-bottom:5px;
+        color:#a5b6be;
+        font-size:11px;
+        font-weight:600;
+    }
     .audit-details-content p {
-        margin: 8px 0;
+        margin:0 0 12px;
+        color:#d0dce2;
+        font-size:12px;
+        line-height:1.7;
     }
-
+    .audit-details-content p:last-child {
+        margin-bottom:0;
+    }
     .audit-empty {
-        color: #aab8ac;
-        text-align: center;
-        padding: 24px;
+        padding:35px 20px!important;
+        color:#94a5af!important;
+        text-align:center!important;
     }
-
-    @media (max-width: 700px) {
+    .audit-empty .rescue-icon {
+        display:block;
+        width:30px;
+        height:30px;
+        margin:0 auto 10px;
+        color:#ffffff;
+    }
+    .audit-footer {
+        display:flex;
+        align-items:flex-start;
+        gap:10px;
+        padding:15px 20px;
+        background:rgba(0,0,0,.10);
+        border-top:1px solid #29373c;
+        color:#91a3ad;
+        font-size:11px;
+        line-height:1.7;
+    }
+    .audit-footer .rescue-icon {
+        width:17px;
+        height:17px;
+        color:#ffffff;
+    }
+    /* PIE DE PÁGINA */
+    .rescue-footer {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        flex-wrap:wrap;
+        gap:12px;
+        margin-top:22px;
+        padding-top:15px;
+        border-top:1px solid #202c30;
+        color:#788b95;
+        font-size:11px;
+    }
+    .rescue-footer-info {
+        display:inline-flex;
+        align-items:center;
+        gap:7px;
+    }
+    .rescue-footer-info .rescue-icon {
+        width:15px;
+        height:15px;
+        color:#ffffff;
+    }
+    /* PROTECCIÓN DE TARJETAS, ESTADOS Y MAPAS */
+    .rescue-detail .rescue-stat .rescue-stat-icon svg {
+        color:var(--rescue-color)!important;
+    }
+    .rescue-detail .rescue-final-status svg {
+        color:#73dc7d!important;
+    }
+    .rescue-detail .rescue-final-status.cancelled svg {
+        color:#facc20!important;
+    }
+    .rescue-detail .rescue-warning-box svg {
+        color:#f0c276!important;
+    }
+    .rescue-detail .rescue-message svg {
+        color:inherit!important;
+    }
+    .rescue-detail .rescue-map-caption svg {
+        color:#8faab8!important;
+    }
+    /* ICONOS GENERALES */
+    .rescue-detail svg.rescue-icon:where(:not(.rescue-stat *,.rescue-final-status *,.rescue-warning-box *,.rescue-message *,.rescue-map-caption *,.leaflet-container *)) {
+        color:#ffffff!important;
+    }
+    .rescue-detail svg.rescue-icon:has(> use[href="#rd-icon-user"]):not(.rescue-stat *) {
+        color:#c084fc!important;
+    }
+    .rescue-detail svg.rescue-icon:has(> use[href="#rd-icon-sos"]):not(.rescue-stat *),
+    .rescue-detail svg.rescue-icon:has(> use[href="#icon-rescue"]):not(.rescue-stat *),
+    .rescue-detail svg.rescue-icon:has(> use[href="#icon-sos"]):not(.rescue-stat *) {
+        color:#ff453a!important;
+    }
+    .rescue-detail svg.rescue-icon:has(> use[href="#icon-alert"]):not(:is(.rescue-stat *,.rescue-warning-box *)) {
+        color:#facc15!important;
+    }
+    .rescue-detail .rescue-close-button svg.rescue-icon {
+        color:#ff453a!important;
+    }
+    .rescue-detail .rescue-section-icon:has(> svg > use[href="#rd-icon-sos"]) {
+        color:#ff453a;
+    }
+    /* FONDOS NEGROS */
+    .rescue-detail :is(.rescue-section-icon,.rescue-empty-icon) {
+        background:#090e11!important;
+        border:1px solid #34454d!important;
+        box-shadow:none;
+    }
+    .rescue-detail .audit-avatar {
+        background:#090e11!important;
+        border:1px solid #34454d!important;
+        color:#c084fc!important;
+    }
+    .rescue-detail :is(.rescue-back,.rescue-field a,.rescue-save-button,.rescue-close-button,.audit-details summary) {
+        background:#090e11!important;
+        border:1px solid #34454d!important;
+        color:#ffffff!important;
+        box-shadow:none;
+    }
+    .rescue-detail :is(.rescue-back,.rescue-field a,.rescue-save-button,.rescue-close-button,.audit-details summary):hover {
+        background:#263238!important;
+        border-color:#526269!important;
+        color:#ffffff!important;
+    }
+    .rescue-detail .audit-details[open] summary {
+        background:#303a3e!important;
+        border-color:#526269!important;
+    }
+    /* RESPONSIVE */
+    @media (min-width:1600px) {
+        .rescue-stat {
+            min-height:165px;
+            padding:22px;
+        }
+        .rescue-stat-value {
+            font-size:21px;
+        }
         #rescue-map {
-            height: 330px;
+            height:450px;
         }
-
-        .rescue-section {
-            padding: 15px;
+    }
+    @media (max-width:1150px) {
+        .rescue-stats {
+            grid-template-columns:repeat(2,minmax(0,1fr));
         }
-
-        .audit-table {
-            min-width: 750px;
+        .rescue-grid {
+            grid-template-columns:1fr;
+        }
+        .rescue-header {
+            min-height:165px;
+        }
+    }
+    @media (max-width:850px) {
+        .rescue-header {
+            margin:-20px -20px 20px;
+            padding:24px 20px;
+        }
+        .rescue-landscape {
+            width:80%;
+            opacity:.75;
+        }
+        .rescue-section-heading,
+        .rescue-section-body {
+            padding:16px;
+        }
+    }
+    @media (max-width:550px) {
+        .rescue-header {
+            min-height:190px;
+            flex-wrap:wrap;
+        }
+        .rescue-landscape {
+            width:100%;
+            opacity:.45;
+        }
+        .rescue-header h1 {
+            font-size:27px;
+        }
+        .rescue-header-description {
+            font-size:12px;
+        }
+        .rescue-stats {
+            gap:10px;
+        }
+        .rescue-stat {
+            min-height:140px;
+            padding:14px;
+        }
+        .rescue-stat-value {
+            font-size:15px;
+        }
+        .rescue-stat-value.date {
+            font-size:13px;
+        }
+        .rescue-information {
+            grid-template-columns:1fr;
+        }
+        .rescue-section-copy h2 {
+            font-size:15px;
+        }
+        .rescue-grid {
+            gap:14px;
+        }
+        #rescue-map {
+            height:330px;
+        }
+        .rescue-footer {
+            flex-direction:column;
+            align-items:flex-start;
+        }
+    }
+    @media (max-width:350px) {
+        .rescue-stats,
+        .rescue-coordinates {
+            grid-template-columns:1fr;
+        }
+    }
+    @media (prefers-reduced-motion:reduce) {
+        .rescue-detail *,
+        .rescue-detail *::before,
+        .rescue-detail *::after {
+            animation:none!important;
+            transition:none!important;
         }
     }
 </style>
-
 {% endblock %}
-
-
 {% block content %}
-
-<!-- =====================================
-     VOLVER AL LISTADO
-===================================== -->
-
-<p>
-    <a href="{% url 'dashboard:rescues' %}">
-        ← Volver a rescates
-    </a>
-</p>
-
-
-<!-- =====================================
-     ENCABEZADO
-===================================== -->
-
-<div class="rescue-header">
-
-    <h1>
-        Solicitud de rescate #{{ rescue.pk }}
-    </h1>
-
-    {% if rescue.status == "ACTIVE" %}
-
-        <span class="rescue-status active">
-            SOS ACTIVO
-        </span>
-
-    {% elif rescue.status == "COMPLETED" %}
-
-        <span class="rescue-status completed">
-            RESCATE COMPLETADO
-        </span>
-
-    {% elif rescue.status == "CANCELLED" %}
-
-        <span class="rescue-status cancelled">
-            RESCATE CANCELADO
-        </span>
-
-    {% else %}
-
-        <span class="rescue-status">
-            {{ rescue.get_status_display }}
-        </span>
-
-    {% endif %}
-
-</div>
-
-
-<!-- =====================================
-     MENSAJES DE DJANGO
-===================================== -->
-
-{% if messages %}
-
-    {% for message in messages %}
-
-        <div
-            class="rescue-message"
-            role="status"
-        >
-            {{ message }}
+<div class="rescue-detail">
+    <!-- ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="rd-icon-back" viewBox="0 0 24 24">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </symbol>
+            <symbol id="rd-icon-user" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21v-2a8 8 0 0 1 16 0v2"/>
+            </symbol>
+            <symbol id="rd-icon-sos" viewBox="0 0 24 24">
+                <path d="M5 18v-7a7 7 0 0 1 14 0v7M3 18h18v3H3zM12 1v2M2 5l2 2M22 5l-2 2M12 7v4"/>
+            </symbol>
+            <symbol id="rd-icon-document" viewBox="0 0 24 24">
+                <path d="M6 3h8l5 5v13H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+                <path d="M14 3v6h5M8 13h7M8 17h7"/>
+            </symbol>
+            <symbol id="rd-icon-gps" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7"/>
+                <circle cx="12" cy="12" r="2"/>
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </symbol>
+            <symbol id="rd-icon-gps-off" viewBox="0 0 24 24">
+                <path d="M3 3l18 18M12 2v3M19 12h3M2 12h3M12 19v3"/>
+                <path d="M8 6a7 7 0 0 1 10 10M6 8a7 7 0 0 0 10 10"/>
+            </symbol>
+            <symbol id="rd-icon-edit" viewBox="0 0 24 24">
+                <path d="M14 6l4 4M16 4a2.8 2.8 0 0 1 4 4L8 20H4v-4z"/>
+            </symbol>
+            <symbol id="rd-icon-save" viewBox="0 0 24 24">
+                <path d="M5 3h12l4 4v14H3V3z"/>
+                <path d="M7 3v7h10V3M7 21v-7h10v7"/>
+            </symbol>
+            <symbol id="rd-icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5 4.5-5"/>
+            </symbol>
+            <symbol id="rd-icon-check" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M8 12l3 3 5-6"/>
+            </symbol>
+            <symbol id="rd-icon-lock" viewBox="0 0 24 24">
+                <rect x="5" y="10" width="14" height="11" rx="2"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>
+            </symbol>
+            <symbol id="rd-icon-history" viewBox="0 0 24 24">
+                <path d="M3 12a9 9 0 1 1 3 6.7M3 5v7h7M12 7v5l4 2"/>
+            </symbol>
+            <symbol id="rd-icon-info" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 11v5M12 7h.01"/>
+            </symbol>
+            <symbol id="rd-icon-list" viewBox="0 0 24 24">
+                <rect x="5" y="3" width="14" height="18" rx="2"/>
+                <path d="M9 8h6M9 12h6M9 16h4"/>
+            </symbol>
+            <symbol id="rd-icon-inbox" viewBox="0 0 24 24">
+                <path d="M4 4h16l2 10v6H2v-6L4 4zM2 14h6l2 3h4l2-3h6"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- ENCABEZADO -->
+    <section class="rescue-header">
+        <div class="rescue-landscape" aria-hidden="true">
+            <img src="{% static 'dashboard/images/mountain-header.jpg' %}" alt="" decoding="async">
         </div>
-
-    {% endfor %}
-
-{% endif %}
-
-
-<!-- =====================================
-     TARJETAS DE INFORMACIÓN
-===================================== -->
-
-<div class="stats">
-
-    <article>
-        <small>Excursionista</small>
-
-        <strong>
-            {{ rescue.trekking.user.username }}
-        </strong>
-    </article>
-
-    <article>
-        <small>Parque</small>
-
-        <strong>
-            {{ rescue.trekking.trail.park.name }}
-        </strong>
-    </article>
-
-    <article>
-        <small>Sendero</small>
-
-        <strong>
-            {{ rescue.trekking.trail.name }}
-        </strong>
-    </article>
-
-    <article>
-        <small>Fecha de solicitud</small>
-
-        <strong style="font-size:1rem;">
-            {{ rescue.started_at|date:"d/m/Y H:i:s" }}
-        </strong>
-    </article>
-
-</div>
-
-
-<!-- =====================================
-     INFORMACIÓN DE LA SOLICITUD
-===================================== -->
-
-<section class="rescue-section">
-
-    <h2>Información de la solicitud</h2>
-
-    <p>
-        <strong>Trekking:</strong>
-
-        <a href="{% url 'dashboard:trekking_detail' rescue.trekking_id %}">
-            #{{ rescue.trekking_id }}
-        </a>
-    </p>
-
-    <p>
-        <strong>Estado del trekking:</strong>
-        {{ rescue.trekking.get_status_display }}
-    </p>
-
-    <p>
-        <strong>Estado del rescate:</strong>
-        {{ rescue.get_status_display }}
-    </p>
-
-    <p>
-        <strong>Fecha de solicitud:</strong>
-        {{ rescue.started_at|date:"d/m/Y H:i:s" }}
-    </p>
-
-    <p>
-        <strong>Fecha de cierre:</strong>
-
-        {% if rescue.finished_at %}
-
-            {{ rescue.finished_at|date:"d/m/Y H:i:s" }}
-
-        {% else %}
-
-            Sin cerrar
-
-        {% endif %}
-    </p>
-
-    <p>
-        <strong>Coordenadas SOS:</strong>
-
-        {% if rescue_position %}
-
-            {{ rescue.latitude }},
-            {{ rescue.longitude }}
-
-        {% else %}
-
-            No registradas
-
-        {% endif %}
-    </p>
-
-    <p class="rescue-muted">
-        La ubicación corresponde a las coordenadas
-        almacenadas en la solicitud de rescate.
-
-        No debe interpretarse como una posición
-        GPS actualizada en tiempo real.
-    </p>
-
-    {% if rescue.status == "ACTIVE" and rescue.trekking.status == "COMPLETED" %}
-
-        <p class="rescue-warning">
-            Atención: este rescate permanece activo
-            aunque el trekking asociado figura
-            como completado. Se recomienda
-            revisar la solicitud.
-        </p>
-
-    {% endif %}
-
-</section>
-
-
-<!-- =====================================
-     MAPA SOS
-===================================== -->
-
-<section class="rescue-section">
-
-    <h2>Ubicación de la solicitud SOS</h2>
-
-    {% if rescue_position %}
-
-        <div
-            id="rescue-map"
-            role="region"
-            aria-label="Ubicación registrada del rescate"
-        ></div>
-
-        <p
-            id="rescue-map-warning"
-            class="rescue-warning"
-        ></p>
-
-        <p class="rescue-muted">
-
-            {% if is_active %}
-
-                El marcador rojo animado representa
-                una solicitud de rescate activa.
-
+        <div class="rescue-header-content">
+            <a href="{% url 'dashboard:rescues' %}" class="rescue-back">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-back"/></svg>
+                Volver a rescates
+            </a>
+            <span class="rescue-eyebrow">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-sos"/></svg>
+                EMERGENCIAS Y SEGURIDAD
+            </span>
+            <h1>Solicitud de rescate #{{ rescue.pk }}</h1>
+            <p class="rescue-header-description">Información de la emergencia, ubicación registrada y gestión de atención SOS.</p>
+        </div>
+        <div class="rescue-header-status">
+            {% if rescue.status == "ACTIVE" %}
+                <span class="rescue-status active">SOS ACTIVO</span>
+            {% elif rescue.status == "COMPLETED" %}
+                <span class="rescue-status completed">RESCATE COMPLETADO</span>
+            {% elif rescue.status == "CANCELLED" %}
+                <span class="rescue-status cancelled">RESCATE CANCELADO</span>
             {% else %}
-
-                El marcador identifica la ubicación
-                registrada de una solicitud ya cerrada.
-
+                <span class="rescue-status">{{ rescue.get_status_display }}</span>
             {% endif %}
-
-        </p>
-
-    {% else %}
-
-        <p class="rescue-warning">
-            Esta solicitud SOS no contiene coordenadas
-            geográficas. No es posible ubicarla
-            directamente en el mapa.
-        </p>
-
+        </div>
+    </section>
+    <!-- MENSAJES DE DJANGO -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="rescue-message {{ message.tags }}" role="status">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-info"/></svg>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
     {% endif %}
-
-</section>
-
-
-<!-- =====================================
-     OBSERVACIONES DE ATENCIÓN
-===================================== -->
-
-<section class="rescue-section">
-
-    <h2>Observaciones de atención</h2>
-
-    {% if is_active %}
-
-        <form method="post">
-
-            {% csrf_token %}
-
-            <input
-                type="hidden"
-                name="action"
-                value="save_notes"
-            >
-
-            <label for="{{ notes_form.notes.id_for_label }}">
-                {{ notes_form.notes.label }}
-            </label>
-
-            {{ notes_form.notes }}
-
-            {% for error in notes_form.notes.errors %}
-
-                <p class="rescue-error">
-                    {{ error }}
-                </p>
-
-            {% endfor %}
-
-            <button type="submit">
-                Guardar observaciones
-            </button>
-
-        </form>
-
-    {% else %}
-
-        <p>
-            {{ rescue.notes|default:"Sin observaciones."|linebreaksbr }}
-        </p>
-
-    {% endif %}
-
-</section>
-
-
-<!-- =====================================
-     GESTIÓN DEL CIERRE
-===================================== -->
-
-<section class="rescue-section">
-
-    <h2>Gestión del cierre</h2>
-
-    {% if is_active %}
-
-        <p class="rescue-muted">
-            Selecciona el resultado del rescate
-            e indica el motivo de cierre.
-
-            Esta acción no finalizará el trekking.
-        </p>
-
-        <form
-            method="post"
-            onsubmit="return confirm('¿Confirmas el cierre de esta solicitud de rescate?');"
-        >
-
-            {% csrf_token %}
-
-            <input
-                type="hidden"
-                name="action"
-                value="close_rescue"
-            >
-
-            <label for="{{ close_form.status.id_for_label }}">
-                {{ close_form.status.label }}
-            </label>
-
-            {{ close_form.status }}
-
-            {% for error in close_form.status.errors %}
-
-                <p class="rescue-error">
-                    {{ error }}
-                </p>
-
-            {% endfor %}
-
-            <label for="{{ close_form.closed_reason.id_for_label }}">
-                {{ close_form.closed_reason.label }}
-            </label>
-
-            {{ close_form.closed_reason }}
-
-            {% for error in close_form.closed_reason.errors %}
-
-                <p class="rescue-error">
-                    {{ error }}
-                </p>
-
-            {% endfor %}
-
-            <button
-                type="submit"
-                class="rescue-close-button"
-            >
-                Confirmar cierre del rescate
-            </button>
-
-        </form>
-
-    {% else %}
-
-        <p>
-            <strong>Estado final:</strong>
-            {{ rescue.get_status_display }}
-        </p>
-
-        <p>
-            <strong>Fecha de cierre:</strong>
-            {{ rescue.finished_at|date:"d/m/Y H:i:s" }}
-        </p>
-
-        <p>
-            <strong>Motivo:</strong>
-        </p>
-
-        <p>
-            {{ rescue.closed_reason|default:"Sin motivo registrado."|linebreaksbr }}
-        </p>
-
-        <p class="rescue-muted">
-            Esta solicitud ya está cerrada
-            y no puede volver a cerrarse
-            desde el dashboard.
-        </p>
-
-    {% endif %}
-
-</section>
-
-
-<!-- =====================================
-     HISTORIAL DE AUDITORÍA
-===================================== -->
-
-<section class="rescue-section">
-
-    <h2>Historial de auditoría</h2>
-
-    <p class="audit-description">
-        Registro cronológico de las acciones
-        realizadas desde el dashboard por
-        el personal de guardaparques.
-
-        Se conserva el funcionario responsable,
-        la fecha de la operación, los cambios
-        de estado y las observaciones modificadas.
-    </p>
-
-    <div class="table-wrap">
-
-        <table class="audit-table">
-
-            <thead>
-                <tr>
-                    <th>Fecha y hora</th>
-                    <th>Funcionario</th>
-                    <th>Acción</th>
-                    <th>Estado anterior</th>
-                    <th>Estado posterior</th>
-                    <th>Detalle</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for log in audit_logs %}
-
-                    <tr>
-
-                        <!-- FECHA -->
-
-                        <td>
-                            {{ log.created_at|date:"d/m/Y H:i:s" }}
-                        </td>
-
-                        <!-- FUNCIONARIO -->
-
-                        <td>
-                            <strong>
-                                {{ log.actor_username }}
-                            </strong>
-                        </td>
-
-                        <!-- ACCIÓN -->
-
-                        <td>
-
-                            {% if log.action == "NOTES_UPDATED" %}
-
-                                <span class="audit-action notes">
-                                    {{ log.get_action_display }}
-                                </span>
-
-                            {% elif log.action == "COMPLETED" %}
-
-                                <span class="audit-action completed">
-                                    {{ log.get_action_display }}
-                                </span>
-
-                            {% elif log.action == "CANCELLED" %}
-
-                                <span class="audit-action cancelled">
-                                    {{ log.get_action_display }}
-                                </span>
-
+    <!-- INFORMACIÓN GENERAL -->
+    <section class="rescue-stats" aria-label="Información general del rescate">
+        <article class="rescue-stat">
+            <div class="rescue-stat-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-user"/></svg>
+            </div>
+            <span class="rescue-stat-label">Excursionista</span>
+            <strong class="rescue-stat-value">{{ rescue.trekking.user.username }}</strong>
+        </article>
+        <article class="rescue-stat">
+            <div class="rescue-stat-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#icon-mountain"/></svg>
+            </div>
+            <span class="rescue-stat-label">Parque</span>
+            <strong class="rescue-stat-value">{{ rescue.trekking.trail.park.name }}</strong>
+        </article>
+        <article class="rescue-stat">
+            <div class="rescue-stat-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#icon-trekking"/></svg>
+            </div>
+            <span class="rescue-stat-label">Sendero</span>
+            <strong class="rescue-stat-value">{{ rescue.trekking.trail.name }}</strong>
+        </article>
+        <article class="rescue-stat">
+            <div class="rescue-stat-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#icon-calendar"/></svg>
+            </div>
+            <span class="rescue-stat-label">Fecha de solicitud</span>
+            <strong class="rescue-stat-value date">{{ rescue.started_at|date:"d/m/Y H:i:s" }}</strong>
+        </article>
+    </section>
+    <!-- INFORMACIÓN Y MAPA -->
+    <div class="rescue-grid">
+        <section class="rescue-section">
+            <div class="rescue-section-heading">
+                <div class="rescue-section-icon red">
+                    <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-document"/></svg>
+                </div>
+                <div class="rescue-section-copy">
+                    <h2>Información de la solicitud</h2>
+                    <p>Datos asociados a la emergencia registrada.</p>
+                </div>
+            </div>
+            <div class="rescue-section-body">
+                <div class="rescue-information">
+                    <div class="rescue-field">
+                        <small>Trekking asociado</small>
+                        <a href="{% url 'dashboard:trekking_detail' rescue.trekking_id %}">
+                            Trekking #{{ rescue.trekking_id }}
+                            <svg class="rescue-icon" aria-hidden="true"><use href="#icon-arrow"/></svg>
+                        </a>
+                    </div>
+                    <div class="rescue-field">
+                        <small>Estado del trekking</small>
+                        <strong>{{ rescue.trekking.get_status_display }}</strong>
+                    </div>
+                    <div class="rescue-field full">
+                        <small>Estado del rescate</small>
+                        {% if rescue.status == "ACTIVE" %}
+                            <span class="rescue-status active">SOS activo</span>
+                        {% elif rescue.status == "COMPLETED" %}
+                            <span class="rescue-status completed">Completado</span>
+                        {% elif rescue.status == "CANCELLED" %}
+                            <span class="rescue-status cancelled">Cancelado</span>
+                        {% else %}
+                            <span class="rescue-status">{{ rescue.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="rescue-field">
+                        <small>Fecha de solicitud</small>
+                        <strong>{{ rescue.started_at|date:"d/m/Y H:i:s" }}</strong>
+                    </div>
+                    <div class="rescue-field">
+                        <small>Fecha de cierre</small>
+                        <strong>
+                            {% if rescue.finished_at %}
+                                {{ rescue.finished_at|date:"d/m/Y H:i:s" }}
                             {% else %}
-
-                                {{ log.get_action_display }}
-
+                                Sin cerrar
                             {% endif %}
-
-                        </td>
-
-                        <!-- ESTADO ANTERIOR -->
-
-                        <td>
-                            {{ log.previous_status|default:"—" }}
-                        </td>
-
-                        <!-- ESTADO POSTERIOR -->
-
-                        <td>
-                            {{ log.new_status|default:"—" }}
-                        </td>
-
-                        <!-- DETALLE -->
-
-                        <td>
-
-                            {% if log.action == "NOTES_UPDATED" %}
-
-                                <details class="audit-details">
-
-                                    <summary>
-                                        Ver cambios de observaciones
-                                    </summary>
-
-                                    <div class="audit-details-content">
-
-                                        <p>
-                                            <strong>
-                                                Observaciones anteriores:
-                                            </strong>
-                                        </p>
-
-                                        <p>
-                                            {{ log.previous_notes|default:"Sin observaciones"|linebreaksbr }}
-                                        </p>
-
-                                        <p>
-                                            <strong>
-                                                Observaciones nuevas:
-                                            </strong>
-                                        </p>
-
-                                        <p>
-                                            {{ log.new_notes|default:"Sin observaciones"|linebreaksbr }}
-                                        </p>
-
-                                    </div>
-
-                                </details>
-
-                            {% elif log.action == "COMPLETED" or log.action == "CANCELLED" %}
-
-                                <details class="audit-details">
-
-                                    <summary>
-                                        Ver motivo de cierre
-                                    </summary>
-
-                                    <div class="audit-details-content">
-
-                                        <p>
-                                            <strong>
-                                                Motivo registrado:
-                                            </strong>
-                                        </p>
-
-                                        <p>
-                                            {{ log.closed_reason|default:"Sin motivo registrado"|linebreaksbr }}
-                                        </p>
-
-                                    </div>
-
-                                </details>
-
+                        </strong>
+                    </div>
+                    <div class="rescue-field full">
+                        <small>Coordenadas SOS</small>
+                        <strong>
+                            {% if rescue_position %}
+                                {{ rescue.latitude }}, {{ rescue.longitude }}
                             {% else %}
-
-                                —
-
+                                No registradas
                             {% endif %}
-
-                        </td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-                        <td
-                            colspan="6"
-                            class="audit-empty"
-                        >
-                            Todavía no hay acciones auditadas
-                            para esta solicitud de rescate.
-                        </td>
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
+                        </strong>
+                    </div>
+                </div>
+                <div class="rescue-notice">
+                    <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-info"/></svg>
+                    <span>La ubicación corresponde a las coordenadas almacenadas en la solicitud de rescate. No representa una posición GPS actualizada en tiempo real.</span>
+                </div>
+                {% if rescue.status == "ACTIVE" and rescue.trekking.status == "COMPLETED" %}
+                    <div class="rescue-warning-box">
+                        <svg class="rescue-icon" aria-hidden="true"><use href="#icon-alert"/></svg>
+                        <span><strong>Atención:</strong> este rescate permanece activo aunque el trekking asociado figura como completado. Se recomienda revisar la solicitud.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+        <!-- MAPA SOS CON PANTALLA COMPLETA -->
+        <section class="rescue-section">
+            <div class="rescue-section-heading">
+                <div class="rescue-section-icon red">
+                    <svg class="rescue-icon" aria-hidden="true"><use href="#icon-location"/></svg>
+                </div>
+                <div class="rescue-section-copy">
+                    <h2>Ubicación de la solicitud SOS</h2>
+                    <p>Posición geográfica registrada de la emergencia.</p>
+                </div>
+            </div>
+            <div class="rescue-section-body">
+                {% if rescue_position %}
+                    <div id="rescue-map" role="region" aria-label="Ubicación registrada del rescate"></div>
+                    <p id="rescue-map-warning" class="rescue-warning" role="status"></p>
+                    <div class="rescue-coordinates">
+                        <div class="rescue-coordinate">
+                            <small>LATITUD</small>
+                            <strong>{{ rescue.latitude }}</strong>
+                        </div>
+                        <div class="rescue-coordinate">
+                            <small>LONGITUD</small>
+                            <strong>{{ rescue.longitude }}</strong>
+                        </div>
+                    </div>
+                    <div class="rescue-map-caption">
+                        <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-info"/></svg>
+                        <span>
+                            {% if is_active %}
+                                El marcador rojo animado representa una solicitud de rescate activa.
+                            {% else %}
+                                El marcador identifica la ubicación registrada de una solicitud ya cerrada.
+                            {% endif %}
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="rescue-empty">
+                        <div class="rescue-empty-icon">
+                            <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-gps-off"/></svg>
+                        </div>
+                        <h3>Ubicación no disponible</h3>
+                        <p>Esta solicitud SOS no contiene coordenadas geográficas. No es posible ubicarla directamente en el mapa.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
     </div>
-
-    <p class="rescue-muted">
-        La auditoría registra las acciones
-        realizadas después de instalar
-        esta funcionalidad.
-
-        Las operaciones anteriores no cuentan
-        con un historial retroactivo.
-    </p>
-
-</section>
-
-
-<!-- =====================================
-     DATOS PARA JAVASCRIPT
-===================================== -->
-
+    <!-- OBSERVACIONES Y CIERRE -->
+    <div class="rescue-grid">
+        <section class="rescue-section">
+            <div class="rescue-section-heading">
+                <div class="rescue-section-icon">
+                    <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-edit"/></svg>
+                </div>
+                <div class="rescue-section-copy">
+                    <h2>Observaciones de atención</h2>
+                    <p>Registro de las medidas adoptadas por el guardaparque.</p>
+                </div>
+            </div>
+            <div class="rescue-section-body">
+                {% if is_active %}
+                    <p class="rescue-form-intro">Registra las observaciones relacionadas con la atención de esta solicitud SOS.</p>
+                    <form method="post" class="rescue-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="save_notes">
+                        {% for error in notes_form.non_field_errors %}
+                            <p class="rescue-error">{{ error }}</p>
+                        {% endfor %}
+                        <div class="rescue-form-field">
+                            <label for="{{ notes_form.notes.id_for_label }}">
+                                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-document"/></svg>
+                                {{ notes_form.notes.label }}
+                            </label>
+                            {{ notes_form.notes }}
+                            {% for error in notes_form.notes.errors %}
+                                <p class="rescue-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="rescue-save-button">
+                            <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-save"/></svg>
+                            Guardar observaciones
+                        </button>
+                    </form>
+                    <div class="rescue-notice">
+                        <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-history"/></svg>
+                        <span>Los cambios de observaciones quedan registrados en el historial de auditoría.</span>
+                    </div>
+                {% else %}
+                    <div class="rescue-readonly">
+                        {{ rescue.notes|default:"Sin observaciones."|linebreaksbr }}
+                    </div>
+                    <div class="rescue-notice">
+                        <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-lock"/></svg>
+                        <span>Las observaciones se encuentran disponibles únicamente para consulta, debido a que la solicitud ya está cerrada.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+        <!-- GESTIÓN DEL CIERRE -->
+        <section class="rescue-section rescue-close-section{% if is_active %} is-active{% endif %}">
+            <div class="rescue-section-heading">
+                <div class="rescue-section-icon {% if is_active %}red{% endif %}">
+                    <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-shield"/></svg>
+                </div>
+                <div class="rescue-section-copy">
+                    <h2>Gestión del cierre</h2>
+                    <p>Resultado de la atención y finalización de la solicitud SOS.</p>
+                </div>
+            </div>
+            <div class="rescue-section-body">
+                {% if is_active %}
+                    <p class="rescue-form-intro">Selecciona el resultado del rescate e indica el motivo de cierre.</p>
+                    <form method="post" class="rescue-form" onsubmit="return confirm('¿Confirmas el cierre de esta solicitud de rescate?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="close_rescue">
+                        {% for error in close_form.non_field_errors %}
+                            <p class="rescue-error">{{ error }}</p>
+                        {% endfor %}
+                        <div class="rescue-form-field">
+                            <label for="{{ close_form.status.id_for_label }}">
+                                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-list"/></svg>
+                                {{ close_form.status.label }}
+                            </label>
+                            {{ close_form.status }}
+                            {% for error in close_form.status.errors %}
+                                <p class="rescue-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        <div class="rescue-form-field">
+                            <label for="{{ close_form.closed_reason.id_for_label }}">
+                                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-document"/></svg>
+                                {{ close_form.closed_reason.label }}
+                            </label>
+                            {{ close_form.closed_reason }}
+                            {% for error in close_form.closed_reason.errors %}
+                                <p class="rescue-error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        <div class="rescue-warning-box" style="margin-top:0;">
+                            <svg class="rescue-icon" aria-hidden="true"><use href="#icon-alert"/></svg>
+                            <span><strong>Importante:</strong> el cierre de esta solicitud SOS no finalizará el trekking asociado.</span>
+                        </div>
+                        <button type="submit" class="rescue-close-button">
+                            <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-check"/></svg>
+                            Confirmar cierre del rescate
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="rescue-final-status{% if rescue.status == 'CANCELLED' %} cancelled{% endif %}">
+                        <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-lock"/></svg>
+                        <div>
+                            <strong>Solicitud de rescate cerrada</strong>
+                            <p>Esta solicitud ya está cerrada y no puede volver a cerrarse desde el dashboard.</p>
+                        </div>
+                    </div>
+                    <div class="rescue-information">
+                        <div class="rescue-field">
+                            <small>Estado final</small>
+                            <strong>{{ rescue.get_status_display }}</strong>
+                        </div>
+                        <div class="rescue-field">
+                            <small>Fecha de cierre</small>
+                            <strong>{{ rescue.finished_at|date:"d/m/Y H:i:s" }}</strong>
+                        </div>
+                    </div>
+                    <h3 class="rescue-reason-title">Motivo de cierre</h3>
+                    <div class="rescue-readonly">
+                        {{ rescue.closed_reason|default:"Sin motivo registrado."|linebreaksbr }}
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+    <!-- HISTORIAL DE AUDITORÍA -->
+    <section class="rescue-section rescue-audit">
+        <div class="rescue-section-heading">
+            <div class="rescue-section-icon">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-history"/></svg>
+            </div>
+            <div class="rescue-section-copy">
+                <h2>Historial de auditoría</h2>
+                <p>Registro de modificaciones y operaciones realizadas sobre la solicitud de rescate.</p>
+            </div>
+        </div>
+        <div class="rescue-section-body">
+            <div class="table-wrap rescue-audit-table-wrap">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Fecha y hora</th>
+                            <th scope="col">Funcionario</th>
+                            <th scope="col">Acción</th>
+                            <th scope="col">Estado anterior</th>
+                            <th scope="col">Estado posterior</th>
+                            <th scope="col">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                            <tr>
+                                <td>
+                                    <div class="audit-date">
+                                        <strong>{{ log.created_at|date:"d/m/Y" }}</strong>
+                                        <small>{{ log.created_at|date:"H:i:s" }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="audit-user">
+                                        <span class="audit-avatar">{{ log.actor_username|slice:":1"|upper }}</span>
+                                        <strong>{{ log.actor_username }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if log.action == "NOTES_UPDATED" %}
+                                        <span class="audit-action notes">{{ log.get_action_display }}</span>
+                                    {% elif log.action == "COMPLETED" %}
+                                        <span class="audit-action completed">{{ log.get_action_display }}</span>
+                                    {% elif log.action == "CANCELLED" %}
+                                        <span class="audit-action cancelled">{{ log.get_action_display }}</span>
+                                    {% else %}
+                                        <span class="audit-action">{{ log.get_action_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.previous_status == "ACTIVE" %}
+                                        <span class="rescue-status active">Activo</span>
+                                    {% elif log.previous_status == "COMPLETED" %}
+                                        <span class="rescue-status completed">Completado</span>
+                                    {% elif log.previous_status == "CANCELLED" %}
+                                        <span class="rescue-status cancelled">Cancelado</span>
+                                    {% else %}
+                                        {{ log.previous_status|default:"—" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.new_status == "ACTIVE" %}
+                                        <span class="rescue-status active">Activo</span>
+                                    {% elif log.new_status == "COMPLETED" %}
+                                        <span class="rescue-status completed">Completado</span>
+                                    {% elif log.new_status == "CANCELLED" %}
+                                        <span class="rescue-status cancelled">Cancelado</span>
+                                    {% else %}
+                                        {{ log.new_status|default:"—" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.action == "NOTES_UPDATED" %}
+                                        <details class="audit-details">
+                                            <summary>Ver cambios de observaciones</summary>
+                                            <div class="audit-details-content">
+                                                <strong>Observaciones anteriores</strong>
+                                                <p>{{ log.previous_notes|default:"Sin observaciones"|linebreaksbr }}</p>
+                                                <strong>Observaciones nuevas</strong>
+                                                <p>{{ log.new_notes|default:"Sin observaciones"|linebreaksbr }}</p>
+                                            </div>
+                                        </details>
+                                    {% elif log.action == "COMPLETED" or log.action == "CANCELLED" %}
+                                        <details class="audit-details">
+                                            <summary>Ver motivo de cierre</summary>
+                                            <div class="audit-details-content">
+                                                <strong>Motivo registrado</strong>
+                                                <p>{{ log.closed_reason|default:"Sin motivo registrado"|linebreaksbr }}</p>
+                                            </div>
+                                        </details>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="audit-empty">
+                                    <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-inbox"/></svg>
+                                    Todavía no hay acciones auditadas para esta solicitud de rescate.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="audit-footer">
+                <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-info"/></svg>
+                <span>La auditoría conserva el funcionario responsable, la fecha de la operación, los cambios de estado y las observaciones modificadas. Las operaciones anteriores a la instalación de esta funcionalidad no cuentan con un historial retroactivo.</span>
+            </div>
+        </div>
+    </section>
+    <!-- PIE DE PÁGINA -->
+    <footer class="rescue-footer">
+        <span>HITO · Sistema de seguridad y trazabilidad de trekking</span>
+        <span class="rescue-footer-info">
+            <svg class="rescue-icon" aria-hidden="true"><use href="#rd-icon-shield"/></svg>
+            Gestión y trazabilidad de solicitudes SOS
+        </span>
+    </footer>
+</div>
+<!-- DATOS PARA JAVASCRIPT -->
 {{ rescue_position|json_script:"rescue-position-data" }}
-
 {% endblock %}
-
-
 {% block scripts %}
-
 {% if rescue_position %}
-
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    // =====================================
-    // ELEMENTOS DEL MAPA
-    // =====================================
-
-    const mapElement = document.getElementById(
-        "rescue-map"
-    );
-
-    const dataElement = document.getElementById(
-        "rescue-position-data"
-    );
-
-    const warning = document.getElementById(
-        "rescue-map-warning"
-    );
-
-    if (
-        !mapElement ||
-        !dataElement ||
-        typeof L === "undefined"
-    ) {
-
-        if (warning) {
-            warning.textContent =
-                "No se pudo inicializar el mapa.";
+    document.addEventListener("DOMContentLoaded", function () {
+        // ELEMENTOS DEL MAPA
+        const mapElement = document.getElementById("rescue-map");
+        const dataElement = document.getElementById("rescue-position-data");
+        const warning = document.getElementById("rescue-map-warning");
+        if (!mapElement || !dataElement || typeof L === "undefined") {
+            if (warning) {
+                warning.textContent = "No se pudo inicializar el mapa.";
+            }
+            return;
         }
-
-        return;
-    }
-
-
-    // =====================================
-    // LEER COORDENADAS
-    // =====================================
-
-    let position;
-
-    try {
-
-        position = JSON.parse(
-            dataElement.textContent
-        );
-
-    } catch (error) {
-
-        if (warning) {
-            warning.textContent =
-                "No se pudieron interpretar las coordenadas.";
+        // LEER COORDENADAS
+        let position;
+        try {
+            position = JSON.parse(dataElement.textContent);
+        } catch (error) {
+            if (warning) {
+                warning.textContent = "No se pudieron interpretar las coordenadas.";
+            }
+            return;
         }
-
-        return;
-    }
-
-
-    // =====================================
-    // VALIDAR COORDENADAS
-    // =====================================
-
-    if (
-        !position ||
-        !Number.isFinite(position.lat) ||
-        !Number.isFinite(position.lng) ||
-        Math.abs(position.lat) > 90 ||
-        Math.abs(position.lng) > 180
-    ) {
-
-        if (warning) {
-            warning.textContent =
-                "Las coordenadas de la solicitud no son válidas.";
+        // VALIDAR COORDENADAS
+        if (!position || !Number.isFinite(position.lat) || !Number.isFinite(position.lng) || Math.abs(position.lat) > 90 || Math.abs(position.lng) > 180) {
+            if (warning) {
+                warning.textContent = "Las coordenadas de la solicitud no son válidas.";
+            }
+            return;
         }
-
-        return;
-    }
-
-
-    // =====================================
-    // CREAR MAPA
-    // =====================================
-
-    const center = [
-        position.lat,
-        position.lng
-    ];
-
-    const map = L.map("rescue-map").setView(
-        center,
-        15
-    );
-
-
-    // =====================================
-    // OPENSTREETMAP
-    // =====================================
-
-    const tiles = L.tileLayer(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
+        // CREAR MAPA
+        const center = [position.lat, position.lng];
+        const map = L.map("rescue-map", {
+            zoomControl: true,
+            scrollWheelZoom: true
+        }).setView(center, 15);
+        // BOTÓN DE PANTALLA COMPLETA
+        const fullscreenControl = L.control({
+            position: "topleft"
+        });
+        fullscreenControl.onAdd = function () {
+            const container = L.DomUtil.create(
+                "div",
+                "leaflet-bar rescue-fullscreen-control"
+            );
+            const button = L.DomUtil.create(
+                "button",
+                "rescue-fullscreen-button",
+                container
+            );
+            const expandIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>';
+            const collapseIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h5V3M21 8h-5V3M16 21v-5h5M8 21v-5H3"/></svg>';
+            button.type = "button";
+            button.title = "Pantalla completa";
+            button.setAttribute("aria-label", "Abrir mapa en pantalla completa");
+            button.setAttribute("aria-pressed", "false");
+            button.innerHTML = expandIcon;
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+            if (!document.fullscreenEnabled || typeof mapElement.requestFullscreen !== "function") {
+                button.disabled = true;
+                button.title = "Pantalla completa no disponible en este navegador";
+            }
+            button.addEventListener("click", async function () {
+                try {
+                    if (document.fullscreenElement === mapElement) {
+                        await document.exitFullscreen();
+                    } else {
+                        await mapElement.requestFullscreen();
+                    }
+                } catch (error) {
+                    console.error("No se pudo ampliar el mapa:", error);
+                    if (warning) {
+                        warning.textContent = "No fue posible activar la pantalla completa.";
+                    }
+                }
+            });
+            document.addEventListener("fullscreenchange", function () {
+                const isFullscreen = document.fullscreenElement === mapElement;
+                button.innerHTML = isFullscreen ? collapseIcon : expandIcon;
+                button.title = isFullscreen
+                    ? "Salir de pantalla completa"
+                    : "Pantalla completa";
+                button.setAttribute("aria-label", button.title);
+                button.setAttribute("aria-pressed", String(isFullscreen));
+                requestAnimationFrame(function () {
+                    map.invalidateSize({
+                        pan: true,
+                        animate: false
+                    });
+                });
+            });
+            return container;
+        };
+        fullscreenControl.addTo(map);
+        // OPENSTREETMAP
+        const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap contributors",
             referrerPolicy: "strict-origin-when-cross-origin"
-        }
-    );
-
-    tiles.on("tileerror", function () {
-
-        if (warning && !warning.textContent) {
-            warning.textContent =
-                "Algunas imágenes del mapa no pudieron cargarse.";
-        }
-
-    });
-
-    tiles.addTo(map);
-
-
-    // =====================================
-    // MARCADOR SOS
-    // =====================================
-
-    const markerHTML = position.active
-
-        ? '<div class="hito-sos-marker">' +
-          '<div class="hito-sos-pulse"></div>' +
-          '<div class="hito-sos-core">SOS</div>' +
-          '</div>'
-
-        : '<div class="hito-sos-marker">' +
-          '<div class="hito-sos-core">SOS</div>' +
-          '</div>';
-
-
-    const sosIcon = L.divIcon({
-
-        html: markerHTML,
-
-        className: "",
-
-        iconSize: [32, 32],
-
-        iconAnchor: [16, 16]
-
-    });
-
-
-    const marker = L.marker(
-        center,
-        {
+        });
+        tiles.on("tileerror", function () {
+            if (warning && !warning.textContent) {
+                warning.textContent = "Algunas imágenes del mapa no pudieron cargarse.";
+            }
+        });
+        tiles.addTo(map);
+        // MARCADOR SOS - COLORES ORIGINALES
+        const markerHTML = position.active
+            ? '<div class="hito-sos-marker"><div class="hito-sos-pulse"></div><div class="hito-sos-core">SOS</div></div>'
+            : '<div class="hito-sos-marker"><div class="hito-sos-core">SOS</div></div>';
+        const sosIcon = L.divIcon({
+            html: markerHTML,
+            className: "",
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+        const marker = L.marker(center, {
             icon: sosIcon
-        }
-    ).addTo(map);
-
-
-    // =====================================
-    // POPUP SOS
-    // =====================================
-
-    const popup = document.createElement("div");
-
-    const title = document.createElement("strong");
-
-    title.textContent = position.active
-        ? "Solicitud SOS activa"
-        : "Solicitud SOS cerrada";
-
-    popup.appendChild(title);
-
-
-    const dateLine = document.createElement("p");
-
-    dateLine.textContent =
-        "Fecha de solicitud: " +
-        position.started_at;
-
-    popup.appendChild(dateLine);
-
-
-    marker.bindPopup(popup);
-
-    marker.openPopup();
-
-
-    // =====================================
-    // AJUSTAR TAMAÑO DEL MAPA
-    // =====================================
-
-    requestAnimationFrame(function () {
-        map.invalidateSize();
-    });
-
-    window.addEventListener(
-        "resize",
-        function () {
+        }).addTo(map);
+        // INFORMACIÓN DEL MARCADOR
+        const popup = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = position.active
+            ? "Solicitud SOS activa"
+            : "Solicitud SOS cerrada";
+        popup.appendChild(title);
+        const dateLine = document.createElement("p");
+        dateLine.textContent = "Fecha de solicitud: " + position.started_at;
+        popup.appendChild(dateLine);
+        marker.bindPopup(popup);
+        marker.openPopup();
+        // AJUSTAR DIMENSIONES DEL MAPA
+        requestAnimationFrame(function () {
             map.invalidateSize();
+        });
+        window.addEventListener("resize", function () {
+            map.invalidateSize();
+        });
+        // AJUSTAR MAPA AL CAMBIAR EL TAMAÑO DEL CONTENEDOR
+        if (typeof ResizeObserver !== "undefined") {
+            const observer = new ResizeObserver(function () {
+                map.invalidateSize();
+            });
+            observer.observe(mapElement);
         }
-    );
-
-});
+    });
 </script>
-
 {% endif %}
-
 {% endblock %}

@@ -12,113 +12,400 @@
 
     {% block head %}{% endblock %}
 </head>
-<body>
 
-    <header class="hito-header">
-        <div class="hito-navbar">
+<body class="hito-app">
 
-            <!-- Identidad -->
-            <a href="{% url 'dashboard:home' %}" class="hito-brand">
-                <span class="hito-brand-mark">
-                    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                        <path d="M4 22.5L13 12.5L18.5 18.5L22 14.5L28 22.5"
-                              stroke="currentColor"
-                              stroke-width="3.2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"/>
-                        <circle cx="13" cy="22.5" r="1.7" fill="currentColor"/>
-                    </svg>
-                </span>
-                <span class="hito-brand-name">Hito</span>
-                <span class="hito-brand-divider"></span>
-                <span class="hito-brand-subtitle">Guardaparques</span>
+    <!-- BIBLIOTECA DE ICONOS -->
+
+    <svg class="svg-library"
+         xmlns="http://www.w3.org/2000/svg"
+         aria-hidden="true">
+
+        <defs>
+
+            <symbol id="icon-dashboard" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </symbol>
+
+            <symbol id="icon-map" viewBox="0 0 24 24">
+                <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/>
+                <path d="M9 3v15M15 6v15"/>
+            </symbol>
+
+            <symbol id="icon-trekking" viewBox="0 0 24 24">
+                <circle cx="13" cy="4" r="2"/>
+                <path d="M7 21l3-7 2-5 4 4 4 1"/>
+                <path d="M10 14l-5 3-2 4"/>
+                <path d="M12 9l-4-1-3 4"/>
+                <path d="M14 15l3 6"/>
+            </symbol>
+
+            <symbol id="icon-alert" viewBox="0 0 24 24">
+                <path d="M12 3L2 21h20L12 3z"/>
+                <path d="M12 9v5M12 17h.01"/>
+            </symbol>
+
+            <symbol id="icon-rescue" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6"/>
+                <path d="M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>
+            </symbol>
+
+            <symbol id="icon-menu" viewBox="0 0 24 24">
+                <path d="M4 6h16M4 12h16M4 18h16"/>
+            </symbol>
+
+            <symbol id="icon-logout" viewBox="0 0 24 24">
+                <path d="M10 17l5-5-5-5"/>
+                <path d="M15 12H3"/>
+                <path d="M12 3h7a2 2 0 012 2v14a2 2 0 01-2 2h-7"/>
+            </symbol>
+
+            <symbol id="icon-mountain" viewBox="0 0 24 24">
+                <path d="M2 20L9 6l5 9 3-5 5 10H2z"/>
+                <path d="M7 10l2 3 2-3"/>
+            </symbol>
+
+            <symbol id="icon-activity" viewBox="0 0 24 24">
+                <path d="M2 12h5l3-8 4 16 3-8h5"/>
+            </symbol>
+
+            <symbol id="icon-clock" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 6v6l4 2"/>
+            </symbol>
+
+            <symbol id="icon-location" viewBox="0 0 24 24">
+                <path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1116 0z"/>
+                <circle cx="12" cy="10" r="2.5"/>
+            </symbol>
+
+            <symbol id="icon-layers" viewBox="0 0 24 24">
+                <path d="M12 3L2 8l10 5 10-5-10-5z"/>
+                <path d="M2 12l10 5 10-5M2 16l10 5 10-5"/>
+            </symbol>
+
+            <symbol id="icon-arrow" viewBox="0 0 24 24">
+                <path d="M7 17L17 7M8 7h9v9"/>
+            </symbol>
+
+            <symbol id="icon-calendar" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                <path d="M16 3v4M8 3v4M3 10h18"/>
+            </symbol>
+
+            <symbol id="icon-chevron" viewBox="0 0 24 24">
+                <path d="M9 6l6 6-6 6"/>
+            </symbol>
+
+        </defs>
+    </svg>
+
+
+    <!-- MENÚ LATERAL -->
+
+    <aside class="hito-sidebar" id="hito-sidebar">
+
+        <!-- LOGOTIPO -->
+
+        <a href="{% url 'dashboard:home' %}" class="hito-brand">
+
+            <span class="hito-brand-mark">
+
+                <svg viewBox="0 0 40 40" aria-hidden="true">
+
+                    <path d="M3 29L16 14L23 22L28 16L37 27"
+                          stroke-width="4"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"/>
+
+                    <circle cx="16"
+                            cy="29"
+                            r="2.5"
+                            fill="currentColor"
+                            stroke="none"/>
+
+                </svg>
+
+            </span>
+
+            <span class="hito-brand-copy">
+                <strong>Hito</strong>
+                <small>GUARDAPARQUES</small>
+            </span>
+
+        </a>
+
+
+        <!-- NAVEGACIÓN -->
+
+        <nav class="hito-navigation" aria-label="Navegación principal">
+
+            <a href="{% url 'dashboard:home' %}"
+               title="Panel general"
+               class="hito-nav-link {% if request.resolver_match.url_name == 'home' %}is-active{% endif %}">
+
+                <svg aria-hidden="true">
+                    <use href="#icon-dashboard"/>
+                </svg>
+
+                <span>Panel general</span>
+
             </a>
 
-            <!-- Navegación -->
-            <nav class="hito-navigation" aria-label="Navegación principal">
 
-                <a href="{% url 'dashboard:home' %}"
-                   class="hito-nav-link {% if request.resolver_match.url_name == 'home' %}is-active{% endif %}"
-                   {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-                        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-                        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-                        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
-                    </svg>
-                    <span>Panel general</span>
-                </a>
+            <a href="{% url 'dashboard:monitoreo' %}"
+               title="Monitoreo"
+               class="hito-nav-link {% if request.resolver_match.url_name == 'monitoreo' %}is-active{% endif %}">
 
-                <a href="{% url 'dashboard:trekkings' %}"
-                   class="hito-nav-link {% if request.resolver_match.url_name == 'trekkings' or request.resolver_match.url_name == 'trekking_detail' %}is-active{% endif %}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="13" cy="4" r="2"/>
-                        <path d="M7 20l3-6 2-4 4 3 3 1"/>
-                        <path d="M10 14l-4 2-2 4"/>
-                        <path d="M12 10l-3-2-3 3"/>
-                        <path d="M14 15l2 5"/>
-                    </svg>
-                    <span>Trekkings</span>
-                </a>
+                <svg aria-hidden="true">
+                    <use href="#icon-map"/>
+                </svg>
 
-                <a href="{% url 'dashboard:incidents' %}"
-                   class="hito-nav-link {% if request.resolver_match.url_name == 'incidents' %}is-active{% endif %}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 3L2.8 19a1.2 1.2 0 001 1.8h16.4a1.2 1.2 0 001-1.8L12 3z"/>
-                        <path d="M12 9v5"/>
-                        <circle cx="12" cy="17.5" r=".7" fill="currentColor" stroke="none"/>
-                    </svg>
-                    <span>Incidentes</span>
-                </a>
+                <span>Monitoreo</span>
 
-                <a href="{% url 'dashboard:rescues' %}"
-                   class="hito-nav-link {% if request.resolver_match.url_name == 'rescues' %}is-active{% endif %}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9"/>
-                        <circle cx="12" cy="12" r="4"/>
-                        <path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>
-                    </svg>
-                    <span>Rescates</span>
-                </a>
+            </a>
 
-                <a href="{% url 'dashboard:monitoreo' %}"
-                   class="hito-nav-link {% if request.resolver_match.url_name == 'monitoreo' %}is-active{% endif %}"
-                   {% if request.resolver_match.url_name == 'monitoreo' %}aria-current="page"{% endif %}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <rect x="3" y="4" width="18" height="13" rx="2"/>
-                        <path d="M8 21h8M12 17v4"/>
-                    </svg>
-                    <span>Monitoreo</span>
-                </a>
-            </nav>
 
-            <!-- Usuario -->
-            <div class="hito-header-actions">
-                <span class="hito-user-avatar" title="{{ request.user.username }}">
+            <a href="{% url 'dashboard:trekkings' %}"
+               title="Trekkings"
+               class="hito-nav-link {% if request.resolver_match.url_name == 'trekkings' or request.resolver_match.url_name == 'trekking_detail' %}is-active{% endif %}">
+
+                <svg aria-hidden="true">
+                    <use href="#icon-trekking"/>
+                </svg>
+
+                <span>Trekkings</span>
+
+            </a>
+
+
+            <a href="{% url 'dashboard:incidents' %}"
+               title="Incidentes"
+               class="hito-nav-link {% if request.resolver_match.url_name == 'incidents' or request.resolver_match.url_name == 'incident_detail' %}is-active{% endif %}">
+
+                <svg aria-hidden="true">
+                    <use href="#icon-alert"/>
+                </svg>
+
+                <span>Incidentes</span>
+
+            </a>
+
+
+            <a href="{% url 'dashboard:rescues' %}"
+               title="Rescates"
+               class="hito-nav-link {% if request.resolver_match.url_name == 'rescues' or request.resolver_match.url_name == 'rescue_detail' %}is-active{% endif %}">
+
+                <svg aria-hidden="true">
+                    <use href="#icon-rescue"/>
+                </svg>
+
+                <span>Rescates</span>
+
+            </a>
+
+        </nav>
+
+
+        <!-- IMAGEN DECORATIVA -->
+
+        <div class="hito-sidebar-landscape" aria-hidden="true"></div>
+
+
+        <!-- USUARIO -->
+
+        <div class="hito-header-actions">
+
+            <div class="hito-user">
+
+                <span class="hito-user-avatar">
                     {{ request.user.username|slice:":1"|upper }}
                 </span>
 
-                <form method="post"
-                      action="{% url 'dashboard:logout' %}"
-                      class="hito-logout-form">
-                    {% csrf_token %}
-                    <button type="submit" class="hito-logout-button">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M10 17l5-5-5-5"/>
-                            <path d="M15 12H3"/>
-                            <path d="M12 3h7a2 2 0 012 2v14a2 2 0 01-2 2h-7"/>
-                        </svg>
-                        <span>Salir</span>
-                    </button>
-                </form>
+                <div class="hito-user-copy">
+
+                    <strong>{{ request.user.username }}</strong>
+
+                    <small>Guardaparques</small>
+
+                </div>
+
             </div>
 
-        </div>
-    </header>
 
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+            <!-- CERRAR SESIÓN -->
+
+            <form method="post"
+                  action="{% url 'dashboard:logout' %}"
+                  class="hito-logout-form">
+
+                {% csrf_token %}
+
+                <button type="submit"
+                        class="hito-logout-button"
+                        title="Cerrar sesión">
+
+                    <svg aria-hidden="true">
+                        <use href="#icon-logout"/>
+                    </svg>
+
+                    <span>Cerrar sesión</span>
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </aside>
+
+
+    <!-- FONDO DEL MENÚ MÓVIL -->
+
+    <button type="button"
+            id="hito-overlay"
+            class="hito-overlay"
+            aria-label="Cerrar menú"
+            hidden>
+    </button>
+
+
+    <!-- ESTRUCTURA PRINCIPAL -->
+
+    <div class="hito-shell">
+
+        <header class="hito-topbar">
+
+            <div class="hito-topbar-start">
+
+                <button type="button"
+                        id="hito-menu-toggle"
+                        class="hito-menu-toggle"
+                        aria-controls="hito-sidebar"
+                        aria-expanded="true"
+                        aria-label="Alternar menú">
+
+                    <svg aria-hidden="true">
+                        <use href="#icon-menu"/>
+                    </svg>
+
+                </button>
+
+                <span class="hito-topbar-title">
+                    Plataforma de gestión de guardaparques
+                </span>
+
+            </div>
+
+
+            <div class="hito-topbar-actions">
+
+                <span class="hito-topbar-avatar"
+                      title="{{ request.user.username }}">
+
+                    {{ request.user.username|slice:":1"|upper }}
+
+                </span>
+
+            </div>
+
+        </header>
+
+
+        <!-- CONTENIDO DE CADA PÁGINA -->
+
+        <main class="hito-main">
+
+            {% block content %}{% endblock %}
+
+        </main>
+
+    </div>
+
+
+    <!-- MENÚ PLEGABLE -->
+
+    <script>
+        (() => {
+
+            const body = document.body;
+            const sidebar = document.getElementById('hito-sidebar');
+            const toggle = document.getElementById('hito-menu-toggle');
+            const overlay = document.getElementById('hito-overlay');
+
+            const mobile = window.matchMedia('(max-width: 850px)');
+
+            function syncMenu() {
+
+                const expanded = mobile.matches
+                    ? body.classList.contains('hito-mobile-open')
+                    : !body.classList.contains('hito-collapsed');
+
+                toggle.setAttribute(
+                    'aria-expanded',
+                    String(expanded)
+                );
+
+                overlay.hidden = !(mobile.matches && expanded);
+
+                sidebar.inert = mobile.matches && !expanded;
+            }
+
+            function closeMenu() {
+
+                body.classList.remove('hito-mobile-open');
+
+                syncMenu();
+            }
+
+            toggle.addEventListener('click', () => {
+
+                body.classList.toggle(
+                    mobile.matches
+                        ? 'hito-mobile-open'
+                        : 'hito-collapsed'
+                );
+
+                syncMenu();
+
+                window.dispatchEvent(new Event('resize'));
+
+            });
+
+            overlay.addEventListener('click', () => {
+
+                closeMenu();
+
+                toggle.focus();
+
+            });
+
+            document.addEventListener('keydown', event => {
+
+                if (
+                    event.key === 'Escape' &&
+                    body.classList.contains('hito-mobile-open')
+                ) {
+
+                    closeMenu();
+
+                    toggle.focus();
+
+                }
+
+            });
+
+            mobile.addEventListener('change', closeMenu);
+
+            syncMenu();
+
+        })();
+    </script>
 
     {% block scripts %}{% endblock %}
 

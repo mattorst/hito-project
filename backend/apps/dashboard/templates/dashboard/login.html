@@ -1,4 +1,4 @@
-
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,84 +6,758 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Acceso guardaparques | Hito</title>
     <style>
-        body {
+        /* CONFIGURACIÓN GENERAL */
+        :root {
+            color-scheme: dark;
+            --bg: #090e11;
+            --sidebar: #0d1418;
+            --surface: #141d21;
+            --surface-raised: #1a252a;
+            --border: #34454d;
+            --text: #edf2f5;
+            --muted: #9ca9b0;
+            --green: #62d36b;
+            --blue: #479fff;
+            --yellow: #ffc629;
+            --orange: #ff7651;
+            --purple: #cc94f6;
+            --red: #ff6478;
+            --icon-user: #c084fc;
+            --icon-default: #ffffff;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
             margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            font-family: Arial, sans-serif;
-            background: #101310;
-            color: #f4f6f3;
+            min-height: 100%;
         }
-
-        .login {
-            box-sizing: border-box;
-            width: min(400px, 90%);
-            padding: 36px;
-            background: #1b211c;
-            border: 1px solid #344033;
-            border-radius: 18px;
+        body {
+            color: var(--text);
+            background: radial-gradient(ellipse at 10% 10%,rgba(71,159,255,.08),transparent 45%),radial-gradient(ellipse at 90% 90%,rgba(98,211,107,.07),transparent 45%),#090e11;
+            -webkit-font-smoothing: antialiased;
         }
-
-        h1 { margin-bottom: 6px; }
-        p { color: #a5aea5; }
-
-        label {
-            display: block;
-            margin: 18px 0 8px;
+        button, input {
+            font: inherit;
         }
-
-        input {
-            box-sizing: border-box;
-            width: 100%;
-            padding: 13px;
-            background: #101510;
-            color: white;
-            border: 1px solid #465145;
-            border-radius: 9px;
-        }
-
         button {
-            width: 100%;
-            margin-top: 25px;
-            padding: 14px;
-            border: 0;
-            border-radius: 9px;
-            background: #c9f35c;
-            color: #151b12;
-            font-weight: bold;
             cursor: pointer;
         }
-
-        .error { color: #ff9999; }
+        svg {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+        .svg-library {
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        /* CONTENEDOR PRINCIPAL */
+        .page-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 30px;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--sidebar);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: 0 25px 70px rgba(0,0,0,.45);
+            overflow: hidden;
+            animation: login-appear .45s ease both;
+        }
+        .login-layout {
+            display: grid;
+            grid-template-columns: repeat(2,minmax(0,1fr));
+        }
+        /* PANEL VISUAL */
+        .login-visual {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--surface);
+        }
+        .login-image {
+            position: relative;
+            width: 100%;
+            height: 360px;
+            overflow: hidden;
+            background: var(--surface-raised);
+        }
+        .login-image img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 65%;
+            image-rendering: auto;
+        }
+        .login-image::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom,rgba(9,14,17,.85) 0%,rgba(9,14,17,.30) 7%,transparent 20%);
+            pointer-events: none;
+        }
+        .visual-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 20px;
+            background: var(--surface);
+        }
+        .visual-eyebrow {
+            margin-bottom: 12px;
+            color: var(--green);
+            font-size: 11px;
+            font-weight: 650;
+            text-transform: uppercase;
+        }
+        .visual-content h1 {
+            margin: 0 0 12px;
+            color: var(--text);
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -.5px;
+        }
+        .visual-description {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        /* TARJETAS INFORMATIVAS - COLORES ORIGINALES */
+        .visual-modules {
+            display: grid;
+            grid-template-columns: repeat(3,minmax(0,1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .visual-module {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 8px;
+            min-width: 0;
+            min-height: 70px;
+            padding: 11px;
+            background: var(--surface-raised);
+            border: 1px solid transparent;
+            border-radius: 10px;
+            transition: background .2s ease,border-color .2s ease,transform .2s ease;
+        }
+        .visual-module:hover {
+            background: #202e34;
+            border-color: var(--module-color);
+            transform: translateY(-2px);
+        }
+        .module-icon {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            color: var(--module-color);
+        }
+        .module-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--module-color);
+        }
+        .visual-module strong {
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        /* PANEL DE INICIO DE SESIÓN */
+        .login-side {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            padding: 32px;
+            background: linear-gradient(to bottom,#090e11 0%,#0d1418 12%,#0d1418 100%);
+        }
+        .login {
+            width: 100%;
+            max-width: 420px;
+        }
+        /* LOGOTIPO ORIGINAL DE HITO */
+        .login-brand {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            margin-bottom: 18px;
+        }
+        .brand-icon {
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            width: 48px;
+            height: 48px;
+            color: var(--green);
+            background: rgba(98,211,107,.12);
+            border-radius: 13px;
+        }
+        .brand-icon svg {
+            width: 30px;
+            height: 30px;
+            color: var(--green);
+        }
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .brand-text strong {
+            color: var(--text);
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            line-height: 1;
+        }
+        .brand-text small {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: .5px;
+        }
+        .color-accent {
+            width: 85px;
+            height: 4px;
+            margin-left: 61px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background: linear-gradient(90deg,#62d36b,#479fff,#ffc629,#ff7651,#cc94f6);
+        }
+        /* ENCABEZADO DEL FORMULARIO */
+        .login-eyebrow {
+            display: block;
+            margin-bottom: 15px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: .2px;
+        }
+        .login h2 {
+            margin: 0 0 12px;
+            color: var(--text);
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -.6px;
+        }
+        .login-description {
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        /* FORMULARIO */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 17px;
+        }
+        .login-field {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            min-width: 0;
+        }
+        .login-field label {
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        /* CAMPOS DE USUARIO Y CONTRASEÑA */
+        .input-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            min-height: 50px;
+            padding: 0 13px;
+            color: var(--icon-user);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            transition: border-color .2s ease,box-shadow .2s ease,background .2s ease;
+        }
+        .input-container.password {
+            color: var(--icon-default);
+        }
+        .input-container:hover {
+            border-color: #53666e;
+        }
+        .input-container:focus-within {
+            background: #172228;
+            border-color: var(--icon-user);
+            box-shadow: 0 0 0 3px rgba(192,132,252,.09);
+        }
+        .input-container.password:focus-within {
+            border-color: #71818a;
+            box-shadow: 0 0 0 3px rgba(255,255,255,.045);
+        }
+        .input-container > svg {
+            width: 19px;
+            height: 19px;
+        }
+        .input-container > svg:has(use[href="#icon-user"]) {
+            color: #c084fc;
+        }
+        .input-container > svg:has(use[href="#icon-lock"]) {
+            color: #ffffff;
+        }
+        .input-container input {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            min-height: 48px;
+            padding: 12px 0;
+            background: transparent;
+            border: 0;
+            outline: none;
+            color: var(--text);
+            font-size: 13px;
+        }
+        .input-container input::placeholder {
+            color: var(--muted);
+            opacity: 1;
+        }
+        .input-container input:-webkit-autofill,
+        .input-container input:-webkit-autofill:hover,
+        .input-container input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #141d21 inset;
+            -webkit-text-fill-color: #edf2f5;
+            caret-color: #edf2f5;
+        }
+        /* MOSTRAR U OCULTAR CONTRASEÑA */
+        .password-toggle {
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            color: #ffffff;
+            background: #090e11;
+            border: 1px solid #34454d;
+            border-radius: 7px;
+            transition: color .2s ease,background .2s ease,border-color .2s ease;
+        }
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+            color: #ffffff;
+        }
+        .password-toggle:hover {
+            background: #263238;
+            border-color: #526269;
+            color: #ffffff;
+        }
+        /* MENSAJES DE ERROR */
+        .login-error {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 18px;
+            padding: 12px;
+            color: #ffb5bf;
+            background: rgba(255,100,120,.08);
+            border: 1px solid rgba(255,100,120,.25);
+            border-left: 3px solid var(--red);
+            border-radius: 9px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .login-error svg {
+            color: var(--red);
+            width: 19px;
+            height: 19px;
+            margin-top: 2px;
+        }
+        .login-error strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #ffc3cb;
+            font-size: 13px;
+        }
+        /* BOTÓN NEGRO DE INICIO DE SESIÓN */
+        .login-submit {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 54px;
+            padding: 14px 45px;
+            color: #ffffff;
+            background: #090e11;
+            border: 1px solid #34454d;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 750;
+            transition: transform .2s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease;
+        }
+        .login-submit svg {
+            position: absolute;
+            right: 20px;
+            width: 23px;
+            height: 23px;
+            color: #ffffff;
+            stroke-width: 2.1;
+            transition: transform .2s ease;
+        }
+        .login-submit:hover {
+            background: #263238;
+            border-color: #526269;
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(0,0,0,.20);
+            transform: translateY(-1px);
+        }
+        .login-submit:hover svg {
+            transform: translateX(4px);
+        }
+        .login-submit:active {
+            transform: translateY(0);
+        }
+        /* SEGURIDAD Y ACCESO */
+        .login-security {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .login-security svg {
+            color: #ffffff;
+            width: 16px;
+            height: 16px;
+        }
+        button:focus-visible {
+            outline: 2px solid #ffffff;
+            outline-offset: 4px;
+        }
+        [hidden] {
+            display: none !important;
+        }
+        /* ANIMACIÓN DE ENTRADA */
+        @keyframes login-appear {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* RESPONSIVE */
+        @media (max-width: 1050px) {
+            .page-container {
+                padding: 25px;
+            }
+            .login-side {
+                padding: 28px;
+            }
+            .visual-content h1 {
+                font-size: 26px;
+            }
+        }
+        @media (max-width: 800px) {
+            .page-container {
+                padding: 20px;
+            }
+            .login-container {
+                max-width: 500px;
+                border-radius: 18px;
+            }
+            .login-layout {
+                grid-template-columns: 1fr;
+            }
+            .login-image {
+                height: 300px;
+            }
+            .visual-content {
+                padding: 20px;
+            }
+            .login-side {
+                padding: 30px 25px;
+                border-top: 1px solid #253236;
+            }
+        }
+        @media (max-width: 450px) {
+            .page-container {
+                padding: 12px;
+            }
+            .login-container {
+                border-radius: 15px;
+            }
+            .login-image {
+                height: 250px;
+            }
+            .visual-content {
+                padding: 16px;
+            }
+            .visual-content h1 {
+                font-size: 24px;
+            }
+            .visual-description {
+                font-size: 12px;
+            }
+            .visual-modules {
+                gap: 7px;
+                margin-top: 12px;
+            }
+            .visual-module {
+                min-height: 65px;
+                padding: 9px;
+            }
+            .visual-module strong {
+                font-size: 11px;
+            }
+            .module-icon svg {
+                width: 22px;
+                height: 22px;
+            }
+            .login-side {
+                padding: 25px 20px;
+            }
+            .login h2 {
+                font-size: 29px;
+            }
+            .login-description {
+                font-size: 13px;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <main class="login">
-        <h1>HITO</h1>
-        <p>Acceso para personal de guardaparques</p>
-
-        <form method="post">
-            {% csrf_token %}
-
-            {% if form.errors %}
-                <p class="error">
-                    Credenciales incorrectas o acceso no autorizado.
-                </p>
-            {% endif %}
-
-            <label for="id_username">Usuario</label>
-            {{ form.username }}
-
-            <label for="id_password">Contraseña</label>
-            {{ form.password }}
-
-            {% if next %}
-                <input type="hidden" name="next" value="{{ next }}">
-            {% endif %}
-
-            <button type="submit">Iniciar sesión</button>
-        </form>
-    </main>
+    <!-- BIBLIOTECA DE ICONOS -->
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="icon-mountain" viewBox="0 0 24 24">
+                <path d="M3 21L9 5L14 13L17 8L22 21H3Z"/>
+                <path d="M7 10L9 12L11 10"/>
+            </symbol>
+            <symbol id="icon-user" viewBox="0 0 24 24">
+                <circle cx="12" cy="7" r="4"/>
+                <path d="M4 21v-2a8 8 0 0 1 16 0v2"/>
+            </symbol>
+            <symbol id="icon-lock" viewBox="0 0 24 24">
+                <rect x="5" y="10" width="14" height="11" rx="2"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>
+            </symbol>
+            <symbol id="icon-eye" viewBox="0 0 24 24">
+                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </symbol>
+            <symbol id="icon-eye-off" viewBox="0 0 24 24">
+                <path d="M3 3l18 18M10 5a13 13 0 0 1 2 0c6 0 10 7 10 7a17 17 0 0 1-3 4M6 6a18 18 0 0 0-4 6s4 7 10 7a12 12 0 0 0 5-1"/>
+                <path d="M10 10a3 3 0 0 0 4 4"/>
+            </symbol>
+            <symbol id="icon-arrow" viewBox="0 0 24 24">
+                <path d="M3 12h17M13 5l7 7-7 7"/>
+            </symbol>
+            <symbol id="icon-shield" viewBox="0 0 24 24">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/>
+                <path d="M8 12l3 3 5-6"/>
+            </symbol>
+            <symbol id="icon-location" viewBox="0 0 24 24">
+                <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </symbol>
+            <symbol id="icon-sos" viewBox="0 0 24 24">
+                <path d="M5 18v-7a7 7 0 0 1 14 0v7M3 18h18v3H3Z"/>
+                <path d="M12 1v2M2 5l2 2M22 5l-2 2M12 7v5"/>
+            </symbol>
+            <symbol id="icon-alert" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v6M12 17h.01"/>
+            </symbol>
+        </defs>
+    </svg>
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="page-container">
+        <main class="login-container">
+            <div class="login-layout">
+                <!-- PANEL IZQUIERDO -->
+                <section class="login-visual" aria-label="Presentación de Hito">
+                    <!-- FOTOGRAFÍA ORIGINAL -->
+                    <div class="login-image">
+                        <img src="{% static 'dashboard/images/login-cover.jpg' %}" alt="Excursionista recorriendo un sendero de montaña" fetchpriority="high">
+                    </div>
+                    <div class="visual-content">
+                        <div class="visual-eyebrow">Naturaleza y seguridad</div>
+                        <h1>Protegiendo cada recorrido.</h1>
+                        <p class="visual-description">Gestión y seguridad de excursiones en entornos naturales.</p>
+                        <!-- TARJETAS INFORMATIVAS ORIGINALES -->
+                        <div class="visual-modules">
+                            <article class="visual-module" style="--module-color:#62d36b">
+                                <div class="module-icon">
+                                    <svg aria-hidden="true">
+                                        <use href="#icon-mountain"/>
+                                    </svg>
+                                </div>
+                                <strong>Trekkings</strong>
+                            </article>
+                            <article class="visual-module" style="--module-color:#479fff">
+                                <div class="module-icon">
+                                    <svg aria-hidden="true">
+                                        <use href="#icon-location"/>
+                                    </svg>
+                                </div>
+                                <strong>Monitoreo</strong>
+                            </article>
+                            <article class="visual-module" style="--module-color:#ff7651">
+                                <div class="module-icon">
+                                    <svg aria-hidden="true">
+                                        <use href="#icon-sos"/>
+                                    </svg>
+                                </div>
+                                <strong>Rescates</strong>
+                            </article>
+                        </div>
+                    </div>
+                </section>
+                <!-- PANEL DERECHO -->
+                <section class="login-side">
+                    <div class="login">
+                        <!-- LOGOTIPO -->
+                        <div class="login-brand">
+                            <div class="brand-icon">
+                                <svg aria-hidden="true">
+                                    <use href="#icon-mountain"/>
+                                </svg>
+                            </div>
+                            <div class="brand-text">
+                                <strong>HITO</strong>
+                                <small>GUARDAPARQUES</small>
+                            </div>
+                        </div>
+                        <div class="color-accent" aria-hidden="true"></div>
+                        <span class="login-eyebrow">CENTRO DE OPERACIONES</span>
+                        <h2>Bienvenido.</h2>
+                        <p class="login-description">Ingresa tus credenciales para acceder al panel de guardaparques.</p>
+                        <!-- MENSAJE DE ERROR -->
+                        {% if form.errors %}
+                            <div class="login-error" role="alert">
+                                <svg aria-hidden="true">
+                                    <use href="#icon-alert"/>
+                                </svg>
+                                <div>
+                                    <strong>No se pudo iniciar sesión</strong>
+                                    Credenciales incorrectas o acceso no autorizado.
+                                </div>
+                            </div>
+                        {% endif %}
+                        <!-- FORMULARIO DJANGO -->
+                        <form method="post" class="login-form">
+                            {% csrf_token %}
+                            <!-- USUARIO -->
+                            <div class="login-field">
+                                <label for="{{ form.username.id_for_label }}">Usuario</label>
+                                <div class="input-container">
+                                    <svg aria-hidden="true">
+                                        <use href="#icon-user"/>
+                                    </svg>
+                                    {{ form.username }}
+                                </div>
+                            </div>
+                            <!-- CONTRASEÑA -->
+                            <div class="login-field">
+                                <label for="{{ form.password.id_for_label }}">Contraseña</label>
+                                <div class="input-container password">
+                                    <svg aria-hidden="true">
+                                        <use href="#icon-lock"/>
+                                    </svg>
+                                    {{ form.password }}
+                                    <button type="button" class="password-toggle" id="toggle-password" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña" hidden>
+                                        <svg aria-hidden="true">
+                                            <use id="password-icon" href="#icon-eye"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- REDIRECCIÓN -->
+                            {% if next %}
+                                <input type="hidden" name="next" value="{{ next }}">
+                            {% endif %}
+                            <!-- BOTÓN DE ACCESO -->
+                            <button type="submit" class="login-submit">
+                                Iniciar sesión
+                                <svg aria-hidden="true">
+                                    <use href="#icon-arrow"/>
+                                </svg>
+                            </button>
+                        </form>
+                        <!-- INFORMACIÓN DE SEGURIDAD -->
+                        <div class="login-security">
+                            <svg aria-hidden="true">
+                                <use href="#icon-shield"/>
+                            </svg>
+                            <span>Personal autorizado</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <!-- JAVASCRIPT -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const usernameInput = document.getElementById("{{ form.username.id_for_label|escapejs }}");
+            const passwordInput = document.getElementById("{{ form.password.id_for_label|escapejs }}");
+            const togglePassword = document.getElementById("toggle-password");
+            const passwordIcon = document.getElementById("password-icon");
+            if (usernameInput) {
+                usernameInput.setAttribute("placeholder", "Ingresa tu usuario");
+                usernameInput.setAttribute("autocomplete", "username");
+            }
+            if (passwordInput) {
+                passwordInput.setAttribute("placeholder", "Ingresa tu contraseña");
+                passwordInput.setAttribute("autocomplete", "current-password");
+            }
+            if (passwordInput && togglePassword && passwordIcon) {
+                togglePassword.hidden = false;
+                togglePassword.addEventListener("click", function () {
+                    const showPassword = passwordInput.type === "password";
+                    passwordInput.type = showPassword ? "text" : "password";
+                    passwordIcon.setAttribute("href", showPassword ? "#icon-eye-off" : "#icon-eye");
+                    togglePassword.setAttribute("aria-label", showPassword ? "Ocultar contraseña" : "Mostrar contraseña");
+                    togglePassword.setAttribute("title", showPassword ? "Ocultar contraseña" : "Mostrar contraseña");
+                    togglePassword.setAttribute("aria-pressed", String(showPassword));
+                });
+            }
+        });
+    </script>
 </body>
 </html>
